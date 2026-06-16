@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
+import { KeyRound, Loader2, ShieldCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { LogoMark, Wordmark } from '@/components/brand';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -14,11 +15,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth';
 
 const loginSchema = z.object({
-  email: z.string().email('Ingresa un correo válido'),
-  password: z.string().min(1, 'Ingresa tu contraseña'),
+  email: z.string().email('Ingresa un correo valido'),
+  password: z.string().min(1, 'Ingresa tu contrasena'),
   tenantSlug: z.string().optional(),
 });
 
@@ -38,90 +40,93 @@ export function LoginForm() {
       password: values.password,
       tenantSlug: values.tenantSlug ? values.tenantSlug : undefined,
     });
-    await navigate({ to: '/' });
+    await navigate({ to: '/sede' });
   });
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-        <LogoMark className="h-9 w-9 text-carbon" />
-        <Wordmark className="text-xl" />
-      </div>
+    <Card className="w-full max-w-[420px] gap-0 border-border/80 py-0 shadow-none">
+      <CardHeader className="space-y-5 p-6 pb-4">
+        <div className="flex items-center gap-2.5 lg:hidden">
+          <LogoMark className="h-9 w-9 text-carbon" />
+          <Wordmark className="text-xl" />
+        </div>
+        <div>
+          <CardTitle className="font-display text-2xl">Iniciar sesion</CardTitle>
+          <CardDescription className="mt-2">
+            Entra con tu usuario para seleccionar tenant y sede activa.
+          </CardDescription>
+        </div>
+      </CardHeader>
 
-      <h1 className="font-display text-2xl font-semibold tracking-tight">
-        Inicia sesión
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Accede a tu panel de operación.
-      </p>
+      <CardContent className="p-6 pt-0">
+        <Form {...form}>
+          <form onSubmit={onSubmit} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Correo</FormLabel>
+                  <FormControl>
+                    <Input type="email" autoFocus placeholder="owner@gastroai.local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      <Form {...form}>
-        <form onSubmit={onSubmit} className="mt-6 space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Correo</FormLabel>
-                <FormControl>
-                  <Input
-                    type="email"
-                    autoFocus
-                    placeholder="owner@gastroai.local"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contrasena</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="********" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Contraseña</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="••••••••" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="tenantSlug"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Restaurante</FormLabel>
+                  <FormControl>
+                    <Input placeholder="gastroai-demo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="tenantSlug"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Restaurante (opcional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="gastroai-demo" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {loginMutation.isError ? (
-            <p className="text-sm text-destructive">
-              No pudimos iniciar sesión. Verifica tus credenciales.
-            </p>
-          ) : null}
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loginMutation.isPending}
-          >
-            {loginMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+            {loginMutation.isError ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                No pudimos iniciar sesion. Verifica tus credenciales.
+              </p>
             ) : null}
-            Entrar
-          </Button>
-        </form>
-      </Form>
-    </div>
+
+            <Button type="submit" className="h-10 w-full" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4" />
+              )}
+              Entrar al restaurante
+            </Button>
+          </form>
+        </Form>
+
+        <Separator className="my-5" />
+
+        <Button variant="outline" className="h-10 w-full bg-background" disabled>
+          <KeyRound className="h-4 w-4" />
+          Acceso rapido por PIN
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

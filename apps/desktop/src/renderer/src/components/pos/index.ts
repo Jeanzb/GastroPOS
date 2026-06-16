@@ -1,0 +1,1 @@
+export { PosWorkspace } from './PosWorkspace';

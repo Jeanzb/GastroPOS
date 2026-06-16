@@ -1,24 +1,23 @@
-import { createRoute, redirect } from '@tanstack/react-router';
-import { AppLayout } from '@/components/layout';
-import { ProductsPage } from '@/pages/catalog';
-import { useAuthStore } from '@/stores';
-import { rootRoute } from '../root';
+import { branchRoute } from '../branches';
+import { cashRoute } from '../cash';
+import { catalogRoute } from '../catalog';
+import { dashboardRoute } from '../dashboard';
+import { fiscalRoute } from '../fiscal';
+import { inventoryRoute } from '../inventory';
+import { onboardingRoute } from '../onboarding';
+import { posRoute } from '../pos';
+import { reportsRoute } from '../reports';
+import { appLayoutRoute } from './layout';
 
-export const appLayoutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  id: 'app',
-  beforeLoad: () => {
-    if (!useAuthStore.getState().accessToken) {
-      throw redirect({ to: '/login' });
-    }
-  },
-  component: AppLayout,
-});
+export const appRoutes = appLayoutRoute.addChildren([
+  dashboardRoute,
+  catalogRoute,
+  posRoute,
+  cashRoute,
+  inventoryRoute,
+  fiscalRoute,
+  reportsRoute,
+  onboardingRoute,
+]);
 
-export const productsRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/',
-  component: ProductsPage,
-});
-
-export const appRoutes = appLayoutRoute.addChildren([productsRoute]);
+export const rootFeatureRoutes = [branchRoute, appRoutes];

@@ -1,9 +1,9 @@
 import { createHashHistory, createRouter } from '@tanstack/react-router';
-import { appRoutes } from './app';
+import { rootFeatureRoutes } from './app';
 import { loginRoute } from './auth';
 import { rootRoute } from './root';
 
-const routeTree = rootRoute.addChildren([loginRoute, appRoutes]);
+const routeTree = rootRoute.addChildren([loginRoute, ...rootFeatureRoutes]);
 
 export const router = createRouter({
   routeTree,

@@ -5,46 +5,44 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* GastroAI brand tokens mapped onto the shadcn/ui token system. */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
-  --background: #fff6ee; /* crema suave */
-  --foreground: #1f2328; /* carbón */
+  --background: #f6f2ec;
+  --foreground: #1c1a17;
 
   --card: #ffffff;
-  --card-foreground: #1f2328;
+  --card-foreground: #1c1a17;
   --popover: #ffffff;
-  --popover-foreground: #1f2328;
+  --popover-foreground: #1c1a17;
 
-  --primary: #ff6a00; /* naranja vívido */
+  --primary: #ff5a2c;
   --primary-foreground: #ffffff;
 
-  --secondary: #fdeadd;
-  --secondary-foreground: #1f2328;
+  --secondary: #eee5d9;
+  --secondary-foreground: #1c1a17;
 
-  --muted: #f3ede5;
-  --muted-foreground: #8c9199; /* gris muted */
+  --muted: #eee7dc;
+  --muted-foreground: #746f68;
 
-  --accent: #fdeadd;
-  --accent-foreground: #1f2328;
+  --accent: #f9e2d7;
+  --accent-foreground: #1c1a17;
 
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 
-  --border: #e9e1d7;
-  --input: #ded4c8;
-  --ring: #ff6a00;
+  --border: #e7e0d6;
+  --input: #d8cec1;
+  --ring: #ff5a2c;
 
-  /* Dark sidebar (carbón) — the app's primary navigation surface. */
-  --sidebar: #1f2328;
-  --sidebar-foreground: #fff6ee;
-  --sidebar-primary: #ff6a00;
+  --sidebar: #1c1a17;
+  --sidebar-foreground: #f6f2ec;
+  --sidebar-primary: #ff5a2c;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2a3036;
-  --sidebar-accent-foreground: #fff6ee;
+  --sidebar-accent: #302c27;
+  --sidebar-accent-foreground: #f6f2ec;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #ff6a00;
+  --sidebar-ring: #ff5a2c;
 }
 
 @theme inline {
@@ -77,11 +75,10 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Brand convenience colors. */
-  --color-carbon: #1f2328;
-  --color-orange: #ff6a00;
-  --color-orange-soft: #ff8a3d;
-  --color-cream: #fff6ee;
+  --color-carbon: #1c1a17;
+  --color-orange: #ff5a2c;
+  --color-orange-soft: #ff875f;
+  --color-cream: #f6f2ec;
 
   --font-display: 'Sora Variable', system-ui, sans-serif;
   --font-sans: 'Inter Variable', system-ui, sans-serif;
