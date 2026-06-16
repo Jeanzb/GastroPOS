@@ -19,6 +19,8 @@ import { RolesGuard } from './presentation/guards/roles.guard';
     PasswordHashingService,
     RolesGuard,
   ],
-  exports: [AuthService, JwtAuthGuard, RolesGuard],
+  // Export the guards plus their dependencies (JwtService, AuthRepository) so
+  // other feature modules can protect routes with JwtAuthGuard/RolesGuard.
+  exports: [AuthService, JwtAuthGuard, RolesGuard, JwtModule, AuthRepository],
 })
 export class AuthModule {}

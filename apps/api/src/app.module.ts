@@ -12,6 +12,7 @@ import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './database/prisma.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
 import { HealthModule } from './modules/health/health.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { HealthModule } from './modules/health/health.module';
     }),
     AuditModule,
     AuthModule,
+    CatalogModule,
     HealthModule,
   ],
   providers: [
