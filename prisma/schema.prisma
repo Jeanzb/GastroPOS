@@ -1,0 +1,109 @@
+// GastroAI data model.
+// Multi-tenant rule (AGENTS.md §6.2, §7): every business record carries a
+// tenantId and audit fields. Tenant isolation is enforced in repositories.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../apps/api/src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Default RBAC roles (AGENTS.md §6.3). Granular permissions come later.
+enum UserRole {
+  OWNER
+  ADMIN
+  CASHIER
+  WAITER
+  KITCHEN
+  INVENTORY_MANAGER
+  ACCOUNTANT
+}
+
+/// A restaurant business. Root of tenant isolation.
+model Tenant {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  isActive Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  settings TenantSettings?
+  branches Branch[]
+  users    User[]
+
+  @@map("tenants")
+}
+
+/// Per-tenant configuration that business logic must not hardcode.
+model TenantSettings {
+  id                 String  @id @default(cuid())
+  tenantId           String  @unique
+  currency           String  @default("COP")
+  timezone           String  @default("America/Bogota")
+  allowNegativeStock Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
+}
+
+/// A physical location / sede of a tenant.
+model Branch {
+  id       String  @id @default(cuid())
+  tenantId String
+  name     String
+  code     String
+  address  String?
+  phone    String?
+  isActive Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users  User[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("branches")
+}
+
+/// A staff account scoped to a single tenant.
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String
+  branchId     String?
+  email        String
+  passwordHash String
+  fullName     String
+  role         UserRole  @default(CASHIER)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([branchId])
+  @@map("users")
+}
