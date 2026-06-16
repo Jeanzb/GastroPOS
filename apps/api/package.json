@@ -9,7 +9,7 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no tests yet\" && exit 0"
+    "test": "jest --config jest.config.cjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.27",
@@ -30,6 +30,9 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.23",
     "@nestjs/schematics": "^11.1.0",
-    "@types/node": "^25.9.3"
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.9.3",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11"
   }
 }
