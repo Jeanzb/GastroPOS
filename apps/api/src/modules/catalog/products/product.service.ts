@@ -1,0 +1,218 @@
+import { Injectable } from '@nestjs/common';
+import type { PaginatedResult, ProductDto } from '@gastroai/contracts';
+import type { Prisma } from '../../../../generated/prisma';
+import { ApiErrorCode } from '../../../common/errors/api-error-code';
+import { ApplicationException } from '../../../common/errors/application.exception';
+import {
+  createPaginatedResult,
+  normalizePagination,
+} from '../../../common/pagination/pagination';
+import { AuditService } from '../../audit/audit.service';
+import type { CatalogActor } from '../catalog.types';
+import { ProductCategoryRepository } from '../categories/product-category.repository';
+import type { CreateProductDto } from './dto/create-product.dto';
+import type { ListProductsQueryDto } from './dto/list-products-query.dto';
+import type { UpdateProductDto } from './dto/update-product.dto';
+import { toProductDto } from './product.mapper';
+import { ProductRepository } from './product.repository';
+
+@Injectable()
+export class ProductService {
+  constructor(
+    private readonly repository: ProductRepository,
+    private readonly categoryRepository: ProductCategoryRepository,
+    private readonly auditService: AuditService,
+  ) {}
+
+  async list(
+    actor: CatalogActor,
+    query: ListProductsQueryDto,
+  ): Promise<PaginatedResult<ProductDto>> {
+    const pagination = normalizePagination(query);
+    const filters = {
+      isActive: query.isActive,
+      categoryId: query.categoryId,
+      search: query.search,
+    };
+
+    const [rows, total] = await Promise.all([
+      this.repository.findMany(actor.tenantId, filters, pagination),
+      this.repository.count(actor.tenantId, filters),
+    ]);
+
+    return createPaginatedResult(rows.map(toProductDto), total, pagination);
+  }
+
+  async getById(actor: CatalogActor, id: string): Promise<ProductDto> {
+    const product = await this.repository.findById(actor.tenantId, id);
+    if (!product) {
+      throw notFound();
+    }
+    return toProductDto(product);
+  }
+
+  async create(
+    actor: CatalogActor,
+    dto: CreateProductDto,
+  ): Promise<ProductDto> {
+    if (dto.categoryId) {
+      await this.assertCategoryExists(actor.tenantId, dto.categoryId);
+    }
+
+    const sku = dto.sku?.trim() || null;
+    if (sku) {
+      await this.assertSkuAvailable(actor.tenantId, sku);
+    }
+
+    const created = await this.repository.create({
+      tenantId: actor.tenantId,
+      categoryId: dto.categoryId ?? null,
+      sku,
+      name: dto.name.trim(),
+      description: dto.description?.trim() || null,
+      priceAmount: dto.priceAmount,
+      currency: dto.currency ?? 'COP',
+      isActive: dto.isActive ?? true,
+      isSellable: dto.isSellable ?? true,
+      isInventoried: dto.isInventoried ?? false,
+      createdById: actor.actorUserId,
+    });
+
+    const result = toProductDto(created);
+    await this.auditService.tryRecord({
+      ...auditBase(actor),
+      action: 'PRODUCT_CREATED',
+      entityType: 'Product',
+      entityId: created.id,
+      after: asJson(result),
+    });
+
+    return result;
+  }
+
+  async update(
+    actor: CatalogActor,
+    id: string,
+    dto: UpdateProductDto,
+  ): Promise<ProductDto> {
+    const existing = await this.repository.findById(actor.tenantId, id);
+    if (!existing) {
+      throw notFound();
+    }
+
+    if (dto.categoryId && dto.categoryId !== existing.categoryId) {
+      await this.assertCategoryExists(actor.tenantId, dto.categoryId);
+    }
+
+    const sku = dto.sku?.trim();
+    if (sku && sku !== existing.sku) {
+      await this.assertSkuAvailable(actor.tenantId, sku, id);
+    }
+
+    const before = toProductDto(existing);
+    const updated = await this.repository.update(id, {
+      categoryId: dto.categoryId,
+      sku: dto.sku === undefined ? undefined : sku || null,
+      name: dto.name?.trim(),
+      description:
+        dto.description === undefined ? undefined : dto.description.trim() || null,
+      priceAmount: dto.priceAmount,
+      currency: dto.currency,
+      isActive: dto.isActive,
+      isSellable: dto.isSellable,
+      isInventoried: dto.isInventoried,
+      updatedById: actor.actorUserId,
+    });
+
+    const after = toProductDto(updated);
+    await this.auditService.tryRecord({
+      ...auditBase(actor),
+      action: 'PRODUCT_UPDATED',
+      entityType: 'Product',
+      entityId: id,
+      before: asJson(before),
+      after: asJson(after),
+    });
+
+    if (
+      dto.priceAmount !== undefined &&
+      dto.priceAmount !== existing.priceAmount
+    ) {
+      await this.auditService.tryRecord({
+        ...auditBase(actor),
+        action: 'PRODUCT_PRICE_CHANGED',
+        entityType: 'Product',
+        entityId: id,
+        before: { priceAmount: existing.priceAmount, currency: existing.currency },
+        after: { priceAmount: updated.priceAmount, currency: updated.currency },
+      });
+    }
+
+    return after;
+  }
+
+  async remove(actor: CatalogActor, id: string): Promise<void> {
+    const existing = await this.repository.findById(actor.tenantId, id);
+    if (!existing) {
+      throw notFound();
+    }
+
+    await this.repository.softDelete(id, actor.actorUserId);
+    await this.auditService.tryRecord({
+      ...auditBase(actor),
+      action: 'PRODUCT_DELETED',
+      entityType: 'Product',
+      entityId: id,
+      before: asJson(toProductDto(existing)),
+    });
+  }
+
+  private async assertCategoryExists(
+    tenantId: string,
+    categoryId: string,
+  ): Promise<void> {
+    const category = await this.categoryRepository.findById(tenantId, categoryId);
+    if (!category) {
+      throw new ApplicationException(400, {
+        code: 'INVALID_CATEGORY',
+        message: 'The referenced product category does not exist.',
+      });
+    }
+  }
+
+  private async assertSkuAvailable(
+    tenantId: string,
+    sku: string,
+    ignoreProductId?: string,
+  ): Promise<void> {
+    const clash = await this.repository.findBySku(tenantId, sku);
+    if (clash && clash.id !== ignoreProductId) {
+      throw new ApplicationException(409, {
+        code: ApiErrorCode.CONFLICT,
+        message: `A product with SKU "${sku}" already exists.`,
+      });
+    }
+  }
+}
+
+function auditBase(actor: CatalogActor) {
+  return {
+    tenantId: actor.tenantId,
+    branchId: actor.branchId,
+    actorUserId: actor.actorUserId,
+    requestId: actor.requestId,
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  };
+}
+
+function notFound(): ApplicationException {
+  return new ApplicationException(404, {
+    code: ApiErrorCode.NOT_FOUND,
+    message: 'Product was not found.',
+  });
+}
+
+function asJson(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
+}
