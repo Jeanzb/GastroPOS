@@ -1,2 +1,3 @@
+export { CatalogDeleteDialog } from './CatalogDeleteDialog';
 export { CategoriesPanel } from './categories';
-export { ProductsTable, ProductsToolbar } from './products';
+export { ProductFormDialog, ProductsTable, ProductsToolbar } from './products';

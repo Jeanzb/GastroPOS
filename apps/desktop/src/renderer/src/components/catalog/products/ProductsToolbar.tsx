@@ -7,9 +7,10 @@ interface ProductsToolbarProps {
   search: string;
   total: number;
   onSearch: (value: string) => void;
+  onCreate: () => void;
 }
 
-export function ProductsToolbar({ search, total, onSearch }: ProductsToolbarProps) {
+export function ProductsToolbar({ search, total, onSearch, onCreate }: ProductsToolbarProps) {
   const onSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSearch(event.target.value);
   };
@@ -27,7 +28,7 @@ export function ProductsToolbar({ search, total, onSearch }: ProductsToolbarProp
       </div>
       <div className="flex items-center gap-3">
         <span className="nums text-sm text-muted-foreground">{total} productos</span>
-        <Button disabled>
+        <Button type="button" onClick={onCreate}>
           <Plus className="h-4 w-4" />
           Nuevo producto
         </Button>

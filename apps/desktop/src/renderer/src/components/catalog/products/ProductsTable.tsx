@@ -1,4 +1,6 @@
+import { Pencil, Trash2 } from 'lucide-react';
 import { StatusPill } from '@/components/operations';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -13,7 +15,10 @@ import type { ProductDto } from '@/types/catalog';
 
 interface ProductsTableProps {
   products: ProductDto[];
+  categoryNames: Record<string, string>;
   isLoading: boolean;
+  onEdit: (product: ProductDto) => void;
+  onDelete: (product: ProductDto) => void;
 }
 
 const SKELETON_ROWS = [0, 1, 2, 3, 4];
@@ -21,18 +26,37 @@ const SKELETON_ROWS = [0, 1, 2, 3, 4];
 function ProductSkeletonRow({ row }: { row: number }) {
   return (
     <TableRow key={row}>
-      <TableCell colSpan={6}>
+      <TableCell colSpan={8}>
         <Skeleton className="h-5 w-full" />
       </TableCell>
     </TableRow>
   );
 }
 
-function ProductRow({ product }: { product: ProductDto }) {
+function ProductRow({
+  product,
+  categoryNames,
+  onEdit,
+  onDelete,
+}: {
+  product: ProductDto;
+  categoryNames: Record<string, string>;
+  onEdit: (product: ProductDto) => void;
+  onDelete: (product: ProductDto) => void;
+}) {
+  const categoryName = product.categoryId ? categoryNames[product.categoryId] : undefined;
+  const onEditClick = () => {
+    onEdit(product);
+  };
+  const onDeleteClick = () => {
+    onDelete(product);
+  };
+
   return (
     <TableRow>
       <TableCell className="font-medium">{product.name}</TableCell>
       <TableCell className="text-muted-foreground">{product.sku ?? 'Sin SKU'}</TableCell>
+      <TableCell className="text-muted-foreground">{categoryName ?? 'Sin categoria'}</TableCell>
       <TableCell className="nums text-right">
         {formatMoney(product.priceAmount, product.currency)}
       </TableCell>
@@ -47,6 +71,28 @@ function ProductRow({ product }: { product: ProductDto }) {
         </StatusPill>
       </TableCell>
       <TableCell className="nums text-muted-foreground">{formatDate(product.updatedAt)}</TableCell>
+      <TableCell>
+        <div className="flex justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            title="Editar producto"
+            onClick={onEditClick}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            title="Eliminar producto"
+            onClick={onDeleteClick}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
     </TableRow>
   );
 }
@@ -55,11 +101,23 @@ function renderSkeletonRow(row: number) {
   return <ProductSkeletonRow key={row} row={row} />;
 }
 
-function renderProductRow(product: ProductDto) {
-  return <ProductRow key={product.id} product={product} />;
-}
+export function ProductsTable({
+  products,
+  categoryNames,
+  isLoading,
+  onEdit,
+  onDelete,
+}: ProductsTableProps) {
+  const renderProductRow = (product: ProductDto) => (
+    <ProductRow
+      key={product.id}
+      product={product}
+      categoryNames={categoryNames}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />
+  );
 
-export function ProductsTable({ products, isLoading }: ProductsTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <Table>
@@ -67,17 +125,19 @@ export function ProductsTable({ products, isLoading }: ProductsTableProps) {
           <TableRow>
             <TableHead>Nombre</TableHead>
             <TableHead>SKU</TableHead>
+            <TableHead>Categoria</TableHead>
             <TableHead className="text-right">Precio</TableHead>
             <TableHead>Uso</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Actualizado</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading ? SKELETON_ROWS.map(renderSkeletonRow) : null}
           {!isLoading && products.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="py-10 text-center text-sm text-muted-foreground">
+              <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                 Aun no hay productos. Crea el primero para empezar.
               </TableCell>
             </TableRow>
