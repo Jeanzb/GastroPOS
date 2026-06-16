@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  RequestMethod,
+  type NestModule,
+} from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
@@ -6,6 +11,7 @@ import { RequestIdMiddleware } from './common/request-context/request-id.middlew
 import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './database/prisma.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 
 @Module({
@@ -16,6 +22,7 @@ import { HealthModule } from './modules/health/health.module';
       throttlers: [{ ttl: 60_000, limit: 100 }],
     }),
     AuditModule,
+    AuthModule,
     HealthModule,
   ],
   providers: [
@@ -26,6 +33,8 @@ import { HealthModule } from './modules/health/health.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestIdMiddleware).forRoutes('*');
+    consumer
+      .apply(RequestIdMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
   }
 }

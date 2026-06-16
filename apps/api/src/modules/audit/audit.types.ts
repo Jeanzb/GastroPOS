@@ -1,4 +1,4 @@
-import type { Prisma } from '../../generated/prisma';
+import type { Prisma } from '../../../generated/prisma';
 
 export interface RecordAuditLogInput {
   tenantId?: string | null;
