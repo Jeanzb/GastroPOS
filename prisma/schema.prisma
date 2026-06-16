@@ -37,6 +37,7 @@ model Tenant {
   settings TenantSettings?
   branches Branch[]
   users    User[]
+  sessions Session[]
 
   @@map("tenants")
 }
@@ -75,6 +76,7 @@ model Branch {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   users  User[]
+  sessions Session[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -101,11 +103,62 @@ model User {
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  sessions Session[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([branchId])
   @@map("users")
+}
+
+/// Authenticated device/browser session for a staff user.
+model Session {
+  id       String  @id @default(cuid())
+  tenantId String
+  branchId String?
+  userId   String
+
+  isActive  Boolean   @default(true)
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokens RefreshToken[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([branchId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Refresh token secret hash. The public token id is the record id.
+model RefreshToken {
+  id        String @id @default(cuid())
+  sessionId String
+  tokenHash String
+  familyId  String
+
+  expiresAt DateTime
+  revokedAt DateTime?
+  replacedByTokenId String?
+
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 /// Immutable trail of business-critical actions.
