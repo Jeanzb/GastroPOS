@@ -44,3 +44,9 @@ Thumbs.db
 
 # Misc secrets
 *.pem
+
+# Local agent / skill config — never commit
+AGENTS.md
+.agents/
+.claude/
+skills-lock.json
