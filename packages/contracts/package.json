@@ -1,0 +1,19 @@
+{
+  "name": "@gastroai/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Framework-agnostic shared request/response contracts for GastroAI.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  }
+}
