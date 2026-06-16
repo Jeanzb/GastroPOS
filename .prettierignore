@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+.output
+.turbo
+dist-electron
+coverage
+bun.lock
+bun.lockb
+**/generated/prisma
