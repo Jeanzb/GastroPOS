@@ -107,3 +107,29 @@ model User {
   @@index([branchId])
   @@map("users")
 }
+
+/// Immutable trail of business-critical actions.
+model AuditLog {
+  id          String  @id @default(cuid())
+  tenantId    String?
+  branchId    String?
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String?
+
+  before   Json?
+  after    Json?
+  metadata Json?
+
+  ipAddress String?
+  userAgent String?
+  requestId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entityType, entityId])
+  @@index([actorUserId])
+  @@map("audit_logs")
+}

@@ -5,6 +5,7 @@ import { ApiExceptionFilter } from './common/errors/api-exception.filter';
 import { RequestIdMiddleware } from './common/request-context/request-id.middleware';
 import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './database/prisma.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { HealthModule } from './modules/health/health.module';
 
 @Module({
@@ -14,6 +15,7 @@ import { HealthModule } from './modules/health/health.module';
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: 100 }],
     }),
+    AuditModule,
     HealthModule,
   ],
   providers: [
