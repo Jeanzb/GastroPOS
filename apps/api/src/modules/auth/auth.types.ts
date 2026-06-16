@@ -1,5 +1,7 @@
 import type { UserRole } from '../../../generated/prisma';
 
+export type { UserRole };
+
 export interface AuthenticatedUser {
   id: string;
   email: string;
@@ -7,6 +9,14 @@ export interface AuthenticatedUser {
   role: UserRole;
   tenantId: string;
   branchId: string | null;
+  sessionId: string;
+}
+
+export interface TenantRequestContext {
+  tenantId: string;
+  branchId: string | null;
+  actorUserId: string;
+  role: UserRole;
   sessionId: string;
 }
 

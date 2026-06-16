@@ -7,6 +7,7 @@ import { PasswordHashingService } from './application/password-hashing.service';
 import { AuthRepository } from './infrastructure/auth.repository';
 import { AuthController } from './presentation/auth.controller';
 import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
+import { RolesGuard } from './presentation/guards/roles.guard';
 
 @Module({
   imports: [AuditModule, JwtModule.register({}), UsersModule],
@@ -16,8 +17,8 @@ import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
     AuthService,
     JwtAuthGuard,
     PasswordHashingService,
+    RolesGuard,
   ],
-  exports: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}
-
