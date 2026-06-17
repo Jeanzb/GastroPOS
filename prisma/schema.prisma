@@ -83,6 +83,8 @@ model Tenant {
   fiscalProfile     FiscalProfile?
   fiscalProviders   FiscalProviderConfig[]
   invoices          Invoice[]
+  cashSessions      CashSession[]
+  cashMovements     CashMovement[]
 
   @@map("tenants")
 }
@@ -119,10 +121,11 @@ model Branch {
   createdById String?
   updatedById String?
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users    User[]
-  sessions Session[]
-  invoices Invoice[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users        User[]
+  sessions     Session[]
+  invoices     Invoice[]
+  cashSessions CashSession[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -485,4 +488,73 @@ model InvoiceEvent {
   @@index([invoiceId])
   @@index([tenantId, createdAt])
   @@map("invoice_events")
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  OPENING_BALANCE
+  CASH_IN
+  CASH_OUT
+  SALE_PAYMENT
+  REFUND
+  TIP
+  ADJUSTMENT
+}
+
+/// A cash register session for a branch: opened with a balance, closed with a count.
+/// Money is stored in integer minor units; never float.
+model CashSession {
+  id       String            @id @default(cuid())
+  tenantId String
+  branchId String
+  status   CashSessionStatus @default(OPEN)
+  currency String            @default("COP")
+
+  openingBalance Int  @default(0)
+  expectedAmount Int?
+  countedAmount  Int?
+  difference     Int?
+  notes          String?
+
+  openedById String
+  closedById String?
+  openedAt   DateTime  @default(now())
+  closedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  movements CashMovement[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId, status])
+  @@map("cash_sessions")
+}
+
+/// An individual cash movement within a session.
+model CashMovement {
+  id            String           @id @default(cuid())
+  tenantId      String
+  branchId      String
+  cashSessionId String
+  type          CashMovementType
+  amount        Int
+  reference     String?
+  notes         String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cashSession CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([cashSessionId])
+  @@map("cash_movements")
 }
