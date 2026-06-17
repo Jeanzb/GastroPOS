@@ -20,6 +20,15 @@ export interface TenantRequestContext {
   sessionId: string;
 }
 
+export interface RequestActor {
+  tenantId: string;
+  branchId: string | null;
+  actorUserId: string;
+  requestId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export interface AccessTokenPayload {
   sub: string;
   email: string;

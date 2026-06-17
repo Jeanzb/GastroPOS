@@ -20,7 +20,7 @@ export type QueryValue = string | number | boolean | undefined;
 export type QueryParams = Record<string, QueryValue>;
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   query?: Record<string, QueryValue>;
   auth?: boolean;
@@ -134,9 +134,7 @@ export const apiClient = {
   request,
   get: <T>(path: string, query?: Record<string, QueryValue>) =>
     request<T>(path, { method: 'GET', query }),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body }),
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PATCH', body }),
+  post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
+  patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };

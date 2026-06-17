@@ -4,6 +4,7 @@ export const QUERY_KEYS = {
   currentUser: 'current-user',
   categories: 'categories',
   products: 'products',
+  fiscalProfile: 'fiscal-profile',
 } as const;
 
 export const AUTH_STORAGE_KEY = 'gastroai-auth';

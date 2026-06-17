@@ -23,6 +23,46 @@ enum UserRole {
   ACCOUNTANT
 }
 
+enum FiscalProviderType {
+  DIAN_DIRECT
+  TECHNOLOGY_PROVIDER
+  API_PROVIDER
+}
+
+enum FiscalEnvironment {
+  TEST
+  PRODUCTION
+}
+
+enum FiscalProviderStatus {
+  NOT_CONFIGURED
+  CONFIGURED
+  CONNECTION_TESTED
+  ERROR
+}
+
+enum FiscalInvoiceStatus {
+  DRAFT
+  READY_TO_SEND
+  SENT
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  FAILED
+}
+
+enum FiscalInvoiceEventType {
+  CREATED
+  READY_TO_SEND
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  FAILED
+  RETRY_REQUESTED
+  CANCELLED
+  PROVIDER_SYNCED
+}
+
 /// A restaurant business. Root of tenant isolation.
 model Tenant {
   id       String  @id @default(cuid())
@@ -40,6 +80,9 @@ model Tenant {
   sessions          Session[]
   productCategories ProductCategory[]
   products          Product[]
+  fiscalProfile     FiscalProfile?
+  fiscalProviders   FiscalProviderConfig[]
+  invoices          Invoice[]
 
   @@map("tenants")
 }
@@ -76,9 +119,10 @@ model Branch {
   createdById String?
   updatedById String?
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users  User[]
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users    User[]
   sessions Session[]
+  invoices Invoice[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -103,8 +147,8 @@ model User {
   createdById String?
   updatedById String?
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
   sessions Session[]
 
   @@unique([tenantId, email])
@@ -130,9 +174,9 @@ model Session {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   refreshTokens RefreshToken[]
 
   @@index([tenantId])
@@ -149,8 +193,8 @@ model RefreshToken {
   tokenHash String
   familyId  String
 
-  expiresAt DateTime
-  revokedAt DateTime?
+  expiresAt         DateTime
+  revokedAt         DateTime?
   replacedByTokenId String?
 
   createdAt DateTime @default(now())
@@ -243,4 +287,202 @@ model Product {
   @@index([tenantId, categoryId])
   @@index([tenantId, isActive])
   @@map("products")
+}
+
+/// Colombian fiscal configuration per tenant. This stores readiness metadata,
+/// not a legal claim of DIAN certification.
+model FiscalProfile {
+  id       String @id @default(cuid())
+  tenantId String @unique
+
+  legalName              String
+  nit                    String
+  taxRegime              String?
+  fiscalResponsibilities String[] @default([])
+  municipality           String?
+  address                String?
+
+  invoiceResolutionNumber String?
+  invoiceResolutionPrefix String?
+  numberingRangeFrom      Int?
+  numberingRangeTo        Int?
+  numberingValidFrom      DateTime?
+  numberingValidUntil     DateTime?
+
+  isReady Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  providerConfig FiscalProviderConfig?
+  invoices       Invoice[]
+
+  @@index([tenantId])
+  @@map("fiscal_profiles")
+}
+
+/// External fiscal integration metadata. Store secret references here, not raw
+/// certificates, API keys, or provider passwords.
+model FiscalProviderConfig {
+  id              String @id @default(cuid())
+  tenantId        String
+  fiscalProfileId String @unique
+
+  providerType FiscalProviderType
+  providerName String?
+  environment  FiscalEnvironment    @default(TEST)
+  status       FiscalProviderStatus @default(CONFIGURED)
+
+  endpointUrl      String?
+  softwareId       String?
+  certificateAlias String?
+  accountId        String?
+  apiKeyRef        String?
+
+  lastConnectionTestAt DateTime?
+  lastConnectionError  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fiscalProfile FiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("fiscal_provider_configs")
+}
+
+/// Fiscal document lifecycle. POS can create drafts later; provider-specific
+/// submission stays isolated in fiscal application services.
+model Invoice {
+  id       String  @id @default(cuid())
+  tenantId String
+  branchId String?
+
+  fiscalProfileId String?
+  saleId          String?
+  documentType    String  @default("INVOICE")
+
+  prefix String?
+  number Int?
+  status FiscalInvoiceStatus @default(DRAFT)
+
+  customerDocumentType   String?
+  customerDocumentNumber String?
+  customerName           String
+  customerEmail          String?
+  customerPhone          String?
+  customerAddress        String?
+  customerMunicipality   String?
+
+  subtotalAmount Int    @default(0)
+  taxAmount      Int    @default(0)
+  discountAmount Int    @default(0)
+  totalAmount    Int    @default(0)
+  currency       String @default("COP")
+
+  providerType      FiscalProviderType?
+  providerName      String?
+  externalReference String?
+  cufe              String?
+  cude              String?
+  qrUrl             String?
+  xmlUrl            String?
+  pdfUrl            String?
+  providerPayload   Json?
+  rejectionPayload  Json?
+
+  sentAt      DateTime?
+  acceptedAt  DateTime?
+  cancelledAt DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  fiscalProfile FiscalProfile? @relation(fields: [fiscalProfileId], references: [id], onDelete: SetNull)
+  lines         InvoiceLine[]
+  taxes         InvoiceTax[]
+  events        InvoiceEvent[]
+
+  @@unique([tenantId, prefix, number])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([branchId])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id        String  @id @default(cuid())
+  tenantId  String
+  invoiceId String
+  productId String?
+
+  description     String
+  quantity        Int
+  unitPriceAmount Int
+  subtotalAmount  Int
+  taxAmount       Int    @default(0)
+  totalAmount     Int
+  currency        String @default("COP")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("invoice_lines")
+}
+
+model InvoiceTax {
+  id        String @id @default(cuid())
+  tenantId  String
+  invoiceId String
+
+  taxName            String
+  taxRateBasisPoints Int
+  taxableAmount      Int
+  taxAmount          Int
+
+  createdAt DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@map("invoice_taxes")
+}
+
+model InvoiceEvent {
+  id        String @id @default(cuid())
+  tenantId  String
+  invoiceId String
+
+  type              FiscalInvoiceEventType
+  status            FiscalInvoiceStatus?
+  message           String?
+  payload           Json?
+  providerReference String?
+
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@index([tenantId, createdAt])
+  @@map("invoice_events")
 }

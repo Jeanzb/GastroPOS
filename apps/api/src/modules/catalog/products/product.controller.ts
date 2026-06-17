@@ -14,10 +14,10 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { PaginatedResult, ProductDto } from '@gastroai/contracts';
 import { RequireRoles } from '../../auth/presentation/decorators/require-roles.decorator';
+import { CurrentActor } from '../../auth/presentation/decorators/current-actor.decorator';
 import { JwtAuthGuard } from '../../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/presentation/guards/roles.guard';
 import type { CatalogActor } from '../catalog.types';
-import { CurrentActor } from '../presentation/current-actor.decorator';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ListProductsQueryDto } from './dto/list-products-query.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -39,19 +39,13 @@ export class ProductController {
   }
 
   @Get(':id')
-  getById(
-    @CurrentActor() actor: CatalogActor,
-    @Param('id') id: string,
-  ): Promise<ProductDto> {
+  getById(@CurrentActor() actor: CatalogActor, @Param('id') id: string): Promise<ProductDto> {
     return this.service.getById(actor, id);
   }
 
   @Post()
   @RequireRoles('OWNER', 'ADMIN', 'INVENTORY_MANAGER')
-  create(
-    @CurrentActor() actor: CatalogActor,
-    @Body() dto: CreateProductDto,
-  ): Promise<ProductDto> {
+  create(@CurrentActor() actor: CatalogActor, @Body() dto: CreateProductDto): Promise<ProductDto> {
     return this.service.create(actor, dto);
   }
 
@@ -68,10 +62,7 @@ export class ProductController {
   @Delete(':id')
   @RequireRoles('OWNER', 'ADMIN')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(
-    @CurrentActor() actor: CatalogActor,
-    @Param('id') id: string,
-  ): Promise<void> {
+  remove(@CurrentActor() actor: CatalogActor, @Param('id') id: string): Promise<void> {
     return this.service.remove(actor, id);
   }
 }
