@@ -1,8 +1,33 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { Prisma } from '../../../generated/prisma';
 import {
   ApiErrorCode,
   defaultErrorCodeForStatus,
 } from './api-error-code';
+
+interface PrismaErrorMapping {
+  status: number;
+  code: string;
+  message: string;
+}
+
+const PRISMA_ERROR_MAP: Record<string, PrismaErrorMapping> = {
+  P2002: {
+    status: HttpStatus.CONFLICT,
+    code: ApiErrorCode.CONFLICT,
+    message: 'A record with these values already exists.',
+  },
+  P2025: {
+    status: HttpStatus.NOT_FOUND,
+    code: ApiErrorCode.NOT_FOUND,
+    message: 'The requested record was not found.',
+  },
+  P2003: {
+    status: HttpStatus.CONFLICT,
+    code: ApiErrorCode.CONFLICT,
+    message: 'The operation conflicts with a related record.',
+  },
+};
 
 export interface ApiErrorEnvelope {
   error: {
@@ -29,6 +54,10 @@ export function buildApiErrorEnvelope(
 ): { status: number; body: ApiErrorEnvelope } {
   if (exception instanceof HttpException) {
     return fromHttpException(exception, context);
+  }
+
+  if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+    return fromPrismaError(exception, context);
   }
 
   return {
@@ -91,6 +120,37 @@ function fromHttpException(
             ? ApiErrorCode.VALIDATION_ERROR
             : defaultErrorCodeForStatus(status)),
         message,
+        details: withRequestId(details, context.requestId),
+      },
+    },
+  };
+}
+
+function fromPrismaError(
+  exception: Prisma.PrismaClientKnownRequestError,
+  context: ApiErrorContext,
+): { status: number; body: ApiErrorEnvelope } {
+  const mapping = PRISMA_ERROR_MAP[exception.code];
+  if (!mapping) {
+    return {
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      body: {
+        error: {
+          code: ApiErrorCode.INTERNAL_SERVER_ERROR,
+          message: 'Internal server error.',
+          details: withRequestId({}, context.requestId),
+        },
+      },
+    };
+  }
+
+  const details = mergeDetails({}, { target: exception.meta?.target });
+  return {
+    status: mapping.status,
+    body: {
+      error: {
+        code: mapping.code,
+        message: mapping.message,
         details: withRequestId(details, context.requestId),
       },
     },

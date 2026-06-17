@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Prisma } from '../../../generated/prisma';
 import { ApplicationException } from './application.exception';
 import { ApiErrorCode } from './api-error-code';
 import { buildApiErrorEnvelope } from './api-error-response';
@@ -63,6 +64,36 @@ describe('buildApiErrorEnvelope', () => {
         },
       },
     });
+  });
+
+  it('maps a Prisma unique violation (P2002) to a 409 conflict', () => {
+    const result = buildApiErrorEnvelope(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '6.19.3',
+        meta: { target: ['tenantId', 'sku'] },
+      }),
+      { requestId: 'req-9' },
+    );
+
+    expect(result.status).toBe(409);
+    expect(result.body.error.code).toBe(ApiErrorCode.CONFLICT);
+    expect(result.body.error.details).toEqual({
+      requestId: 'req-9',
+      target: ['tenantId', 'sku'],
+    });
+  });
+
+  it('maps a Prisma missing record (P2025) to a 404 not found', () => {
+    const result = buildApiErrorEnvelope(
+      new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: '6.19.3',
+      }),
+    );
+
+    expect(result.status).toBe(404);
+    expect(result.body.error.code).toBe(ApiErrorCode.NOT_FOUND);
   });
 
   it('hides unknown exceptions behind an internal error envelope', () => {
