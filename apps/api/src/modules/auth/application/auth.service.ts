@@ -98,7 +98,22 @@ export class AuthService {
     const storedToken = await this.authRepository.findRefreshTokenById(
       parsedToken.id,
     );
-    if (!storedToken || storedToken.revokedAt || isPast(storedToken.expiresAt)) {
+    if (!storedToken || isPast(storedToken.expiresAt)) {
+      throw invalidRefreshToken();
+    }
+
+    if (storedToken.revokedAt) {
+      await this.authRepository.revokeSession(storedToken.session.id);
+      await this.auditService.tryRecord({
+        tenantId: storedToken.session.tenantId,
+        branchId: storedToken.session.branchId,
+        actorUserId: storedToken.session.user.id,
+        action: 'REFRESH_TOKEN_REUSE_DETECTED',
+        entityType: 'Session',
+        entityId: storedToken.session.id,
+        metadata: { refreshTokenFamilyId: storedToken.familyId },
+        ...input.metadata,
+      });
       throw invalidRefreshToken();
     }
 
