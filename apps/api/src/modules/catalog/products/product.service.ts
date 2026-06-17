@@ -36,15 +36,15 @@ export class ProductService {
     };
 
     const [rows, total] = await Promise.all([
-      this.repository.findMany(actor.tenantId, filters, pagination),
-      this.repository.count(actor.tenantId, filters),
+      this.repository.findMany(filters, pagination),
+      this.repository.count(filters),
     ]);
 
     return createPaginatedResult(rows.map(toProductDto), total, pagination);
   }
 
-  async getById(actor: CatalogActor, id: string): Promise<ProductDto> {
-    const product = await this.repository.findById(actor.tenantId, id);
+  async getById(_actor: CatalogActor, id: string): Promise<ProductDto> {
+    const product = await this.repository.findById(id);
     if (!product) {
       throw notFound();
     }
@@ -56,16 +56,15 @@ export class ProductService {
     dto: CreateProductDto,
   ): Promise<ProductDto> {
     if (dto.categoryId) {
-      await this.assertCategoryExists(actor.tenantId, dto.categoryId);
+      await this.assertCategoryExists(dto.categoryId);
     }
 
     const sku = dto.sku?.trim() || null;
     if (sku) {
-      await this.assertSkuAvailable(actor.tenantId, sku);
+      await this.assertSkuAvailable(sku);
     }
 
     const created = await this.repository.create({
-      tenantId: actor.tenantId,
       categoryId: dto.categoryId ?? null,
       sku,
       name: dto.name.trim(),
@@ -95,18 +94,18 @@ export class ProductService {
     id: string,
     dto: UpdateProductDto,
   ): Promise<ProductDto> {
-    const existing = await this.repository.findById(actor.tenantId, id);
+    const existing = await this.repository.findById(id);
     if (!existing) {
       throw notFound();
     }
 
     if (dto.categoryId && dto.categoryId !== existing.categoryId) {
-      await this.assertCategoryExists(actor.tenantId, dto.categoryId);
+      await this.assertCategoryExists(dto.categoryId);
     }
 
     const sku = dto.sku?.trim();
     if (sku && sku !== existing.sku) {
-      await this.assertSkuAvailable(actor.tenantId, sku, id);
+      await this.assertSkuAvailable(sku, id);
     }
 
     const before = toProductDto(existing);
@@ -152,7 +151,7 @@ export class ProductService {
   }
 
   async remove(actor: CatalogActor, id: string): Promise<void> {
-    const existing = await this.repository.findById(actor.tenantId, id);
+    const existing = await this.repository.findById(id);
     if (!existing) {
       throw notFound();
     }
@@ -167,11 +166,8 @@ export class ProductService {
     });
   }
 
-  private async assertCategoryExists(
-    tenantId: string,
-    categoryId: string,
-  ): Promise<void> {
-    const category = await this.categoryRepository.findById(tenantId, categoryId);
+  private async assertCategoryExists(categoryId: string): Promise<void> {
+    const category = await this.categoryRepository.findById(categoryId);
     if (!category) {
       throw new ApplicationException(400, {
         code: 'INVALID_CATEGORY',
@@ -181,11 +177,10 @@ export class ProductService {
   }
 
   private async assertSkuAvailable(
-    tenantId: string,
     sku: string,
     ignoreProductId?: string,
   ): Promise<void> {
-    const clash = await this.repository.findBySku(tenantId, sku);
+    const clash = await this.repository.findBySku(sku);
     if (clash && clash.id !== ignoreProductId) {
       throw new ApplicationException(409, {
         code: ApiErrorCode.CONFLICT,

@@ -95,7 +95,7 @@ describe('ProductService', () => {
     await service.create(actor, { name: 'Empanada', priceAmount: 3500 });
 
     expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: 'tenant_1', createdById: 'user_1' }),
+      expect.objectContaining({ createdById: 'user_1' }),
     );
     expect(audit.tryRecord).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'PRODUCT_CREATED' }),

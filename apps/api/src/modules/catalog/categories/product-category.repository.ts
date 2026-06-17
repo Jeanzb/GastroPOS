@@ -8,7 +8,6 @@ export interface ProductCategoryFilters {
 }
 
 export interface CreateProductCategoryData {
-  tenantId: string;
   name: string;
   sortOrder: number;
   isActive: boolean;
@@ -27,57 +26,59 @@ export class ProductCategoryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   findMany(
-    tenantId: string,
     filters: ProductCategoryFilters,
     pagination: { skip: number; take: number },
   ): Promise<ProductCategory[]> {
-    return this.prisma.productCategory.findMany({
-      where: this.scope(tenantId, filters),
+    return this.prisma.tenantScoped.productCategory.findMany({
+      where: this.scope(filters),
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       skip: pagination.skip,
       take: pagination.take,
     });
   }
 
-  count(tenantId: string, filters: ProductCategoryFilters): Promise<number> {
-    return this.prisma.productCategory.count({
-      where: this.scope(tenantId, filters),
+  count(filters: ProductCategoryFilters): Promise<number> {
+    return this.prisma.tenantScoped.productCategory.count({
+      where: this.scope(filters),
     });
   }
 
-  findById(tenantId: string, id: string): Promise<ProductCategory | null> {
-    return this.prisma.productCategory.findFirst({
-      where: { id, tenantId, deletedAt: null },
+  findById(id: string): Promise<ProductCategory | null> {
+    return this.prisma.tenantScoped.productCategory.findFirst({
+      where: { id, deletedAt: null },
     });
   }
 
-  findByName(tenantId: string, name: string): Promise<ProductCategory | null> {
-    return this.prisma.productCategory.findFirst({
-      where: { tenantId, name, deletedAt: null },
+  findByName(name: string): Promise<ProductCategory | null> {
+    return this.prisma.tenantScoped.productCategory.findFirst({
+      where: { name, deletedAt: null },
     });
   }
 
   create(data: CreateProductCategoryData): Promise<ProductCategory> {
-    return this.prisma.productCategory.create({ data });
+    return this.prisma.tenantScoped.productCategory.create({
+      data: data as Prisma.ProductCategoryUncheckedCreateInput,
+    });
   }
 
   update(id: string, data: UpdateProductCategoryData): Promise<ProductCategory> {
-    return this.prisma.productCategory.update({ where: { id }, data });
+    return this.prisma.tenantScoped.productCategory.update({
+      where: { id },
+      data,
+    });
   }
 
   softDelete(id: string, deletedById: string): Promise<ProductCategory> {
-    return this.prisma.productCategory.update({
+    return this.prisma.tenantScoped.productCategory.update({
       where: { id },
       data: { deletedAt: new Date(), updatedById: deletedById },
     });
   }
 
   private scope(
-    tenantId: string,
     filters: ProductCategoryFilters,
   ): Prisma.ProductCategoryWhereInput {
     return {
-      tenantId,
       deletedAt: null,
       ...(filters.isActive === undefined ? {} : { isActive: filters.isActive }),
       ...(filters.search

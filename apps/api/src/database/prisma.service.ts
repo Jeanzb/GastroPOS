@@ -5,6 +5,11 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { PrismaClient } from '../../generated/prisma';
+import {
+  applyTenantScope,
+  TenantContextService,
+  type TenantScopedClient,
+} from '../common/tenant-context';
 
 @Injectable()
 export class PrismaService
@@ -12,6 +17,13 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(PrismaService.name);
+
+  readonly tenantScoped: TenantScopedClient;
+
+  constructor(private readonly tenantContext: TenantContextService) {
+    super();
+    this.tenantScoped = applyTenantScope(this, this.tenantContext);
+  }
 
   async onModuleInit(): Promise<void> {
     try {

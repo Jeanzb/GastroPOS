@@ -75,7 +75,6 @@ describe('ProductCategoryService', () => {
 
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        tenantId: 'tenant_1',
         createdById: 'user_1',
         name: 'Bebidas',
       }),

@@ -30,8 +30,8 @@ export class ProductCategoryService {
     const filters = { isActive: query.isActive, search: query.search };
 
     const [rows, total] = await Promise.all([
-      this.repository.findMany(actor.tenantId, filters, pagination),
-      this.repository.count(actor.tenantId, filters),
+      this.repository.findMany(filters, pagination),
+      this.repository.count(filters),
     ]);
 
     return createPaginatedResult(
@@ -41,8 +41,8 @@ export class ProductCategoryService {
     );
   }
 
-  async getById(actor: CatalogActor, id: string): Promise<ProductCategoryDto> {
-    const category = await this.repository.findById(actor.tenantId, id);
+  async getById(_actor: CatalogActor, id: string): Promise<ProductCategoryDto> {
+    const category = await this.repository.findById(id);
     if (!category) {
       throw notFound();
     }
@@ -54,13 +54,12 @@ export class ProductCategoryService {
     dto: CreateProductCategoryDto,
   ): Promise<ProductCategoryDto> {
     const name = dto.name.trim();
-    const existing = await this.repository.findByName(actor.tenantId, name);
+    const existing = await this.repository.findByName(name);
     if (existing) {
       throw duplicateName(name);
     }
 
     const created = await this.repository.create({
-      tenantId: actor.tenantId,
       name,
       sortOrder: dto.sortOrder ?? 0,
       isActive: dto.isActive ?? true,
@@ -84,14 +83,14 @@ export class ProductCategoryService {
     id: string,
     dto: UpdateProductCategoryDto,
   ): Promise<ProductCategoryDto> {
-    const existing = await this.repository.findById(actor.tenantId, id);
+    const existing = await this.repository.findById(id);
     if (!existing) {
       throw notFound();
     }
 
     const name = dto.name?.trim();
     if (name && name !== existing.name) {
-      const clash = await this.repository.findByName(actor.tenantId, name);
+      const clash = await this.repository.findByName(name);
       if (clash && clash.id !== id) {
         throw duplicateName(name);
       }
@@ -119,7 +118,7 @@ export class ProductCategoryService {
   }
 
   async remove(actor: CatalogActor, id: string): Promise<void> {
-    const existing = await this.repository.findById(actor.tenantId, id);
+    const existing = await this.repository.findById(id);
     if (!existing) {
       throw notFound();
     }

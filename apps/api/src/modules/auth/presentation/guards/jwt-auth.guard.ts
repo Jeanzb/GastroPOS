@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { TenantContextService } from '../../../../common/tenant-context';
 import type { Env } from '../../../../config/env.schema';
 import type { AccessTokenPayload, AuthenticatedUser } from '../../auth.types';
 import { AuthRepository } from '../../infrastructure/auth.repository';
@@ -21,6 +22,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService<Env, true>,
     private readonly authRepository: AuthRepository,
+    private readonly tenantContext: TenantContextService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,6 +41,11 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     request.user = user;
+    this.tenantContext.set({
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      actorUserId: user.id,
+    });
     return true;
   }
 
