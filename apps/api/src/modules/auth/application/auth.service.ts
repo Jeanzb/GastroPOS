@@ -47,6 +47,7 @@ export class AuthService {
     );
 
     if (users.length === 0) {
+      await this.passwordHashing.verifyAgainstDummy(input.password);
       await this.auditFailedLogin(email, input.tenantSlug, input.metadata);
       throw invalidCredentials();
     }

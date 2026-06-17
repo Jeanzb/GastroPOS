@@ -15,6 +15,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../application/auth.service';
 import type {
   AuthenticatedUser,
@@ -37,6 +38,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Authenticated user and token pair.' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
@@ -55,6 +57,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ description: 'Rotated refresh token and new access token.' })
   @ApiUnauthorizedResponse({ description: 'Invalid refresh token.' })
