@@ -6,3 +6,4 @@ export * from './tenancy/tenancy.contracts';
 export * from './catalog/catalog.contracts';
 export * from './fiscal/fiscal.contracts';
 export * from './cash/cash.contracts';
+export * from './customers/customer.contracts';

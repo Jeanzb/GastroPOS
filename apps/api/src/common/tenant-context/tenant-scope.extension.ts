@@ -6,6 +6,7 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'ProductCategory',
   'CashSession',
   'CashMovement',
+  'Customer',
 ]);
 
 const WHERE_OPERATIONS = new Set<string>([
