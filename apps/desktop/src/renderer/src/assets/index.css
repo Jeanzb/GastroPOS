@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
   --background: #f6f2ec;
   --foreground: #1c1a17;
@@ -87,6 +87,15 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: 0 1px 2px 0 rgba(28, 26, 23, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(28, 26, 23, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(28, 26, 23, 0.06), 0 1px 2px -1px rgba(28, 26, 23, 0.05);
+  --shadow: 0 1px 3px 0 rgba(28, 26, 23, 0.07), 0 1px 2px -1px rgba(28, 26, 23, 0.05);
+  --shadow-md: 0 4px 14px -3px rgba(28, 26, 23, 0.09), 0 2px 6px -2px rgba(28, 26, 23, 0.05);
+  --shadow-lg: 0 14px 32px -8px rgba(28, 26, 23, 0.12), 0 4px 10px -4px rgba(28, 26, 23, 0.06);
+  --shadow-xl: 0 24px 50px -12px rgba(28, 26, 23, 0.16), 0 8px 18px -8px rgba(28, 26, 23, 0.08);
+  --shadow-2xl: 0 32px 64px -16px rgba(28, 26, 23, 0.22);
 }
 
 @layer base {
@@ -105,10 +114,41 @@
     margin: 0;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .font-display {
+    letter-spacing: -0.012em;
   }
 
   .nums {
     font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: rgba(255, 90, 44, 0.2);
+    color: var(--foreground);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(28, 26, 23, 0.16);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(28, 26, 23, 0.3);
+    background-clip: padding-box;
   }
 }
 
