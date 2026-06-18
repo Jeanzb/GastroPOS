@@ -88,6 +88,7 @@ model Tenant {
   sales             Sale[]
   saleItems         SaleItem[]
   payments          Payment[]
+  customers         Customer[]
 
   @@map("tenants")
 }
@@ -375,6 +376,7 @@ model Invoice {
 
   fiscalProfileId String?
   saleId          String?
+  customerId      String?
   documentType    String  @default("INVOICE")
 
   prefix String?
@@ -419,6 +421,7 @@ model Invoice {
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
   fiscalProfile FiscalProfile? @relation(fields: [fiscalProfileId], references: [id], onDelete: SetNull)
+  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lines         InvoiceLine[]
   taxes         InvoiceTax[]
   events        InvoiceEvent[]
@@ -660,4 +663,44 @@ model Payment {
   @@index([tenantId])
   @@index([saleId])
   @@map("payments")
+}
+
+/// Colombian identification document types for customers (DIAN).
+enum CustomerDocumentType {
+  CC
+  NIT
+  CE
+  PP
+  TI
+  NUIP
+  OTHER
+}
+
+/// A customer registry with fiscal data for electronic invoicing (DIAN).
+model Customer {
+  id                String               @id @default(cuid())
+  tenantId          String
+  documentType      CustomerDocumentType @default(CC)
+  documentNumber    String
+  name              String
+  email             String?
+  phone             String?
+  address           String?
+  municipality      String?
+  taxResponsibility String?
+  isActive          Boolean              @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  @@unique([tenantId, documentType, documentNumber])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("customers")
 }
