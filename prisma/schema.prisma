@@ -85,6 +85,9 @@ model Tenant {
   invoices          Invoice[]
   cashSessions      CashSession[]
   cashMovements     CashMovement[]
+  sales             Sale[]
+  saleItems         SaleItem[]
+  payments          Payment[]
 
   @@map("tenants")
 }
@@ -126,6 +129,7 @@ model Branch {
   sessions     Session[]
   invoices     Invoice[]
   cashSessions CashSession[]
+  sales        Sale[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -282,8 +286,9 @@ model Product {
   createdById String?
   updatedById String?
 
-  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category  ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  saleItems SaleItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -531,6 +536,7 @@ model CashSession {
   tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch    Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
   movements CashMovement[]
+  sales     Sale[]
 
   @@index([tenantId])
   @@index([tenantId, branchId, status])
@@ -557,4 +563,101 @@ model CashMovement {
   @@index([tenantId])
   @@index([cashSessionId])
   @@map("cash_movements")
+}
+
+enum SaleStatus {
+  DRAFT
+  CLOSED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  OTHER
+}
+
+/// A point-of-sale ticket. Closed sales are immutable except via cancellation.
+/// All money is stored in integer minor units; never float.
+model Sale {
+  id            String     @id @default(cuid())
+  tenantId      String
+  branchId      String
+  cashSessionId String?
+  status        SaleStatus @default(DRAFT)
+  currency      String     @default("COP")
+
+  customerName String?
+
+  subtotal      Int @default(0)
+  discountTotal Int @default(0)
+  taxTotal      Int @default(0)
+  grandTotal    Int @default(0)
+  paidTotal     Int @default(0)
+
+  notes        String?
+  cancelReason String?
+
+  createdById String
+  closedById  String?
+  closedAt    DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  cashSession CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  items       SaleItem[]
+  payments    Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId, status])
+  @@index([cashSessionId])
+  @@map("sales")
+}
+
+/// A line in a sale. Product name and unit price are snapshotted at sale time.
+model SaleItem {
+  id        String  @id @default(cuid())
+  tenantId  String
+  saleId    String
+  productId String?
+
+  nameSnapshot      String
+  unitPriceSnapshot Int
+  quantity          Int   @default(1)
+  lineTotal         Int
+
+  createdAt DateTime @default(now())
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([saleId])
+  @@map("sale_items")
+}
+
+/// A payment registered against a sale.
+model Payment {
+  id        String        @id @default(cuid())
+  tenantId  String
+  saleId    String
+  method    PaymentMethod
+  amount    Int
+  reference String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([saleId])
+  @@map("payments")
 }
