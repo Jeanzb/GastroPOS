@@ -5,6 +5,8 @@ export const QUERY_KEYS = {
   categories: 'categories',
   products: 'products',
   fiscalProfile: 'fiscal-profile',
+  cashSession: 'cash-session',
+  cashMovements: 'cash-movements',
 } as const;
 
 export const AUTH_STORAGE_KEY = 'gastroai-auth';

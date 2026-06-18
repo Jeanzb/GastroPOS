@@ -8,6 +8,7 @@ import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './database/prisma.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CashModule } from './modules/cash/cash.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { HealthModule } from './modules/health/health.module';
@@ -22,6 +23,7 @@ import { HealthModule } from './modules/health/health.module';
     }),
     AuditModule,
     AuthModule,
+    CashModule,
     CatalogModule,
     FiscalModule,
     HealthModule,

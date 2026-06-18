@@ -1,7 +1,12 @@
 import { Prisma, PrismaClient } from '../../../generated/prisma';
 import type { TenantContextService } from './tenant-context.service';
 
-const TENANT_SCOPED_MODELS = new Set<string>(['Product', 'ProductCategory']);
+const TENANT_SCOPED_MODELS = new Set<string>([
+  'Product',
+  'ProductCategory',
+  'CashSession',
+  'CashMovement',
+]);
 
 const WHERE_OPERATIONS = new Set<string>([
   'findFirst',
@@ -57,10 +62,7 @@ export function tenantScopeExtension(tenantContext: TenantContextService) {
   });
 }
 
-export function applyTenantScope(
-  client: PrismaClient,
-  tenantContext: TenantContextService,
-) {
+export function applyTenantScope(client: PrismaClient, tenantContext: TenantContextService) {
   return client.$extends(tenantScopeExtension(tenantContext));
 }
 
