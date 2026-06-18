@@ -1,7 +1,8 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import '@fontsource-variable/sora';
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/hanken-grotesk';
+@import '@fontsource-variable/spline-sans-mono';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -101,8 +102,9 @@
   --color-surface-raised: var(--surface-raised);
   --color-surface-quiet: var(--surface-quiet);
 
-  --font-display: 'Sora Variable', system-ui, sans-serif;
-  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-sans: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Spline Sans Mono Variable', ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -139,11 +141,14 @@
   }
 
   .font-display {
-    letter-spacing: -0.012em;
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 
   .nums {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
   }
 
   ::selection {
