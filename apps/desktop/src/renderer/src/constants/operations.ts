@@ -53,6 +53,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     icon: 'inventory',
   },
   {
+    label: 'Clientes',
+    path: '/customers',
+    section: 'administration',
+    icon: 'customers',
+  },
+  {
     label: 'Facturacion DIAN',
     path: '/fiscal',
     section: 'administration',
@@ -102,6 +108,12 @@ export const ROUTE_META: RouteMeta[] = [
     title: 'Inventario',
     description: 'Stock, alertas y movimientos Kardex',
     status: '3 alertas',
+  },
+  {
+    path: '/customers',
+    title: 'Clientes',
+    description: 'Registro de clientes para facturacion electronica',
+    status: 'Registro activo',
   },
   {
     path: '/fiscal',

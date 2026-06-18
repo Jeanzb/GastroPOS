@@ -9,6 +9,7 @@ import {
   Package,
   Settings,
   ShoppingCart,
+  Users,
 } from 'lucide-react';
 import { LogoMark, Wordmark } from '@/components/brand';
 import { StatusPill } from '@/components/operations';
@@ -22,6 +23,7 @@ const NAVIGATION_ICON_MAP: NavigationIconMap = {
   products: Package,
   cash: Calculator,
   inventory: Boxes,
+  customers: Users,
   fiscal: FileText,
   reports: BarChart3,
   onboarding: ClipboardCheck,

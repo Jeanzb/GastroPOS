@@ -1,6 +1,7 @@
 import { branchRoute } from '../branches';
 import { cashRoute } from '../cash';
 import { catalogRoute } from '../catalog';
+import { customersRoute } from '../customers';
 import { dashboardRoute } from '../dashboard';
 import { fiscalRoute } from '../fiscal';
 import { inventoryRoute } from '../inventory';
@@ -15,6 +16,7 @@ export const appRoutes = appLayoutRoute.addChildren([
   posRoute,
   cashRoute,
   inventoryRoute,
+  customersRoute,
   fiscalRoute,
   reportsRoute,
   onboardingRoute,

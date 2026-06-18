@@ -10,6 +10,7 @@ export type NavigationIcon =
   | 'products'
   | 'cash'
   | 'inventory'
+  | 'customers'
   | 'fiscal'
   | 'reports'
   | 'onboarding';
@@ -122,6 +123,7 @@ export interface NavigationIconMap {
   products: LucideIcon;
   cash: LucideIcon;
   inventory: LucideIcon;
+  customers: LucideIcon;
   fiscal: LucideIcon;
   reports: LucideIcon;
   onboarding: LucideIcon;
