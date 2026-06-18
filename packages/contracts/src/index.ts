@@ -7,3 +7,4 @@ export * from './catalog/catalog.contracts';
 export * from './fiscal/fiscal.contracts';
 export * from './cash/cash.contracts';
 export * from './customers/customer.contracts';
+export * from './suppliers/supplier.contracts';
