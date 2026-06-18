@@ -89,6 +89,9 @@ model Tenant {
   saleItems         SaleItem[]
   payments          Payment[]
   customers         Customer[]
+  suppliers         Supplier[]
+  purchases         Purchase[]
+  purchaseItems     PurchaseItem[]
 
   @@map("tenants")
 }
@@ -131,6 +134,7 @@ model Branch {
   invoices     Invoice[]
   cashSessions CashSession[]
   sales        Sale[]
+  purchases    Purchase[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -287,9 +291,10 @@ model Product {
   createdById String?
   updatedById String?
 
-  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category  ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  saleItems SaleItem[]
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category      ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  saleItems     SaleItem[]
+  purchaseItems PurchaseItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -703,4 +708,93 @@ model Customer {
   @@index([tenantId])
   @@index([tenantId, isActive])
   @@map("customers")
+}
+
+enum PurchaseStatus {
+  DRAFT
+  RECEIVED
+  CANCELLED
+}
+
+/// A supplier/vendor the tenant buys from.
+model Supplier {
+  id             String  @id @default(cuid())
+  tenantId       String
+  name           String
+  documentNumber String?
+  email          String?
+  phone          String?
+  address        String?
+  isActive       Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchases Purchase[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("suppliers")
+}
+
+/// A purchase from a supplier. Receiving will feed inventory once it exists.
+/// Money is stored in integer minor units; never float.
+model Purchase {
+  id         String         @id @default(cuid())
+  tenantId   String
+  branchId   String?
+  supplierId String
+  status     PurchaseStatus @default(DRAFT)
+  currency   String         @default("COP")
+
+  reference String?
+  notes     String?
+
+  subtotal Int @default(0)
+  taxTotal Int @default(0)
+  total    Int @default(0)
+
+  receivedAt  DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch   Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  supplier Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items    PurchaseItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([supplierId])
+  @@map("purchases")
+}
+
+/// A line in a purchase. Product name and unit cost are snapshotted.
+model PurchaseItem {
+  id         String  @id @default(cuid())
+  tenantId   String
+  purchaseId String
+  productId  String?
+
+  nameSnapshot String
+  quantity     Int
+  unitCost     Int
+  lineTotal    Int
+
+  createdAt DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([purchaseId])
+  @@map("purchase_items")
 }
