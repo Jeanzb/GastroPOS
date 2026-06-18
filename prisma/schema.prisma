@@ -92,6 +92,8 @@ model Tenant {
   suppliers         Supplier[]
   purchases         Purchase[]
   purchaseItems     PurchaseItem[]
+  diningZones       DiningZone[]
+  diningTables      DiningTable[]
 
   @@map("tenants")
 }
@@ -135,10 +137,81 @@ model Branch {
   cashSessions CashSession[]
   sales        Sale[]
   purchases    Purchase[]
+  diningZones  DiningZone[]
+  diningTables DiningTable[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@map("branches")
+}
+
+enum DiningTableStatus {
+  FREE
+  OCCUPIED
+  PENDING_BILL
+  RESERVED
+}
+
+/// Physical zone inside a restaurant branch, such as main dining room or terrace.
+model DiningZone {
+  id       String @id @default(cuid())
+  tenantId String
+  branchId String
+
+  name      String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  tables DiningTable[]
+
+  @@unique([tenantId, branchId, name])
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@map("dining_zones")
+}
+
+/// A billable physical table. POS/order linkage will attach to this table later.
+model DiningTable {
+  id       String @id @default(cuid())
+  tenantId String
+  branchId String
+  zoneId   String
+
+  number String
+  seats  Int               @default(4)
+  status DiningTableStatus @default(FREE)
+
+  waiterName      String?
+  openedAt        DateTime?
+  reservationName String?
+  reservationTime String?
+  notes           String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  zone   DiningZone @relation(fields: [zoneId], references: [id], onDelete: Restrict)
+  sales  Sale[]
+
+  @@unique([tenantId, branchId, number])
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([zoneId])
+  @@index([tenantId, branchId, status])
+  @@map("dining_tables")
 }
 
 /// A staff account scoped to a single tenant.
@@ -527,7 +600,7 @@ model CashSession {
   status   CashSessionStatus @default(OPEN)
   currency String            @default("COP")
 
-  openingBalance Int  @default(0)
+  openingBalance Int     @default(0)
   expectedAmount Int?
   countedAmount  Int?
   difference     Int?
@@ -593,10 +666,16 @@ model Sale {
   tenantId      String
   branchId      String
   cashSessionId String?
+  diningTableId String?
+  customerId    String?
   status        SaleStatus @default(DRAFT)
   currency      String     @default("COP")
 
-  customerName String?
+  guestCount Int?
+  waiterName String?
+
+  customerName    String?
+  requiresInvoice Boolean @default(false)
 
   subtotal      Int @default(0)
   discountTotal Int @default(0)
@@ -618,11 +697,14 @@ model Sale {
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
   cashSession CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  diningTable DiningTable? @relation(fields: [diningTableId], references: [id], onDelete: SetNull)
+  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items       SaleItem[]
   payments    Payment[]
 
   @@index([tenantId])
   @@index([tenantId, branchId, status])
+  @@index([tenantId, diningTableId, status])
   @@index([cashSessionId])
   @@map("sales")
 }
@@ -636,7 +718,7 @@ model SaleItem {
 
   nameSnapshot      String
   unitPriceSnapshot Int
-  quantity          Int   @default(1)
+  quantity          Int    @default(1)
   lineTotal         Int
 
   createdAt DateTime @default(now())
@@ -703,6 +785,7 @@ model Customer {
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoices Invoice[]
+  sales    Sale[]
 
   @@unique([tenantId, documentType, documentNumber])
   @@index([tenantId])
