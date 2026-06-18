@@ -20,6 +20,11 @@ interface CategoriesPanelProps {
 }
 
 const CATEGORY_SKELETON_ROWS = [0, 1, 2, 3];
+const CATEGORY_DOTS = ['#2F8F6B', '#C9892B', '#FF5A2C', '#7C746A', '#14865A', '#B5491F'];
+
+function categoryDot(category: ProductCategoryDto, index: number): string {
+  return CATEGORY_DOTS[(category.sortOrder + index) % CATEGORY_DOTS.length];
+}
 
 function CategorySkeleton({ row }: { row: number }) {
   return <Skeleton key={row} className="h-12 w-full" />;
@@ -27,10 +32,12 @@ function CategorySkeleton({ row }: { row: number }) {
 
 function CategoryRow({
   category,
+  index,
   onEdit,
   onDelete,
 }: {
   category: ProductCategoryDto;
+  index: number;
   onEdit: (category: ProductCategoryDto) => void;
   onDelete: (category: ProductCategoryDto) => void;
 }) {
@@ -42,10 +49,16 @@ function CategoryRow({
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-3">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{category.name}</p>
-        <p className="nums mt-1 text-xs text-muted-foreground">Orden {category.sortOrder}</p>
+    <div className="motion-press flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-3 text-foreground hover:border-orange/40 hover:bg-orange/5">
+      <div className="flex min-w-0 items-center gap-3">
+        <span
+          className="size-2.5 shrink-0 rounded-[3px]"
+          style={{ background: categoryDot(category, index) }}
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{category.name}</p>
+          <p className="nums mt-0.5 text-xs text-muted-foreground">Orden {category.sortOrder}</p>
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <StatusPill tone={category.isActive ? 'green' : 'neutral'}>
@@ -129,10 +142,11 @@ export function CategoriesPanel({
     }
   };
 
-  const renderCategoryRow = (category: ProductCategoryDto) => (
+  const renderCategoryRow = (category: ProductCategoryDto, index: number) => (
     <CategoryRow
       key={category.id}
       category={category}
+      index={index}
       onEdit={onEditCategory}
       onDelete={onDeleteCategory}
     />
@@ -140,19 +154,17 @@ export function CategoriesPanel({
 
   return (
     <>
-      <Card className="gap-4 border-border/80 py-5 shadow-none">
+      <Card className="gap-4 border-border/80 bg-surface-raised py-5 shadow-sm">
         <CardHeader className="px-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <CardTitle>Categorias</CardTitle>
-              <CardDescription>Organizacion del menu</CardDescription>
+              <CardTitle>Categorías</CardTitle>
+              <CardDescription>Organización del menú</CardDescription>
             </div>
             <Button
               type="button"
-              variant="outline"
               size="icon-sm"
-              className="bg-background"
-              title="Nueva categoria"
+              title="Nueva categoría"
               onClick={onCreateClick}
             >
               <Plus className="h-4 w-4" />
@@ -162,8 +174,8 @@ export function CategoriesPanel({
         <CardContent className="space-y-2 px-5">
           {isLoading ? CATEGORY_SKELETON_ROWS.map(renderCategorySkeleton) : null}
           {!isLoading && categories.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-background px-4 py-8 text-center text-sm text-muted-foreground">
-              Aun no hay categorias.
+            <div className="rounded-xl border border-dashed border-border bg-surface-quiet px-4 py-8 text-center text-sm text-muted-foreground">
+              Aún no hay categorías.
             </div>
           ) : null}
           {!isLoading && categories.length > 0 ? categories.map(renderCategoryRow) : null}

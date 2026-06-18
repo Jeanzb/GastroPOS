@@ -275,6 +275,22 @@
   .toast-icon-pop {
     animation: toast-icon-pop 420ms var(--motion-enter) both;
   }
+
+  .dc-view-in {
+    animation: dc-view-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes dc-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.994);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes toast-prog {
