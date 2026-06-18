@@ -9,9 +9,9 @@ interface StatusPillProps {
 }
 
 const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
-  green: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  amber: 'border-amber-200 bg-amber-50 text-amber-700',
-  red: 'border-red-200 bg-red-50 text-red-700',
+  green: 'border-success/20 bg-success-soft text-success',
+  amber: 'border-warning/25 bg-warning-soft text-amber-800',
+  red: 'border-destructive/20 bg-danger-soft text-destructive',
   orange: 'border-orange/20 bg-orange/10 text-orange',
   neutral: 'border-border bg-muted text-muted-foreground',
 };
