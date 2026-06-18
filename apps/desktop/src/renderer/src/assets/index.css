@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
   --background: #f6f2ec;
   --foreground: #1c1a17;
@@ -34,6 +34,18 @@
   --border: #e7e0d6;
   --input: #d8cec1;
   --ring: #ff5a2c;
+
+  --success: #14865a;
+  --success-foreground: #ffffff;
+  --success-soft: #e1f2ea;
+  --warning: #c9892b;
+  --warning-foreground: #1c1a17;
+  --warning-soft: #f7ecd6;
+  --danger-soft: #ffe5dc;
+  --surface-raised: #fffcf7;
+  --surface-quiet: #f0ebe2;
+  --motion-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-enter: cubic-bezier(0.16, 1, 0.3, 1);
 
   --sidebar: #1c1a17;
   --sidebar-foreground: #f6f2ec;
@@ -79,6 +91,15 @@
   --color-orange: #ff5a2c;
   --color-orange-soft: #ff875f;
   --color-cream: #f6f2ec;
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-quiet: var(--surface-quiet);
 
   --font-display: 'Sora Variable', system-ui, sans-serif;
   --font-sans: 'Inter Variable', system-ui, sans-serif;
@@ -152,11 +173,138 @@
   }
 }
 
+@layer components {
+  .operational-surface {
+    background:
+      linear-gradient(180deg, rgba(255, 252, 247, 0.94), rgba(246, 242, 236, 0.98)),
+      repeating-linear-gradient(
+        90deg,
+        rgba(28, 26, 23, 0.035) 0,
+        rgba(28, 26, 23, 0.035) 1px,
+        transparent 1px,
+        transparent 48px
+      );
+  }
+
+  .motion-press {
+    transition:
+      transform 180ms var(--motion-snappy),
+      box-shadow 180ms var(--motion-snappy),
+      border-color 180ms var(--motion-snappy),
+      background-color 180ms var(--motion-snappy),
+      color 180ms var(--motion-snappy);
+  }
+
+  .motion-press:active {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  .toaster [data-sonner-toast] {
+    --toast-accent: #ff5a2c;
+    overflow: hidden;
+    gap: 12px;
+    padding: 15px 16px;
+    border: 1px solid #2e2a25;
+    border-radius: 14px;
+    background: #1c1a17;
+    box-shadow: 0 20px 48px rgba(28, 26, 23, 0.36);
+  }
+
+  .toaster [data-type='success'] {
+    --toast-accent: #7ddca9;
+  }
+
+  .toaster [data-type='info'] {
+    --toast-accent: #ffb39a;
+  }
+
+  .toaster [data-type='warning'] {
+    --toast-accent: #f0c879;
+  }
+
+  .toaster [data-type='error'] {
+    --toast-accent: #f2a28c;
+  }
+
+  .toaster [data-sonner-toast]::after {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 2px;
+    content: '';
+    background: var(--toast-accent);
+    transform-origin: left;
+    animation: toast-prog 2.8s linear forwards;
+  }
+
+  .toaster [data-sonner-toast][data-expanded='false']::after,
+  .toaster [data-sonner-toast]:hover::after {
+    animation-play-state: paused;
+  }
+
+  .toaster .dc-toast-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #f6f2ec;
+  }
+
+  .toaster .dc-toast-desc {
+    margin-top: 2px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    color: #a79e92;
+  }
+
+  .toaster [data-close-button] {
+    color: #9a9286;
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .toaster [data-close-button]:hover {
+    color: #f6f2ec;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .toast-icon-pop {
+    animation: toast-icon-pop 420ms var(--motion-enter) both;
+  }
+}
+
+@keyframes toast-prog {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes toast-icon-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) rotate(-8deg);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+    transform: none !important;
   }
 }
