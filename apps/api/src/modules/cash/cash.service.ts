@@ -87,8 +87,8 @@ export class CashService {
     return toCashSessionDto(session);
   }
 
-  async listMovements(_ctx: TenantRequestContext, sessionId: string): Promise<CashMovementDto[]> {
-    await this.requireSession(sessionId);
+  async listMovements(ctx: TenantRequestContext, sessionId: string): Promise<CashMovementDto[]> {
+    await this.requireSession(ctx, sessionId);
     const movements = await this.repository.listMovements(sessionId);
     return movements.map(toCashMovementDto);
   }
@@ -98,7 +98,7 @@ export class CashService {
     sessionId: string,
     dto: RegisterCashMovementDto,
   ): Promise<CashMovementDto> {
-    const session = await this.requireOpenSession(sessionId);
+    const session = await this.requireOpenSession(ctx, sessionId);
 
     const movement = await this.repository.createMovement({
       cashSessionId: session.id,
@@ -127,7 +127,7 @@ export class CashService {
     sessionId: string,
     dto: CloseCashSessionDto,
   ): Promise<CashSessionDto> {
-    const session = await this.requireOpenSession(sessionId);
+    const session = await this.requireOpenSession(ctx, sessionId);
     const movements = await this.repository.listMovements(session.id);
     const expectedAmount = movements.reduce(
       (total, movement) => total + MOVEMENT_SIGN[movement.type] * movement.amount,
@@ -156,8 +156,11 @@ export class CashService {
     return result;
   }
 
-  private async requireOpenSession(sessionId: string): Promise<CashSession> {
-    const session = await this.requireSession(sessionId);
+  private async requireOpenSession(
+    ctx: TenantRequestContext,
+    sessionId: string,
+  ): Promise<CashSession> {
+    const session = await this.requireSession(ctx, sessionId);
     if (session.status !== 'OPEN') {
       throw new ApplicationException(409, {
         code: ApiErrorCode.CONFLICT,
@@ -167,7 +170,10 @@ export class CashService {
     return session;
   }
 
-  private async requireSession(sessionId: string): Promise<CashSession> {
+  private async requireSession(
+    ctx: TenantRequestContext,
+    sessionId: string,
+  ): Promise<CashSession> {
     const session = await this.repository.findById(sessionId);
     if (!session) {
       throw new ApplicationException(404, {
@@ -175,6 +181,8 @@ export class CashService {
         message: 'Cash session was not found.',
       });
     }
+    assertBranchAccess(ctx, session.branchId);
+    await this.assertBranchBelongsToTenant(ctx.tenantId, session.branchId);
     return session;
   }
 

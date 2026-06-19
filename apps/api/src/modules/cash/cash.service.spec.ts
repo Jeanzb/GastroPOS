@@ -123,6 +123,7 @@ describe('CashService', () => {
 
   it('registers a movement only for an open session', async () => {
     repo.findById.mockResolvedValue(cashSession());
+    repo.branchExists.mockResolvedValue(true);
     repo.createMovement.mockResolvedValue(movement());
 
     const result = await service.registerMovement(ctx, 'cash_1', {
@@ -143,8 +144,19 @@ describe('CashService', () => {
     expect(result.amount).toBe(20000);
   });
 
+  it('rejects listing movements from a session outside the actor branch', async () => {
+    repo.findById.mockResolvedValue(cashSession({ branchId: 'branch_2' }));
+
+    await expect(service.listMovements(ctx, 'cash_1')).rejects.toBeInstanceOf(
+      ApplicationException,
+    );
+
+    expect(repo.listMovements).not.toHaveBeenCalled();
+  });
+
   it('closes a session calculating expected amount and difference', async () => {
     repo.findById.mockResolvedValue(cashSession());
+    repo.branchExists.mockResolvedValue(true);
     repo.listMovements.mockResolvedValue([
       movement({
         id: 'opening',
@@ -179,5 +191,16 @@ describe('CashService', () => {
     );
     expect(result.status).toBe('CLOSED');
     expect(result.difference).toBe(-2000);
+  });
+
+  it('rejects closing a session outside the actor branch', async () => {
+    repo.findById.mockResolvedValue(cashSession({ branchId: 'branch_2' }));
+
+    await expect(service.closeSession(ctx, 'cash_1', { countedAmount: 100000 })).rejects.toBeInstanceOf(
+      ApplicationException,
+    );
+
+    expect(repo.listMovements).not.toHaveBeenCalled();
+    expect(repo.closeSession).not.toHaveBeenCalled();
   });
 });
