@@ -88,7 +88,7 @@ describe('InventoryService', () => {
     const result = await service.listItems(ctx, { page: 1, pageSize: 10 });
 
     expect(repo.findItems).toHaveBeenCalledWith(
-      { branchId: undefined, search: undefined, lowStockOnly: undefined },
+      { branchId: 'branch_1', search: undefined, lowStockOnly: undefined },
       expect.objectContaining({ skip: 0, take: 10 }),
     );
     expect(result.data[0]).toEqual(
@@ -113,7 +113,7 @@ describe('InventoryService', () => {
 
     expect(repo.findMovements).toHaveBeenCalledWith(
       {
-        branchId: undefined,
+        branchId: 'branch_1',
         inventoryItemId: undefined,
         type: StockMovementType.PURCHASE,
       },

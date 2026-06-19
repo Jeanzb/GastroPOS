@@ -7,6 +7,7 @@ import type {
   SalesSummaryTopProduct,
 } from '@gastroai/contracts';
 import type { Prisma } from '../../../generated/prisma';
+import { assertBranchAccess } from '../../common/access/branch-access';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
 import type { TenantRequestContext } from '../auth/auth.types';
@@ -21,7 +22,7 @@ export class ReportsService {
     ctx: TenantRequestContext,
     query: SalesSummaryQueryDto,
   ): Promise<SalesSummaryDto> {
-    const branchId = query.branchId ?? ctx.branchId ?? undefined;
+    const branchId = assertBranchAccess(ctx, query.branchId);
     const now = new Date();
     const from = query.from ? parseReportDate(query.from, 'from') : startOfDay(now);
     const to = query.to ? parseReportDate(query.to, 'to') : now;

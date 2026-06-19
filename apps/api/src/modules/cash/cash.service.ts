@@ -6,6 +6,7 @@ import {
   type CashSession,
   type Prisma,
 } from '../../../generated/prisma';
+import { assertBranchAccess } from '../../common/access/branch-access';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
 import type { TenantRequestContext } from '../auth/auth.types';
@@ -34,7 +35,7 @@ export class CashService {
   ) {}
 
   async openSession(ctx: TenantRequestContext, dto: OpenCashSessionDto): Promise<CashSessionDto> {
-    const branchId = dto.branchId ?? ctx.branchId;
+    const branchId = assertBranchAccess(ctx, dto.branchId);
     if (!branchId) {
       throw branchRequired();
     }
@@ -69,7 +70,7 @@ export class CashService {
   }
 
   async getActiveSession(ctx: TenantRequestContext, branchId?: string): Promise<CashSessionDto> {
-    const resolvedBranchId = branchId ?? ctx.branchId;
+    const resolvedBranchId = assertBranchAccess(ctx, branchId);
     if (!resolvedBranchId) {
       throw branchRequired();
     }
