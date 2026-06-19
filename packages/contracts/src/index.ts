@@ -13,3 +13,4 @@ export * from './purchases/purchase.contracts';
 export * from './inventory/inventory.contracts';
 export * from './employees/employee.contracts';
 export * from './operations/operations.contracts';
+export * from './reports/reports.contracts';

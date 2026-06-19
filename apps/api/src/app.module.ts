@@ -17,6 +17,7 @@ import { HealthModule } from './modules/health/health.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { OperationsModule } from './modules/operations/operations.module';
 import { PurchasesModule } from './modules/purchases/purchases.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { SalesModule } from './modules/sales/sales.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 
@@ -39,6 +40,7 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
     InventoryModule,
     OperationsModule,
     SalesModule,
+    ReportsModule,
     FiscalModule,
     HealthModule,
   ],

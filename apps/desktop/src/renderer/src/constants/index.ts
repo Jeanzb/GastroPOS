@@ -13,6 +13,7 @@ export const QUERY_KEYS = {
   employees: 'employees',
   inventoryItems: 'inventory-items',
   stockMovements: 'stock-movements',
+  salesSummary: 'sales-summary',
   diningZones: 'dining-zones',
   tableAccount: 'table-account',
   tableAccountCommand: 'table-account-command',
