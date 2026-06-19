@@ -206,13 +206,23 @@
 
   .toaster [data-sonner-toast] {
     --toast-accent: #ff5a2c;
+    position: relative;
+    width: min(420px, calc(100vw - 32px));
+    min-height: 68px;
     overflow: hidden;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 24px;
+    align-items: center;
     gap: 12px;
-    padding: 15px 16px;
-    border: 1px solid #2e2a25;
-    border-radius: 14px;
-    background: #1c1a17;
-    box-shadow: 0 20px 48px rgba(28, 26, 23, 0.36);
+    padding: 15px 16px 17px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 42%),
+      #1c1a17;
+    box-shadow:
+      0 22px 54px rgba(0, 0, 0, 0.38),
+      0 1px 0 rgba(255, 255, 255, 0.05) inset;
   }
 
   .toaster [data-type='success'] {
@@ -231,45 +241,85 @@
     --toast-accent: #f2a28c;
   }
 
+  .toaster [data-sonner-toast]::before {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 3px;
+    content: '';
+    background: rgba(255, 255, 255, 0.1);
+  }
+
   .toaster [data-sonner-toast]::after {
     position: absolute;
     inset: auto 0 0 0;
-    height: 2px;
+    height: 3px;
     content: '';
     background: var(--toast-accent);
     transform-origin: left;
     animation: toast-prog 2.8s linear forwards;
   }
 
-  .toaster [data-sonner-toast][data-expanded='false']::after,
   .toaster [data-sonner-toast]:hover::after {
     animation-play-state: paused;
   }
 
+  .toaster [data-sonner-toast][data-styled='true'] [data-icon] {
+    grid-column: 1;
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    align-self: center;
+    justify-content: center;
+  }
+
+  .toaster [data-sonner-toast][data-styled='true'] [data-icon] svg {
+    margin: 0;
+  }
+
+  .toaster [data-sonner-toast][data-styled='true'] [data-content] {
+    grid-column: 2;
+    min-width: 0;
+    gap: 0;
+  }
+
   .toaster .dc-toast-title {
     font-family: var(--font-display);
-    font-size: 14px;
+    font-size: 14.5px;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: #f6f2ec;
+    line-height: 1.08;
   }
 
   .toaster .dc-toast-desc {
-    margin-top: 2px;
-    font-size: 12.5px;
+    margin-top: 4px;
+    font-size: 12.75px;
     line-height: 1.35;
-    color: #a79e92;
+    color: #c4baae;
   }
 
   .toaster [data-close-button] {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    grid-column: 3;
+    justify-self: end;
+    align-self: start;
+    width: 24px;
+    height: 24px;
+    transform: none !important;
+    opacity: 1;
     color: #9a9286;
-    background: transparent;
-    border-color: transparent;
+    background: rgba(255, 255, 255, 0.04);
+    border: 0;
+    border-radius: 8px;
   }
 
   .toaster [data-close-button]:hover {
     color: #f6f2ec;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.1);
   }
 
   .toast-icon-pop {
