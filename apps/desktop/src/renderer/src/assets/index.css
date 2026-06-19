@@ -221,6 +221,7 @@
     box-shadow:
       0 22px 54px rgba(0, 0, 0, 0.38),
       inset 0 -3px 0 rgba(255, 255, 255, 0.1) !important;
+    gap: 14px !important;
     color: #f3efe8;
   }
 
@@ -260,7 +261,8 @@
   .toaster [data-sonner-toast][data-styled='true'] [data-icon] {
     width: 34px;
     height: 34px;
-    margin-right: 12px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     align-self: center;
   }
 
