@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useReports } from '@/hooks/reports';
-import { formatMoney } from '@/lib/format';
+import { formatDateTime, formatMoney, formatOperationalDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { ReportPaymentMethod, SalesSummaryDto } from '@/types/reports';
 
@@ -20,18 +20,8 @@ function formatHour(hour: number): string {
 }
 
 function formatRange(summary: SalesSummaryDto): string {
-  const from = new Intl.DateTimeFormat('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(summary.from));
-  const to = new Intl.DateTimeFormat('es-CO', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(summary.to));
+  const from = formatDateTime(summary.from, summary.timezone);
+  const to = formatDateTime(summary.to, summary.timezone);
 
   return `${from} - ${to}`;
 }
@@ -203,6 +193,11 @@ export function ReportsWorkspace() {
                 <CardDescription>
                   Ventas reales cerradas, pagos, productos y facturacion base
                 </CardDescription>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Día operativo {formatOperationalDate(summary.operationalDate)} -{' '}
+                  {summary.timezone} - corte{' '}
+                  {String(summary.businessDayStartsAtHour).padStart(2, '0')}:00
+                </p>
               </div>
               <Button variant="outline" disabled title="Proximamente">
                 <Download className="h-4 w-4" />
@@ -218,7 +213,8 @@ export function ReportsWorkspace() {
                   'rounded-lg border border-border bg-background/60 p-4 text-sm text-muted-foreground',
                 )}
               >
-                Rango consultado: <span className="font-medium text-foreground">{formatRange(summary)}</span>
+                Rango consultado:{' '}
+                <span className="font-medium text-foreground">{formatRange(summary)}</span>
               </div>
             )}
           </CardContent>

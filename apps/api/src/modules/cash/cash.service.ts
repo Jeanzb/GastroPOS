@@ -15,6 +15,13 @@ import {
   type Prisma,
 } from '../../../generated/prisma';
 import { assertBranchAccess } from '../../common/access/branch-access';
+import { dayjs } from '../../common/date-time/dayjs';
+import {
+  BUSINESS_DAY_START_HOUR,
+  getOperationalDate,
+  normalizeTimezone,
+  toIsoString,
+} from '../../common/date-time/operational-date';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
 import type { TenantRequestContext } from '../auth/auth.types';
@@ -138,6 +145,7 @@ export class CashService {
   ): Promise<CashSessionDto> {
     const session = await this.requireOpenSession(ctx, sessionId);
     const movements = await this.repository.listMovements(session.id);
+    const closedAt = dayjs.utc().toDate();
     const expectedAmount = movements.reduce(
       (total, movement) => total + MOVEMENT_SIGN[movement.type] * movement.amount,
       0,
@@ -150,6 +158,7 @@ export class CashService {
       difference,
       notes: dto.notes?.trim() || null,
       closedById: ctx.actorUserId,
+      closedAt,
     });
 
     const result = toCashSessionDto(closed);
@@ -174,7 +183,8 @@ export class CashService {
       });
     }
 
-    const closedAt = session.closedAt ?? new Date();
+    const closedAt = session.closedAt ?? dayjs.utc().toDate();
+    const timezone = normalizeTimezone(await this.repository.findTenantTimezone(ctx.tenantId));
     const sales = await this.repository.findClosedSalesForShift(
       ctx.tenantId,
       session.branchId,
@@ -182,7 +192,7 @@ export class CashService {
       closedAt,
     );
 
-    return buildZReport(session, sales);
+    return buildZReport(session, sales, timezone);
   }
 
   private async requireOpenSession(
@@ -199,10 +209,7 @@ export class CashService {
     return session;
   }
 
-  private async requireSession(
-    ctx: TenantRequestContext,
-    sessionId: string,
-  ): Promise<CashSession> {
+  private async requireSession(ctx: TenantRequestContext, sessionId: string): Promise<CashSession> {
     const session = await this.repository.findById(sessionId);
     if (!session) {
       throw new ApplicationException(404, {
@@ -261,7 +268,11 @@ function asJson(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
 }
 
-function buildZReport(session: CashZSessionRecord, sales: CashZSaleRecord[]): CashZReportDto {
+function buildZReport(
+  session: CashZSessionRecord,
+  sales: CashZSaleRecord[],
+  timezone: string,
+): CashZReportDto {
   const methodMap = new Map<CashZReportPaymentMethod, CashZReportPaymentMethodDto>();
   const productMap = new Map<string, CashZReportTopProductDto>();
   let totalSales = 0;
@@ -319,10 +330,11 @@ function buildZReport(session: CashZSessionRecord, sales: CashZSaleRecord[]): Ca
       signedAmount: MOVEMENT_SIGN[movement.type] * movement.amount,
       reference: movement.reference,
       notes: movement.notes,
-      createdAt: movement.createdAt.toISOString(),
+      createdAt: toIsoString(movement.createdAt),
     }));
 
   const ticketCount = sales.length;
+  const operationalReference = session.closedAt ?? session.openedAt;
 
   return {
     id: session.id,
@@ -331,8 +343,11 @@ function buildZReport(session: CashZSessionRecord, sales: CashZSaleRecord[]): Ca
     branchCode: session.branch.code,
     status: session.status,
     currency,
-    openedAt: session.openedAt.toISOString(),
-    closedAt: session.closedAt?.toISOString() ?? null,
+    timezone,
+    operationalDate: getOperationalDate(operationalReference, timezone),
+    businessDayStartsAtHour: BUSINESS_DAY_START_HOUR,
+    openedAt: toIsoString(session.openedAt),
+    closedAt: session.closedAt ? toIsoString(session.closedAt) : null,
     openedById: session.openedById,
     closedById: session.closedById,
     openingBalance: session.openingBalance,
@@ -347,6 +362,6 @@ function buildZReport(session: CashZSessionRecord, sales: CashZSaleRecord[]): Ca
     byMethod: [...methodMap.values()].sort((a, b) => b.amount - a.amount),
     movements,
     topProducts: [...productMap.values()].sort((a, b) => b.total - a.total).slice(0, 5),
-    generatedAt: new Date().toISOString(),
+    generatedAt: toIsoString(dayjs.utc().toDate()),
   };
 }

@@ -15,6 +15,15 @@ export type SaleSummaryRecord = Prisma.SaleGetPayload<{
 export class ReportsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findTenantTimezone(tenantId: string): Promise<string | null> {
+    const settings = await this.prisma.tenantSettings.findUnique({
+      where: { tenantId },
+      select: { timezone: true },
+    });
+
+    return settings?.timezone ?? null;
+  }
+
   findClosedSales(
     tenantId: string,
     branchId: string | undefined,

@@ -6,8 +6,16 @@ import type {
   SalesSummaryHourPoint,
   SalesSummaryTopProduct,
 } from '@gastroai/contracts';
-import type { Prisma } from '../../../generated/prisma';
 import { assertBranchAccess } from '../../common/access/branch-access';
+import {
+  BUSINESS_DAY_START_HOUR,
+  getLocalHour,
+  getOperationalDate,
+  getOperationalDateRange,
+  normalizeTimezone,
+  parseDateBoundary,
+  toIsoString,
+} from '../../common/date-time/operational-date';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
 import type { TenantRequestContext } from '../auth/auth.types';
@@ -23,17 +31,19 @@ export class ReportsService {
     query: SalesSummaryQueryDto,
   ): Promise<SalesSummaryDto> {
     const branchId = assertBranchAccess(ctx, query.branchId);
+    const timezone = normalizeTimezone(await this.repository.findTenantTimezone(ctx.tenantId));
     const now = new Date();
-    const from = query.from ? parseReportDate(query.from, 'from') : startOfDay(now);
-    const to = query.to ? parseReportDate(query.to, 'to') : now;
+    const defaultRange = getOperationalDateRange(now, timezone);
+    const from = query.from ? parseDateBoundary(query.from, 'from', timezone) : defaultRange.from;
+    const to = query.to ? parseDateBoundary(query.to, 'to', timezone) : now;
 
     if (from > to) {
       throw new ApplicationException(400, {
         code: ApiErrorCode.BAD_REQUEST,
         message: 'Report start date must be before the end date.',
         details: {
-          from: from.toISOString(),
-          to: to.toISOString(),
+          from: toIsoString(from),
+          to: toIsoString(to),
         },
       });
     }
@@ -57,7 +67,7 @@ export class ReportsService {
         currency = sale.currency;
       }
 
-      const hour = (sale.closedAt ?? sale.createdAt).getHours();
+      const hour = getLocalHour(sale.closedAt ?? sale.createdAt, timezone);
       hourMap.set(hour, (hourMap.get(hour) ?? 0) + sale.grandTotal);
 
       for (const item of sale.items) {
@@ -84,16 +94,17 @@ export class ReportsService {
     const ticketCount = sales.length;
     const averageTicket = ticketCount > 0 ? Math.round(totalSales / ticketCount) : 0;
     const byMethod = [...methodMap.values()].sort((a, b) => b.amount - a.amount);
-    const topProducts = [...productMap.values()]
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+    const topProducts = [...productMap.values()].sort((a, b) => b.total - a.total).slice(0, 5);
     const byHour: SalesSummaryHourPoint[] = [...hourMap.entries()]
       .map(([hour, amount]) => ({ hour, amount }))
       .sort((a, b) => a.hour - b.hour);
 
     return {
-      from: from.toISOString(),
-      to: to.toISOString(),
+      from: toIsoString(from),
+      to: toIsoString(to),
+      timezone,
+      operationalDate: resolveOperationalDate(query.from, from, now, timezone),
+      businessDayStartsAtHour: BUSINESS_DAY_START_HOUR,
       currency,
       totalSales,
       ticketCount,
@@ -107,21 +118,15 @@ export class ReportsService {
   }
 }
 
-function parseReportDate(value: string, field: 'from' | 'to'): Date {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new ApplicationException(400, {
-      code: ApiErrorCode.BAD_REQUEST,
-      message: `Invalid report ${field} date.`,
-      details: { [field]: value } as Prisma.InputJsonObject,
-    });
+function resolveOperationalDate(
+  requestedFrom: string | undefined,
+  from: Date,
+  now: Date,
+  timezone: string,
+): string {
+  if (requestedFrom && /^\d{4}-\d{2}-\d{2}$/.test(requestedFrom)) {
+    return requestedFrom;
   }
 
-  return date;
-}
-
-function startOfDay(date: Date): Date {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
+  return getOperationalDate(requestedFrom ? from : now, timezone);
 }

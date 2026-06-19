@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMoney } from '@/lib';
+import { formatDateTime, formatMoney, formatOperationalDate } from '@/lib';
 import type { CashMovementType, CashZReportDto, CashZReportPaymentMethod } from '@/types/cash';
 
 const METHOD_LABELS: Record<CashZReportPaymentMethod, string> = {
@@ -38,16 +38,6 @@ interface CashZReportDialogProps {
   onRetry: () => void;
 }
 
-function formatDateTime(value: string | null): string {
-  if (!value) {
-    return 'Sin cierre';
-  }
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
 function Stat({
   label,
   value,
@@ -58,7 +48,11 @@ function Stat({
   tone?: 'neutral' | 'success' | 'danger';
 }) {
   const toneClass =
-    tone === 'success' ? 'text-success' : tone === 'danger' ? 'text-destructive' : 'text-foreground';
+    tone === 'success'
+      ? 'text-success'
+      : tone === 'danger'
+        ? 'text-destructive'
+        : 'text-foreground';
 
   return (
     <div className="rounded-lg border border-border bg-background p-3">
@@ -80,7 +74,10 @@ export function CashZReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl" data-cy="cash-z-report-dialog">
+      <DialogContent
+        className="max-h-[92vh] overflow-y-auto sm:max-w-3xl"
+        data-cy="cash-z-report-dialog"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ReceiptText className="h-5 w-5 text-orange" />
@@ -122,7 +119,13 @@ export function CashZReportDialog({
                   </p>
                   <h3 className="mt-1 font-display text-2xl font-bold">{report.branchName}</h3>
                   <p className="mt-1 text-sm text-white/60">
-                    {formatDateTime(report.openedAt)} - {formatDateTime(report.closedAt)}
+                    {formatDateTime(report.openedAt, report.timezone)} -{' '}
+                    {formatDateTime(report.closedAt, report.timezone)}
+                  </p>
+                  <p className="mt-2 text-xs text-white/45">
+                    Día operativo {formatOperationalDate(report.operationalDate)} -{' '}
+                    {report.timezone} - corte{' '}
+                    {String(report.businessDayStartsAtHour).padStart(2, '0')}:00
                   </p>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-right">
@@ -133,7 +136,10 @@ export function CashZReportDialog({
             </section>
 
             <section className="grid gap-3 md:grid-cols-4">
-              <Stat label="Base inicial" value={formatMoney(report.openingBalance, report.currency)} />
+              <Stat
+                label="Base inicial"
+                value={formatMoney(report.openingBalance, report.currency)}
+              />
               <Stat label="Esperado" value={formatMoney(report.expectedAmount, report.currency)} />
               <Stat
                 label="Contado"
@@ -149,7 +155,10 @@ export function CashZReportDialog({
             <section className="grid gap-3 md:grid-cols-4">
               <Stat label="Ventas" value={formatMoney(report.totalSales, report.currency)} />
               <Stat label="Tickets" value={String(report.ticketCount)} />
-              <Stat label="Ticket promedio" value={formatMoney(report.averageTicket, report.currency)} />
+              <Stat
+                label="Ticket promedio"
+                value={formatMoney(report.averageTicket, report.currency)}
+              />
               <Stat label="Facturas solicitadas" value={String(report.invoicedCount)} />
             </section>
 
@@ -159,7 +168,10 @@ export function CashZReportDialog({
                 <div className="mt-3 space-y-2">
                   {report.byMethod.length > 0 ? (
                     report.byMethod.map((method) => (
-                      <div key={method.method} className="flex items-center justify-between text-sm">
+                      <div
+                        key={method.method}
+                        className="flex items-center justify-between text-sm"
+                      >
                         <span>{METHOD_LABELS[method.method]}</span>
                         <span className="nums font-semibold">
                           {formatMoney(method.amount, report.currency)} - {method.count}
@@ -177,7 +189,10 @@ export function CashZReportDialog({
                 <div className="mt-3 space-y-2">
                   {report.topProducts.length > 0 ? (
                     report.topProducts.map((product) => (
-                      <div key={product.name} className="flex items-center justify-between gap-3 text-sm">
+                      <div
+                        key={product.name}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
                         <span className="truncate">{product.name}</span>
                         <span className="nums shrink-0 font-semibold">
                           x{product.quantity} - {formatMoney(product.total, report.currency)}
@@ -196,9 +211,13 @@ export function CashZReportDialog({
               <div className="mt-3 space-y-2">
                 {report.movements.length > 0 ? (
                   report.movements.map((movement) => (
-                    <div key={movement.id} className="flex items-center justify-between gap-3 text-sm">
+                    <div
+                      key={movement.id}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
                       <span className="min-w-0 truncate">
-                        {MOVEMENT_LABELS[movement.type]} - {movement.reference ?? movement.notes ?? 'Sin detalle'}
+                        {MOVEMENT_LABELS[movement.type]} -{' '}
+                        {movement.reference ?? movement.notes ?? 'Sin detalle'}
                       </span>
                       <span className="nums shrink-0 font-semibold">
                         {formatMoney(movement.signedAmount, report.currency)}
@@ -220,7 +239,11 @@ export function CashZReportDialog({
             </Button>
           ) : null}
           <Button type="button" variant="outline" onClick={() => window.print()} disabled={!report}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
             Imprimir
           </Button>
           <Button type="button" onClick={() => onOpenChange(false)}>

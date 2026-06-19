@@ -85,6 +85,9 @@ export interface CashZReportDto {
   branchCode: string;
   status: CashSessionStatus;
   currency: string;
+  timezone: string;
+  operationalDate: string;
+  businessDayStartsAtHour: number;
   openedAt: string;
   closedAt: string | null;
   openedById: string;

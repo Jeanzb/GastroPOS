@@ -74,12 +74,17 @@ function sale(overrides: Partial<SaleSummaryRecord> = {}): SaleSummaryRecord {
 }
 
 describe('ReportsService', () => {
-  let repo: { findClosedSales: jest.Mock };
+  let repo: { findClosedSales: jest.Mock; findTenantTimezone: jest.Mock };
   let service: ReportsService;
 
   beforeEach(() => {
-    repo = { findClosedSales: jest.fn() };
+    repo = { findClosedSales: jest.fn(), findTenantTimezone: jest.fn() };
+    repo.findTenantTimezone.mockResolvedValue('America/Bogota');
     service = new ReportsService(repo as unknown as ReportsRepository);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('returns an empty sales summary when there are no closed sales', async () => {
@@ -153,6 +158,8 @@ describe('ReportsService', () => {
       { name: 'Limonada de coco', quantity: 2, total: 30000 },
     ]);
     expect(result.byHour).toEqual([{ hour: 9, amount: 70000 }]);
+    expect(result.timezone).toBe('America/Bogota');
+    expect(result.businessDayStartsAtHour).toBe(4);
   });
 
   it('uses the requested branch and explicit date range', async () => {
@@ -174,5 +181,20 @@ describe('ReportsService', () => {
     );
 
     expect(repo.findClosedSales).not.toHaveBeenCalled();
+  });
+
+  it('uses the tenant timezone operational day when the range is omitted', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-06-16T07:00:00.000Z'));
+    repo.findClosedSales.mockResolvedValue([]);
+
+    const result = await service.getSalesSummary(ctx, {});
+
+    expect(repo.findClosedSales).toHaveBeenCalledWith(
+      'tenant_1',
+      'branch_1',
+      new Date('2026-06-15T09:00:00.000Z'),
+      new Date('2026-06-16T07:00:00.000Z'),
+    );
+    expect(result.operationalDate).toBe('2026-06-15');
   });
 });

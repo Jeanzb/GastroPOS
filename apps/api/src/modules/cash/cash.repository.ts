@@ -55,11 +55,21 @@ export interface CloseSessionData {
   difference: number;
   notes: string | null;
   closedById: string;
+  closedAt: Date;
 }
 
 @Injectable()
 export class CashRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  async findTenantTimezone(tenantId: string): Promise<string | null> {
+    const settings = await this.prisma.tenantSettings.findUnique({
+      where: { tenantId },
+      select: { timezone: true },
+    });
+
+    return settings?.timezone ?? null;
+  }
 
   async branchExists(tenantId: string, branchId: string): Promise<boolean> {
     const branch = await this.prisma.branch.findFirst({
@@ -153,7 +163,7 @@ export class CashRepository {
         difference: data.difference,
         notes: data.notes,
         closedById: data.closedById,
-        closedAt: new Date(),
+        closedAt: data.closedAt,
       },
     });
   }

@@ -142,6 +142,7 @@ describe('CashService', () => {
     closeSession: jest.Mock;
     findZSessionById: jest.Mock;
     findClosedSalesForShift: jest.Mock;
+    findTenantTimezone: jest.Mock;
   };
   let audit: { tryRecord: jest.Mock };
   let service: CashService;
@@ -157,7 +158,9 @@ describe('CashService', () => {
       closeSession: jest.fn(),
       findZSessionById: jest.fn(),
       findClosedSalesForShift: jest.fn(),
+      findTenantTimezone: jest.fn(),
     };
+    repo.findTenantTimezone.mockResolvedValue('America/Bogota');
     audit = { tryRecord: jest.fn() };
     service = new CashService(repo as unknown as CashRepository, audit as unknown as AuditService);
   });
@@ -223,9 +226,7 @@ describe('CashService', () => {
   it('rejects listing movements from a session outside the actor branch', async () => {
     repo.findById.mockResolvedValue(cashSession({ branchId: 'branch_2' }));
 
-    await expect(service.listMovements(ctx, 'cash_1')).rejects.toBeInstanceOf(
-      ApplicationException,
-    );
+    await expect(service.listMovements(ctx, 'cash_1')).rejects.toBeInstanceOf(ApplicationException);
 
     expect(repo.listMovements).not.toHaveBeenCalled();
   });
@@ -263,6 +264,7 @@ describe('CashService', () => {
         expectedAmount: 140000,
         countedAmount: 138000,
         difference: -2000,
+        closedAt: expect.any(Date),
       }),
     );
     expect(result.status).toBe('CLOSED');
@@ -326,15 +328,13 @@ describe('CashService', () => {
 
     const result = await service.getZReport(ctx, 'cash_1');
 
-    expect(repo.findClosedSalesForShift).toHaveBeenCalledWith(
-      'tenant_1',
-      'branch_1',
-      now,
-      now,
-    );
+    expect(repo.findClosedSalesForShift).toHaveBeenCalledWith('tenant_1', 'branch_1', now, now);
     expect(result).toEqual(
       expect.objectContaining({
         branchName: 'Sede Centro',
+        timezone: 'America/Bogota',
+        operationalDate: '2025-12-31',
+        businessDayStartsAtHour: 4,
         expectedAmount: 130000,
         countedAmount: 129000,
         difference: -1000,

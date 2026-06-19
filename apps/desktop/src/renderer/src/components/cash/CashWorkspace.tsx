@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCashSession } from '@/hooks/cash';
-import { formatMoney } from '@/lib';
+import { formatDateTime, formatMoney } from '@/lib';
 import { cn } from '@/lib/utils';
 import type {
   CashMovementFormValues,
@@ -68,13 +68,6 @@ function calculateExpectedAmount(movements: CashMovementDto[]): number {
     (total, movement) => total + MOVEMENT_SIGN[movement.type] * movement.amount,
     0,
   );
-}
-
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
 }
 
 function MovementIcon({ type }: { type: CashMovementType }) {

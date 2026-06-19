@@ -20,6 +20,9 @@ export interface SalesSummaryHourPoint {
 export interface SalesSummaryDto {
   from: string;
   to: string;
+  timezone: string;
+  operationalDate: string;
+  businessDayStartsAtHour: number;
   currency: string;
   totalSales: number;
   ticketCount: number;
