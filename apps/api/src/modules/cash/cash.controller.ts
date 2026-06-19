@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import type { CashMovementDto, CashSessionDto } from '@gastroai/contracts';
+import type { CashMovementDto, CashSessionDto, CashZReportDto } from '@gastroai/contracts';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { CurrentTenantContext } from '../auth/presentation/decorators/current-tenant-context.decorator';
 import { RequireRoles } from '../auth/presentation/decorators/require-roles.decorator';
@@ -69,5 +69,15 @@ export class CashController {
     @Body() dto: CloseCashSessionDto,
   ): Promise<CashSessionDto> {
     return this.cashService.closeSession(ctx, id, dto);
+  }
+
+  @Get(':id/z-report')
+  @RequireRoles('OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT')
+  @ApiOkResponse({ description: 'Operational Z report for a closed cash session.' })
+  getZReport(
+    @CurrentTenantContext() ctx: TenantRequestContext,
+    @Param('id') id: string,
+  ): Promise<CashZReportDto> {
+    return this.cashService.getZReport(ctx, id);
   }
 }

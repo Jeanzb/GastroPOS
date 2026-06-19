@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import type { CashMovementDto, CashSessionDto } from '@gastroai/contracts';
+import type {
+  CashMovementDto,
+  CashSessionDto,
+  CashZReportDto,
+  CashZReportMovementDto,
+  CashZReportPaymentMethod,
+  CashZReportPaymentMethodDto,
+  CashZReportTopProductDto,
+} from '@gastroai/contracts';
 import {
   CashMovementType,
   type CashMovement,
@@ -12,6 +20,7 @@ import { ApplicationException } from '../../common/errors/application.exception'
 import type { TenantRequestContext } from '../auth/auth.types';
 import { AuditService } from '../audit/audit.service';
 import { CashRepository } from './cash.repository';
+import type { CashZSaleRecord, CashZSessionRecord } from './cash.repository';
 import { toCashMovementDto, toCashSessionDto } from './cash.mapper';
 import type { CloseCashSessionDto } from './dto/close-cash-session.dto';
 import type { OpenCashSessionDto } from './dto/open-cash-session.dto';
@@ -156,6 +165,26 @@ export class CashService {
     return result;
   }
 
+  async getZReport(ctx: TenantRequestContext, sessionId: string): Promise<CashZReportDto> {
+    const session = await this.requireZSession(ctx, sessionId);
+    if (session.status !== 'CLOSED') {
+      throw new ApplicationException(409, {
+        code: ApiErrorCode.CONFLICT,
+        message: 'The Z report is available after the cash session is closed.',
+      });
+    }
+
+    const closedAt = session.closedAt ?? new Date();
+    const sales = await this.repository.findClosedSalesForShift(
+      ctx.tenantId,
+      session.branchId,
+      session.openedAt,
+      closedAt,
+    );
+
+    return buildZReport(session, sales);
+  }
+
   private async requireOpenSession(
     ctx: TenantRequestContext,
     sessionId: string,
@@ -175,6 +204,22 @@ export class CashService {
     sessionId: string,
   ): Promise<CashSession> {
     const session = await this.repository.findById(sessionId);
+    if (!session) {
+      throw new ApplicationException(404, {
+        code: ApiErrorCode.NOT_FOUND,
+        message: 'Cash session was not found.',
+      });
+    }
+    assertBranchAccess(ctx, session.branchId);
+    await this.assertBranchBelongsToTenant(ctx.tenantId, session.branchId);
+    return session;
+  }
+
+  private async requireZSession(
+    ctx: TenantRequestContext,
+    sessionId: string,
+  ): Promise<CashZSessionRecord> {
+    const session = await this.repository.findZSessionById(sessionId);
     if (!session) {
       throw new ApplicationException(404, {
         code: ApiErrorCode.NOT_FOUND,
@@ -214,4 +259,94 @@ function branchRequired(): ApplicationException {
 
 function asJson(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+function buildZReport(session: CashZSessionRecord, sales: CashZSaleRecord[]): CashZReportDto {
+  const methodMap = new Map<CashZReportPaymentMethod, CashZReportPaymentMethodDto>();
+  const productMap = new Map<string, CashZReportTopProductDto>();
+  let totalSales = 0;
+  let itemsSold = 0;
+  let invoicedCount = 0;
+  let currency = session.currency;
+
+  for (const sale of sales) {
+    totalSales += sale.grandTotal;
+    if (sale.currency) {
+      currency = sale.currency;
+    }
+    if (sale.requiresInvoice) {
+      invoicedCount += 1;
+    }
+
+    for (const payment of sale.payments) {
+      const method = payment.method as CashZReportPaymentMethod;
+      const entry = methodMap.get(method) ?? { method, amount: 0, count: 0 };
+      entry.amount += payment.amount;
+      entry.count += 1;
+      methodMap.set(method, entry);
+    }
+
+    for (const item of sale.items) {
+      itemsSold += item.quantity;
+      const entry = productMap.get(item.nameSnapshot) ?? {
+        name: item.nameSnapshot,
+        quantity: 0,
+        total: 0,
+      };
+      entry.quantity += item.quantity;
+      entry.total += item.lineTotal;
+      productMap.set(item.nameSnapshot, entry);
+    }
+  }
+
+  const expectedAmount =
+    session.expectedAmount ??
+    session.movements.reduce(
+      (total, movement) => total + MOVEMENT_SIGN[movement.type] * movement.amount,
+      0,
+    );
+
+  const movements = session.movements
+    .filter(
+      (movement) =>
+        movement.type !== CashMovementType.OPENING_BALANCE &&
+        movement.type !== CashMovementType.SALE_PAYMENT,
+    )
+    .map<CashZReportMovementDto>((movement) => ({
+      id: movement.id,
+      type: movement.type as CashZReportMovementDto['type'],
+      amount: movement.amount,
+      signedAmount: MOVEMENT_SIGN[movement.type] * movement.amount,
+      reference: movement.reference,
+      notes: movement.notes,
+      createdAt: movement.createdAt.toISOString(),
+    }));
+
+  const ticketCount = sales.length;
+
+  return {
+    id: session.id,
+    branchId: session.branchId,
+    branchName: session.branch.name,
+    branchCode: session.branch.code,
+    status: session.status,
+    currency,
+    openedAt: session.openedAt.toISOString(),
+    closedAt: session.closedAt?.toISOString() ?? null,
+    openedById: session.openedById,
+    closedById: session.closedById,
+    openingBalance: session.openingBalance,
+    expectedAmount,
+    countedAmount: session.countedAmount,
+    difference: session.difference,
+    totalSales,
+    ticketCount,
+    averageTicket: ticketCount > 0 ? Math.round(totalSales / ticketCount) : 0,
+    itemsSold,
+    invoicedCount,
+    byMethod: [...methodMap.values()].sort((a, b) => b.amount - a.amount),
+    movements,
+    topProducts: [...productMap.values()].sort((a, b) => b.total - a.total).slice(0, 5),
+    generatedAt: new Date().toISOString(),
+  };
 }

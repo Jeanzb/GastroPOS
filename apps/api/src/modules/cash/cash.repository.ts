@@ -3,10 +3,33 @@ import {
   CashMovementType,
   CashSessionStatus,
   Prisma,
+  SaleStatus,
   type CashMovement,
   type CashSession,
 } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
+
+const CASH_Z_SESSION_INCLUDE = {
+  branch: {
+    select: { id: true, name: true, code: true },
+  },
+  movements: {
+    orderBy: { createdAt: 'asc' },
+  },
+} satisfies Prisma.CashSessionInclude;
+
+const CASH_Z_SALE_INCLUDE = {
+  items: true,
+  payments: true,
+} satisfies Prisma.SaleInclude;
+
+export type CashZSessionRecord = Prisma.CashSessionGetPayload<{
+  include: typeof CASH_Z_SESSION_INCLUDE;
+}>;
+
+export type CashZSaleRecord = Prisma.SaleGetPayload<{
+  include: typeof CASH_Z_SALE_INCLUDE;
+}>;
 
 export interface CreateSessionData {
   branchId: string;
@@ -54,6 +77,31 @@ export class CashRepository {
 
   findById(id: string): Promise<CashSession | null> {
     return this.prisma.tenantScoped.cashSession.findFirst({ where: { id } });
+  }
+
+  findZSessionById(id: string): Promise<CashZSessionRecord | null> {
+    return this.prisma.tenantScoped.cashSession.findFirst({
+      where: { id },
+      include: CASH_Z_SESSION_INCLUDE,
+    });
+  }
+
+  findClosedSalesForShift(
+    tenantId: string,
+    branchId: string,
+    from: Date,
+    to: Date,
+  ): Promise<CashZSaleRecord[]> {
+    return this.prisma.sale.findMany({
+      where: {
+        tenantId,
+        branchId,
+        status: SaleStatus.CLOSED,
+        closedAt: { gte: from, lte: to },
+      },
+      include: CASH_Z_SALE_INCLUDE,
+      orderBy: { closedAt: 'asc' },
+    });
   }
 
   listMovements(cashSessionId: string): Promise<CashMovement[]> {
