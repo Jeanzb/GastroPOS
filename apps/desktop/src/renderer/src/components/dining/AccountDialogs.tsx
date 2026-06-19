@@ -57,7 +57,7 @@ export function CommandDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-cy="pos-command-dialog">
         <DialogHeader>
           <DialogTitle>Comanda mesa {command?.tableNumber}</DialogTitle>
         </DialogHeader>
@@ -105,7 +105,7 @@ export function ReceiptDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" data-cy="pos-receipt-dialog">
         <DialogHeader>
           <DialogTitle>Recibo mesa {receipt?.tableNumber}</DialogTitle>
         </DialogHeader>
@@ -224,7 +224,7 @@ export function ChargeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" data-cy="pos-charge-dialog">
         <DialogHeader>
           <DialogTitle>Cobrar mesa {account?.tableNumber}</DialogTitle>
         </DialogHeader>
@@ -239,7 +239,7 @@ export function ChargeDialog({
                     <FormLabel>Medio de pago</FormLabel>
                     <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full" data-cy="pos-charge-method">
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
@@ -263,12 +263,13 @@ export function ChargeDialog({
                     <FormLabel>Valor</FormLabel>
                     <FormControl>
                       <Input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={field.value}
-                        onChange={(event) => field.onChange(Number(event.target.value))}
-                      />
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={field.value}
+                      onChange={(event) => field.onChange(Number(event.target.value))}
+                      data-cy="pos-charge-amount"
+                    />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -405,7 +406,7 @@ export function ChargeDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} data-cy="pos-charge-submit">
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Cobrar cuenta
               </Button>

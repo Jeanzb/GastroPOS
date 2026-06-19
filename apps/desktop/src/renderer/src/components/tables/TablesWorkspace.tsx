@@ -133,6 +133,8 @@ function TableCard({ table, onOpen }: { table: DiningTableDto; onOpen: (table: D
     <button
       type="button"
       onClick={() => onOpen(table)}
+      data-cy="dining-table-card"
+      data-table-status={table.status}
       className={cn(
         'group relative flex min-h-[156px] flex-col overflow-hidden rounded-[14px] border border-border bg-card text-left transition',
         'hover:-translate-y-[3px] hover:border-orange/45 hover:shadow-md hover:shadow-carbon/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40',
@@ -250,7 +252,7 @@ export function TablesWorkspace() {
   }
 
   return (
-    <div className="mx-auto max-w-[1320px] space-y-5">
+    <div className="mx-auto max-w-[1320px] space-y-5" data-cy="tables-page">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ZoneTabs tabs={zoneTabs} activeId={activeZone} onSelect={setActiveZone} />
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">

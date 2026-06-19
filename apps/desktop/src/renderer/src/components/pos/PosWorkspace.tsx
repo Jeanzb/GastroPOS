@@ -149,7 +149,7 @@ function OpenAccountForm({
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
+        <Button type="submit" className="w-full" disabled={isSubmitting} data-cy="pos-open-account">
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Abrir cuenta
         </Button>
@@ -334,7 +334,7 @@ export function PosWorkspace() {
 
   return (
     <>
-      <div className="mx-auto flex h-full max-w-[1320px] gap-[18px]">
+      <div className="mx-auto flex h-full max-w-[1320px] gap-[18px]" data-cy="pos-page">
         <section className="flex min-w-0 flex-1 flex-col">
           <div className="mb-4 flex items-center gap-2.5">
             <Link
@@ -358,6 +358,7 @@ export function PosWorkspace() {
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar producto o código…"
                 className="pl-9"
+                data-cy="pos-product-search"
               />
             </div>
           </div>
@@ -402,6 +403,7 @@ export function PosWorkspace() {
                     type="button"
                     disabled={isMutating}
                     onClick={() => void handleAddProduct(product)}
+                    data-cy="pos-product-card"
                     className="flex min-h-[104px] flex-col gap-3.5 rounded-2xl border border-border bg-card p-[15px] text-left transition hover:-translate-y-0.5 hover:border-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 disabled:opacity-60"
                   >
                     <span className="flex-1 text-[14.5px] font-semibold leading-tight">{product.name}</span>
@@ -463,6 +465,7 @@ export function PosWorkspace() {
                     currentAccount.items.map((item) => (
                       <div
                         key={item.id}
+                        data-cy="pos-order-item"
                         className="flex items-center gap-3 border-b border-dashed border-[#ECE6DD] py-3"
                       >
                         <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-border">
@@ -526,6 +529,7 @@ export function PosWorkspace() {
                       className="flex-1"
                       disabled={isMutating || currentAccount.items.length === 0}
                       onClick={() => void handleCommand()}
+                      data-cy="pos-command"
                     >
                       <ChefHat className="size-4" />
                       Imprimir comanda
@@ -535,6 +539,7 @@ export function PosWorkspace() {
                       className="flex-[1.4]"
                       disabled={isMutating || currentAccount.items.length === 0}
                       onClick={() => setChargeOpen(true)}
+                      data-cy="pos-charge-open"
                     >
                       <CreditCard className="size-4" />
                       Cobrar

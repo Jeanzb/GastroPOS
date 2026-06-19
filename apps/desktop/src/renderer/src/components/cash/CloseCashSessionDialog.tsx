@@ -100,6 +100,7 @@ export function CloseCashSessionDialog({
                       step={1}
                       value={field.value}
                       onChange={(event) => field.onChange(Number(event.target.value))}
+                      data-cy="cash-counted-amount"
                     />
                   </FormControl>
                   <FormMessage />
@@ -130,7 +131,7 @@ export function CloseCashSessionDialog({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} data-cy="cash-close-submit">
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Cerrar caja
               </Button>

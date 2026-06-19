@@ -232,7 +232,11 @@ export function CashWorkspace() {
                     {session ? 'Abierta' : 'Cerrada'}
                   </StatusPill>
                   {!session ? (
-                    <Button type="button" onClick={() => setIsOpenDialogOpen(true)}>
+                    <Button
+                      type="button"
+                      onClick={() => setIsOpenDialogOpen(true)}
+                      data-cy="cash-open-dialog"
+                    >
                       <Plus className="h-4 w-4" />
                       Abrir caja
                     </Button>
