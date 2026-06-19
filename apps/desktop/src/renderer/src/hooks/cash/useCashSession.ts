@@ -7,7 +7,7 @@ import type {
   RegisterCashMovementPayload,
 } from '@/types/cash';
 
-export function useCashSession() {
+export function useCashSession(zReportSessionId?: string | null) {
   const queryClient = useQueryClient();
 
   const activeSessionQuery = useQuery({
@@ -21,6 +21,12 @@ export function useCashSession() {
     queryKey: [QUERY_KEYS.cashMovements, sessionId],
     queryFn: () => CashService.getMovements(sessionId ?? ''),
     enabled: Boolean(sessionId),
+  });
+
+  const zReportQuery = useQuery({
+    queryKey: [QUERY_KEYS.cashZReport, zReportSessionId],
+    queryFn: () => CashService.getZReport(zReportSessionId ?? ''),
+    enabled: Boolean(zReportSessionId),
   });
 
   const invalidateCash = () => {
@@ -48,6 +54,7 @@ export function useCashSession() {
   return {
     activeSessionQuery,
     movementsQuery,
+    zReportQuery,
     openMutation,
     movementMutation,
     closeMutation,

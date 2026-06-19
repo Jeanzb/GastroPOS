@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowDownLeft,
   ArrowUpRight,
+  FileText,
   Loader2,
   LockKeyhole,
   Plus,
@@ -25,6 +26,7 @@ import type {
 import type { CashMovementDto, CashMovementType } from '@/types/cash';
 import { CashMovementDialog } from './CashMovementDialog';
 import { CloseCashSessionDialog } from './CloseCashSessionDialog';
+import { CashZReportDialog } from './CashZReportDialog';
 import { OpenCashSessionDialog } from './OpenCashSessionDialog';
 
 const MOVEMENT_LABELS: Record<CashMovementType, string> = {
@@ -125,10 +127,12 @@ function renderSkeletonRow(row: number) {
 }
 
 export function CashWorkspace() {
-  const cash = useCashSession();
   const [isOpenDialogOpen, setIsOpenDialogOpen] = useState(false);
   const [isMovementDialogOpen, setIsMovementDialogOpen] = useState(false);
   const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
+  const [zReportSessionId, setZReportSessionId] = useState<string | null>(null);
+  const [isZReportOpen, setIsZReportOpen] = useState(false);
+  const cash = useCashSession(zReportSessionId);
 
   const session = cash.activeSessionQuery.data ?? null;
   const movements = cash.movementsQuery.data ?? EMPTY_MOVEMENTS;
@@ -186,13 +190,15 @@ export function CashWorkspace() {
     }
 
     try {
-      await cash.closeMutation.mutateAsync({
+      const closedSession = await cash.closeMutation.mutateAsync({
         sessionId: session.id,
         payload: {
           countedAmount: values.countedAmount,
           notes: optionalString(values.notes),
         },
       });
+      setZReportSessionId(closedSession.id);
+      setIsZReportOpen(true);
       toast.success('Caja cerrada', {
         description: `Diferencia registrada: ${formatMoney(values.countedAmount - expectedAmount, currency)}.`,
       });
@@ -210,7 +216,7 @@ export function CashWorkspace() {
 
   return (
     <>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]" data-cy="cash-page">
         <section className="space-y-4">
           <Card className="gap-5 overflow-hidden border-border/80 bg-surface-raised py-5 shadow-sm">
             <CardHeader className="px-5">
@@ -316,6 +322,7 @@ export function CashWorkspace() {
                 className="w-full"
                 disabled={!session || cash.closeMutation.isPending}
                 onClick={() => setIsCloseDialogOpen(true)}
+                data-cy="cash-close-open"
               >
                 {cash.closeMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -332,6 +339,16 @@ export function CashWorkspace() {
               >
                 <Plus className="h-4 w-4" />
                 Movimiento manual
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full bg-background"
+                disabled={!zReportSessionId}
+                onClick={() => setIsZReportOpen(true)}
+                data-cy="cash-z-report-open"
+              >
+                <FileText className="h-4 w-4" />
+                Ver Reporte Z
               </Button>
             </CardContent>
           </Card>
@@ -357,6 +374,14 @@ export function CashWorkspace() {
         isSubmitting={cash.closeMutation.isPending}
         onOpenChange={setIsCloseDialogOpen}
         onSubmit={onCloseSession}
+      />
+      <CashZReportDialog
+        open={isZReportOpen}
+        report={cash.zReportQuery.data}
+        isLoading={cash.zReportQuery.isLoading || cash.zReportQuery.isFetching}
+        isError={cash.zReportQuery.isError}
+        onOpenChange={setIsZReportOpen}
+        onRetry={() => void cash.zReportQuery.refetch()}
       />
     </>
   );

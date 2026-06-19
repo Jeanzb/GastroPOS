@@ -7,6 +7,7 @@ export const QUERY_KEYS = {
   fiscalProfile: 'fiscal-profile',
   cashSession: 'cash-session',
   cashMovements: 'cash-movements',
+  cashZReport: 'cash-z-report',
   customers: 'customers',
   suppliers: 'suppliers',
   purchases: 'purchases',

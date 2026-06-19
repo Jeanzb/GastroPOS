@@ -2,6 +2,7 @@ import { apiClient, ApiError } from '@/api';
 import type {
   CashMovementDto,
   CashSessionDto,
+  CashZReportDto,
   CloseCashSessionPayload,
   OpenCashSessionPayload,
   RegisterCashMovementPayload,
@@ -25,6 +26,10 @@ export class CashService {
 
   static getMovements(sessionId: string): Promise<CashMovementDto[]> {
     return apiClient.get<CashMovementDto[]>(`/cash-sessions/${sessionId}/movements`);
+  }
+
+  static getZReport(sessionId: string): Promise<CashZReportDto> {
+    return apiClient.get<CashZReportDto>(`/cash-sessions/${sessionId}/z-report`);
   }
 
   static registerMovement(
