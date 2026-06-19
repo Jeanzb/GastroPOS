@@ -1,177 +1,219 @@
-import { Boxes, ClipboardList, Plus, TrendingDown } from 'lucide-react';
-import { KpiCard, StatusPill } from '@/components/operations';
+import { useMemo } from 'react';
+import { Boxes, ClipboardList, Plus } from 'lucide-react';
+import { DcChip, KpiCard, type DcChipTone } from '@/components/operations';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { INVENTORY_ALERTS } from '@/constants';
-import type { InventoryAlert } from '@/types/operations';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useInventory } from '@/hooks/inventory';
+import { formatMoney } from '@/lib/format';
+import { cn } from '@/lib/utils';
+import type { InventoryItemDto, StockMovementDto, StockMovementType } from '@/types/inventory';
 
-function InventoryAlertRow({ alert }: { alert: InventoryAlert }) {
-  const tone = alert.status === 'critical' ? 'red' : 'amber';
+const GRID = 'grid grid-cols-[1.6fr_0.7fr_0.7fr_0.9fr_0.8fr] items-center gap-3';
+const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9A9286]';
 
+const MOVEMENT_META: Record<StockMovementType, { label: string; sign: 1 | -1 }> = {
+  PURCHASE: { label: 'Compra', sign: 1 },
+  RETURN: { label: 'Devolución', sign: 1 },
+  ADJUSTMENT_IN: { label: 'Ajuste +', sign: 1 },
+  TRANSFER_IN: { label: 'Traslado +', sign: 1 },
+  SALE_CONSUMPTION: { label: 'Venta', sign: -1 },
+  ADJUSTMENT_OUT: { label: 'Ajuste −', sign: -1 },
+  WASTE: { label: 'Merma', sign: -1 },
+  TRANSFER_OUT: { label: 'Traslado −', sign: -1 },
+};
+
+function stockStatus(item: InventoryItemDto): { label: string; tone: DcChipTone } {
+  if (item.stockOnHand <= 0) {
+    return { label: 'Agotado', tone: 'danger' };
+  }
+  if (item.minimumStock > 0 && item.stockOnHand <= item.minimumStock) {
+    return { label: 'Bajo', tone: 'warning' };
+  }
+  return { label: 'Normal', tone: 'success' };
+}
+
+function isLow(item: InventoryItemDto): boolean {
+  return item.stockOnHand <= 0 || (item.minimumStock > 0 && item.stockOnHand <= item.minimumStock);
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(
+    new Date(value),
+  );
+}
+
+function ItemRow({ item }: { item: InventoryItemDto }) {
+  const status = stockStatus(item);
   return (
-    <div className="motion-press flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 hover:border-orange/30">
-      <div>
-        <p className="text-sm font-semibold text-white">{alert.item}</p>
-        <p className="nums mt-1 text-xs text-white/50">
-          Actual {alert.current} - Minimo {alert.minimum}
-        </p>
+    <div className={cn(GRID, 'border-b border-[#F2ECE3] px-[18px] py-[13px] transition-colors hover:bg-surface-quiet/50')}>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold">{item.name}</p>
+        <p className="nums truncate text-[11px] text-[#9A9286]">{item.sku ?? 'Sin SKU'}</p>
       </div>
-      <StatusPill tone={tone}>{alert.status === 'critical' ? 'Critico' : 'Bajo'}</StatusPill>
+      <p className="nums text-right text-[13.5px] font-bold">{item.stockOnHand}</p>
+      <p className="nums text-right text-[12.5px] text-[#6B6359]">{item.minimumStock}</p>
+      <p className="nums text-right text-[12.5px] text-[#6B6359]">
+        {formatMoney(item.averageCost, 'COP')}
+      </p>
+      <div className="flex justify-end">
+        <DcChip tone={status.tone}>{status.label}</DcChip>
+      </div>
     </div>
   );
 }
 
-function renderInventoryAlert(alert: InventoryAlert) {
-  return <InventoryAlertRow key={alert.item} alert={alert} />;
+function MovementRow({ movement }: { movement: StockMovementDto }) {
+  const meta = MOVEMENT_META[movement.type];
+  const signed = meta.sign * movement.quantity;
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-[#F2ECE3] px-[18px] py-3 last:border-b-0">
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-semibold">{movement.inventoryItemName}</p>
+        <p className="nums truncate text-[11px] text-[#9A9286]">
+          {meta.label} · {formatDateTime(movement.createdAt)}
+        </p>
+      </div>
+      <span className={cn('nums shrink-0 text-sm font-bold', meta.sign < 0 ? 'text-[#C0431A]' : 'text-success')}>
+        {signed > 0 ? '+' : ''}
+        {signed}
+      </span>
+    </div>
+  );
 }
 
 export function InventoryWorkspace() {
+  const { itemsQuery, movementsQuery } = useInventory();
+  const items = itemsQuery.data?.data ?? [];
+  const movements = movementsQuery.data?.data ?? [];
+  const total = itemsQuery.data?.meta.total ?? items.length;
+
+  const stats = useMemo(() => {
+    const low = items.filter(isLow).length;
+    const out = items.filter((item) => item.stockOnHand <= 0).length;
+    const value = items.reduce((sum, item) => sum + item.stockOnHand * item.averageCost, 0);
+    return { low, out, value };
+  }, [items]);
+
+  const lowItems = useMemo(() => items.filter(isLow).slice(0, 8), [items]);
+
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="mx-auto grid max-w-[1320px] gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-4">
-          <KpiCard label="Insumos" value="128" hint="Activos en sede" />
-          <KpiCard label="Alertas" value="3" hint="Requieren compra" accent="warning" />
-          <KpiCard label="Valor stock" value="$18.4M" hint="Costo estimado" />
-          <KpiCard label="Merma semana" value="$214K" hint="Registrada" accent="danger" />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <KpiCard label="Insumos" value={total} hint="Registrados en inventario" />
+          <KpiCard label="Bajo mínimo" value={stats.low} hint="Requieren compra" accent="warning" />
+          <KpiCard label="Agotados" value={stats.out} hint="Sin existencias" accent="danger" />
+          <KpiCard label="Valor de inventario" value={formatMoney(stats.value, 'COP')} hint="Stock × costo prom." />
         </div>
 
-        <Card className="gap-4 rounded-2xl border-border/80 bg-card py-5 shadow-sm">
+        <Card className="gap-4 rounded-2xl border-border/80 bg-surface-raised py-5 shadow-sm">
           <CardHeader className="px-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <CardTitle>Stock operativo</CardTitle>
-                <CardDescription>Insumos, unidades y disponibilidad por sede</CardDescription>
+                <CardDescription>Existencias reales y mínimos por sede</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" disabled>
-                  <ClipboardList className="h-4 w-4" />
+                <Button variant="outline" disabled title="Próximamente">
+                  <ClipboardList className="size-4" />
                   Ajuste
                 </Button>
-                <Button disabled>
-                  <Plus className="h-4 w-4" />
+                <Button disabled title="Próximamente">
+                  <Plus className="size-4" />
                   Insumo
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent className="px-5">
-            <div className="max-h-[calc(100vh-330px)] overflow-y-auto rounded-2xl border border-border bg-surface-raised shadow-sm">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Insumo</TableHead>
-                    <TableHead>Unidad</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Costo</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="font-medium">Carne molida</TableCell>
-                    <TableCell>kg</TableCell>
-                    <TableCell className="nums text-right">4.2</TableCell>
-                    <TableCell className="nums text-right">$18.400</TableCell>
-                    <TableCell>
-                      <StatusPill tone="red">Critico</StatusPill>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Arroz blanco</TableCell>
-                    <TableCell>kg</TableCell>
-                    <TableCell className="nums text-right">38</TableCell>
-                    <TableCell className="nums text-right">$4.200</TableCell>
-                    <TableCell>
-                      <StatusPill tone="green">Normal</StatusPill>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Limon tahiti</TableCell>
-                    <TableCell>und</TableCell>
-                    <TableCell className="nums text-right">36</TableCell>
-                    <TableCell className="nums text-right">$620</TableCell>
-                    <TableCell>
-                      <StatusPill tone="amber">Bajo</StatusPill>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className={cn(GRID, 'border-b border-border bg-surface-quiet/60 px-[18px] py-3')}>
+                <span className={HEADER}>Insumo</span>
+                <span className={cn(HEADER, 'text-right')}>Stock</span>
+                <span className={cn(HEADER, 'text-right')}>Mínimo</span>
+                <span className={cn(HEADER, 'text-right')}>Costo prom.</span>
+                <span className={cn(HEADER, 'text-right')}>Estado</span>
+              </div>
+              <div className="max-h-[calc(100vh-360px)] overflow-y-auto">
+                {itemsQuery.isLoading
+                  ? [0, 1, 2, 3, 4].map((row) => (
+                      <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-[15px]">
+                        <Skeleton className="h-6 w-full" />
+                      </div>
+                    ))
+                  : null}
+                {!itemsQuery.isLoading && items.length === 0 ? (
+                  <div className="px-[18px] py-12 text-center text-sm text-muted-foreground">
+                    Aún no hay insumos en inventario. El stock se mueve al recibir compras y cobrar ventas.
+                  </div>
+                ) : null}
+                {!itemsQuery.isLoading ? items.map((item) => <ItemRow key={item.id} item={item} />) : null}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="gap-4 rounded-2xl border-border/80 bg-card py-5 shadow-sm">
+        <Card className="gap-4 rounded-2xl border-border/80 bg-surface-raised py-5 shadow-sm">
           <CardHeader className="px-5">
             <CardTitle>Kardex reciente</CardTitle>
             <CardDescription>Nunca se actualiza stock sin movimiento trazable</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 px-5">
-            <div className="rounded-lg border border-success/20 bg-success-soft p-4">
-              <p className="text-sm font-semibold">PURCHASE - Carne molida</p>
-              <p className="mt-1 text-xs text-muted-foreground">+8 kg desde compra OC-0018</p>
-            </div>
-            <div className="rounded-lg border border-orange/20 bg-orange/10 p-4">
-              <p className="text-sm font-semibold">SALE_CONSUMPTION - Bandeja paisa</p>
-              <p className="mt-1 text-xs text-muted-foreground">-1.6 kg por recetas del turno</p>
-            </div>
+          <CardContent className="px-0 pb-0">
+            {movementsQuery.isLoading ? (
+              <div className="space-y-2 px-5">
+                {[0, 1, 2].map((row) => (
+                  <Skeleton key={row} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : movements.length === 0 ? (
+              <p className="px-5 pb-5 text-sm text-muted-foreground">Aún no hay movimientos registrados.</p>
+            ) : (
+              <div>
+                {movements.map((movement) => (
+                  <MovementRow key={movement.id} movement={movement} />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
 
-      <aside className="space-y-4">
+      <aside>
         <Card className="gap-4 rounded-2xl border-transparent bg-carbon py-5 text-white shadow-lg shadow-carbon/10">
           <CardHeader className="px-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <CardTitle>Alertas</CardTitle>
+                <CardTitle className="text-white">Alertas de stock</CardTitle>
                 <CardDescription className="text-white/55">Reabastecimiento recomendado</CardDescription>
               </div>
-              <Boxes className="h-5 w-5 text-orange" />
+              <Boxes className="size-5 text-orange" />
             </div>
           </CardHeader>
           <CardContent className="space-y-3 px-5">
-            {INVENTORY_ALERTS.map(renderInventoryAlert)}
-          </CardContent>
-        </Card>
-
-        <Card className="gap-4 rounded-2xl border-border/80 bg-card py-5 shadow-sm">
-          <CardHeader className="px-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <CardTitle>Consumo receta</CardTitle>
-                <CardDescription>Impacto esperado por ventas</CardDescription>
-              </div>
-              <TrendingDown className="size-5 text-orange" />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 px-5">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold">Bandeja paisa</span>
-                <span className="nums font-bold">-8.4 kg</span>
-              </div>
-              <div className="h-2 rounded-full bg-surface-quiet">
-                <span className="block h-full w-[72%] rounded-full bg-orange" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="font-semibold">Limonada de coco</span>
-                <span className="nums font-bold">-36 und</span>
-              </div>
-              <div className="h-2 rounded-full bg-surface-quiet">
-                <span className="block h-full w-[54%] rounded-full bg-success" />
-              </div>
-            </div>
+            {itemsQuery.isLoading ? (
+              [0, 1, 2].map((row) => <Skeleton key={row} className="h-14 w-full bg-white/10" />)
+            ) : lowItems.length === 0 ? (
+              <p className="text-sm text-white/55">Todo el inventario está por encima del mínimo.</p>
+            ) : (
+              lowItems.map((item) => {
+                const status = stockStatus(item);
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">{item.name}</p>
+                      <p className="nums mt-1 text-xs text-white/50">
+                        Actual {item.stockOnHand} · Mínimo {item.minimumStock}
+                      </p>
+                    </div>
+                    <DcChip tone={status.tone}>{status.label}</DcChip>
+                  </div>
+                );
+              })
+            )}
           </CardContent>
         </Card>
       </aside>
