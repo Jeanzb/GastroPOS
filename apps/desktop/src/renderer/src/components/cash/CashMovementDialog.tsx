@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import {
   Select,
   SelectContent,
@@ -111,13 +112,7 @@ export function CashMovementDialog({
                 <FormItem>
                   <FormLabel>Valor</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={field.value}
-                      onChange={(event) => field.onChange(Number(event.target.value))}
-                    />
+                    <MoneyInput value={field.value} onChange={field.onChange} placeholder="0" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

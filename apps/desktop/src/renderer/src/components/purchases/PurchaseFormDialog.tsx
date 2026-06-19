@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import {
   Select,
   SelectContent,
@@ -140,16 +141,14 @@ export function PurchaseFormDialog({
                   <FormItem>
                     <FormLabel>Impuestos</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
+                      <MoneyInput
                         data-cy="purchase-tax-total"
-                        min={0}
-                        step={1}
+                        placeholder="0"
                         value={field.value}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
-                        onChange={(event) => field.onChange(Number(event.target.value))}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />
@@ -202,16 +201,14 @@ export function PurchaseFormDialog({
                   <FormItem>
                     <FormLabel>Costo unitario</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
+                      <MoneyInput
                         data-cy="purchase-unit-cost"
-                        min={0}
-                        step={1}
+                        placeholder="0"
                         value={field.value}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
-                        onChange={(event) => field.onChange(Number(event.target.value))}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />

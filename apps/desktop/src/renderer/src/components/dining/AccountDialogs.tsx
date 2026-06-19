@@ -19,6 +19,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import {
   Select,
   SelectContent,
@@ -262,14 +263,12 @@ export function ChargeDialog({
                   <FormItem>
                     <FormLabel>Valor</FormLabel>
                     <FormControl>
-                      <Input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={field.value}
-                      onChange={(event) => field.onChange(Number(event.target.value))}
-                      data-cy="pos-charge-amount"
-                    />
+                      <MoneyInput
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="0"
+                        data-cy="pos-charge-amount"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

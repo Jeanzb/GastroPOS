@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Textarea } from '@/components/ui/textarea';
 import { formatMoney } from '@/lib';
 import { closeCashSessionSchema, type CloseCashSessionFormValues } from '@/schemas/cash';
@@ -94,12 +94,10 @@ export function CloseCashSessionDialog({
                 <FormItem>
                   <FormLabel>Efectivo contado</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
+                    <MoneyInput
                       value={field.value}
-                      onChange={(event) => field.onChange(Number(event.target.value))}
+                      onChange={field.onChange}
+                      placeholder="0"
                       data-cy="cash-counted-amount"
                     />
                   </FormControl>

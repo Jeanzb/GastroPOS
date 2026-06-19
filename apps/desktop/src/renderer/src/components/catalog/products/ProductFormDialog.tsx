@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import {
   Select,
   SelectContent,
@@ -359,14 +360,12 @@ export function ProductFormDialog({
                         <label className="text-sm font-medium" htmlFor={inputId}>
                           Precio
                         </label>
-                        <Input
+                        <MoneyInput
                           id={inputId}
-                          type="number"
-                          min={0}
-                          step={1}
                           value={field.state.value}
                           onBlur={field.handleBlur}
-                          onChange={(event) => field.handleChange(Number(event.target.value))}
+                          onChange={(amount) => field.handleChange(amount)}
+                          placeholder="0"
                           aria-invalid={Boolean(error)}
                           aria-describedby={error ? `${inputId}-error` : `${inputId}-help`}
                         />

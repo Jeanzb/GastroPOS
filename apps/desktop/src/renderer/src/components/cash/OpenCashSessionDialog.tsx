@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import { Textarea } from '@/components/ui/textarea';
 import { openCashSessionSchema, type OpenCashSessionFormValues } from '@/schemas/cash';
 
@@ -76,12 +76,10 @@ export function OpenCashSessionDialog({
                 <FormItem>
                   <FormLabel>Base inicial</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
+                    <MoneyInput
                       value={field.value}
-                      onChange={(event) => field.onChange(Number(event.target.value))}
+                      onChange={field.onChange}
+                      placeholder="0"
                       data-cy="cash-opening-balance"
                     />
                   </FormControl>
