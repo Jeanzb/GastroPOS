@@ -38,9 +38,7 @@ function inventoryItem(overrides: Partial<InventoryItem> = {}): InventoryItem {
   };
 }
 
-function stockMovement(
-  overrides: Partial<StockMovementWithItem> = {},
-): StockMovementWithItem {
+function stockMovement(overrides: Partial<StockMovementWithItem> = {}): StockMovementWithItem {
   return {
     id: 'movement_1',
     tenantId: 'tenant_1',
@@ -118,12 +116,35 @@ describe('InventoryService', () => {
         type: StockMovementType.PURCHASE,
       },
       expect.objectContaining({ skip: 0, take: 10 }),
+      { sortBy: 'createdAt', sortDir: 'desc' },
     );
     expect(result.data[0]).toEqual(
       expect.objectContaining({
         inventoryItemName: 'Carne molida',
         type: StockMovementType.PURCHASE,
       }),
+    );
+  });
+
+  it('passes stock movement sorting to the repository', async () => {
+    repo.findMovements.mockResolvedValue([stockMovement()]);
+    repo.countMovements.mockResolvedValue(1);
+
+    await service.listMovements(ctx, {
+      page: 1,
+      pageSize: 10,
+      sortBy: 'inventoryItemName',
+      sortDir: 'asc',
+    });
+
+    expect(repo.findMovements).toHaveBeenCalledWith(
+      {
+        branchId: 'branch_1',
+        inventoryItemId: undefined,
+        type: undefined,
+      },
+      expect.objectContaining({ skip: 0, take: 10 }),
+      { sortBy: 'inventoryItemName', sortDir: 'asc' },
     );
   });
 });

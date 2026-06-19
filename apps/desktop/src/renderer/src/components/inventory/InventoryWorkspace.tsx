@@ -1,16 +1,26 @@
 import { useMemo } from 'react';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Boxes, ClipboardList, Plus } from 'lucide-react';
 import { DcChip, KpiCard, type DcChipTone } from '@/components/operations';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataTable } from '@/components/ui/data-table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useInventory } from '@/hooks/inventory';
-import { formatMoney } from '@/lib/format';
+import { useInventory, useStockMovements } from '@/hooks/inventory';
+import { formatDateTime, formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { InventoryItemDto, StockMovementDto, StockMovementType } from '@/types/inventory';
 
 const GRID = 'grid grid-cols-[1.6fr_0.7fr_0.7fr_0.9fr_0.8fr] items-center gap-3';
 const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9A9286]';
+const ALL_MOVEMENTS = 'ALL';
 
 const MOVEMENT_META: Record<StockMovementType, { label: string; sign: 1 | -1 }> = {
   PURCHASE: { label: 'Compra', sign: 1 },
@@ -18,10 +28,73 @@ const MOVEMENT_META: Record<StockMovementType, { label: string; sign: 1 | -1 }> 
   ADJUSTMENT_IN: { label: 'Ajuste +', sign: 1 },
   TRANSFER_IN: { label: 'Traslado +', sign: 1 },
   SALE_CONSUMPTION: { label: 'Venta', sign: -1 },
-  ADJUSTMENT_OUT: { label: 'Ajuste −', sign: -1 },
+  ADJUSTMENT_OUT: { label: 'Ajuste -', sign: -1 },
   WASTE: { label: 'Merma', sign: -1 },
-  TRANSFER_OUT: { label: 'Traslado −', sign: -1 },
+  TRANSFER_OUT: { label: 'Traslado -', sign: -1 },
 };
+
+const MOVEMENT_TYPES = Object.entries(MOVEMENT_META) as Array<
+  [StockMovementType, (typeof MOVEMENT_META)[StockMovementType]]
+>;
+
+const movementColumns: ColumnDef<StockMovementDto>[] = [
+  {
+    accessorKey: 'inventoryItemName',
+    header: 'Insumo',
+    cell: ({ row }) => (
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold">{row.original.inventoryItemName}</p>
+        <p className="nums truncate text-[11px] text-[#9A9286]">
+          {formatDateTime(row.original.createdAt)}
+        </p>
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'type',
+    header: 'Tipo',
+    cell: ({ row }) => {
+      const meta = MOVEMENT_META[row.original.type];
+      return <DcChip tone={meta.sign < 0 ? 'warning' : 'success'}>{meta.label}</DcChip>;
+    },
+  },
+  {
+    accessorKey: 'quantity',
+    header: 'Cantidad',
+    meta: { headClassName: 'text-right', cellClassName: 'text-right' },
+    cell: ({ row }) => {
+      const meta = MOVEMENT_META[row.original.type];
+      const signed = meta.sign * row.original.quantity;
+      return (
+        <span
+          className={cn(
+            'nums text-sm font-bold',
+            meta.sign < 0 ? 'text-[#C0431A]' : 'text-success',
+          )}
+        >
+          {signed > 0 ? '+' : ''}
+          {signed}
+        </span>
+      );
+    },
+  },
+  {
+    accessorKey: 'stockAfter',
+    header: 'Stock final',
+    meta: { headClassName: 'text-right', cellClassName: 'text-right' },
+    cell: ({ row }) => <span className="nums font-semibold">{row.original.stockAfter}</span>,
+  },
+  {
+    accessorKey: 'totalCost',
+    header: 'Costo',
+    meta: { headClassName: 'text-right', cellClassName: 'text-right' },
+    cell: ({ row }) => (
+      <span className="nums text-[#6B6359]">
+        {row.original.totalCost === null ? '-' : formatMoney(row.original.totalCost, 'COP')}
+      </span>
+    ),
+  },
+];
 
 function stockStatus(item: InventoryItemDto): { label: string; tone: DcChipTone } {
   if (item.stockOnHand <= 0) {
@@ -37,16 +110,15 @@ function isLow(item: InventoryItemDto): boolean {
   return item.stockOnHand <= 0 || (item.minimumStock > 0 && item.stockOnHand <= item.minimumStock);
 }
 
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(
-    new Date(value),
-  );
-}
-
 function ItemRow({ item }: { item: InventoryItemDto }) {
   const status = stockStatus(item);
   return (
-    <div className={cn(GRID, 'border-b border-[#F2ECE3] px-[18px] py-[13px] transition-colors hover:bg-surface-quiet/50')}>
+    <div
+      className={cn(
+        GRID,
+        'border-b border-[#F2ECE3] px-[18px] py-[13px] transition-colors hover:bg-surface-quiet/50',
+      )}
+    >
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">{item.name}</p>
         <p className="nums truncate text-[11px] text-[#9A9286]">{item.sku ?? 'Sin SKU'}</p>
@@ -63,29 +135,12 @@ function ItemRow({ item }: { item: InventoryItemDto }) {
   );
 }
 
-function MovementRow({ movement }: { movement: StockMovementDto }) {
-  const meta = MOVEMENT_META[movement.type];
-  const signed = meta.sign * movement.quantity;
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-[#F2ECE3] px-[18px] py-3 last:border-b-0">
-      <div className="min-w-0">
-        <p className="truncate text-[13px] font-semibold">{movement.inventoryItemName}</p>
-        <p className="nums truncate text-[11px] text-[#9A9286]">
-          {meta.label} · {formatDateTime(movement.createdAt)}
-        </p>
-      </div>
-      <span className={cn('nums shrink-0 text-sm font-bold', meta.sign < 0 ? 'text-[#C0431A]' : 'text-success')}>
-        {signed > 0 ? '+' : ''}
-        {signed}
-      </span>
-    </div>
-  );
-}
-
 export function InventoryWorkspace() {
-  const { itemsQuery, movementsQuery } = useInventory();
+  const { itemsQuery } = useInventory();
+  const stockMovements = useStockMovements();
   const items = itemsQuery.data?.data ?? [];
-  const movements = movementsQuery.data?.data ?? [];
+  const movementsPage = stockMovements.query.data;
+  const movements = movementsPage?.data ?? [];
   const total = itemsQuery.data?.meta.total ?? items.length;
 
   const stats = useMemo(() => {
@@ -104,7 +159,11 @@ export function InventoryWorkspace() {
           <KpiCard label="Insumos" value={total} hint="Registrados en inventario" />
           <KpiCard label="Bajo mínimo" value={stats.low} hint="Requieren compra" accent="warning" />
           <KpiCard label="Agotados" value={stats.out} hint="Sin existencias" accent="danger" />
-          <KpiCard label="Valor de inventario" value={formatMoney(stats.value, 'COP')} hint="Stock × costo prom." />
+          <KpiCard
+            label="Valor de inventario"
+            value={formatMoney(stats.value, 'COP')}
+            hint="Stock x costo prom."
+          />
         </div>
 
         <Card className="gap-4 rounded-2xl border-border/80 bg-surface-raised py-5 shadow-sm">
@@ -128,7 +187,9 @@ export function InventoryWorkspace() {
           </CardHeader>
           <CardContent className="px-5">
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
-              <div className={cn(GRID, 'border-b border-border bg-surface-quiet/60 px-[18px] py-3')}>
+              <div
+                className={cn(GRID, 'border-b border-border bg-surface-quiet/60 px-[18px] py-3')}
+              >
                 <span className={HEADER}>Insumo</span>
                 <span className={cn(HEADER, 'text-right')}>Stock</span>
                 <span className={cn(HEADER, 'text-right')}>Mínimo</span>
@@ -145,10 +206,13 @@ export function InventoryWorkspace() {
                   : null}
                 {!itemsQuery.isLoading && items.length === 0 ? (
                   <div className="px-[18px] py-12 text-center text-sm text-muted-foreground">
-                    Aún no hay insumos en inventario. El stock se mueve al recibir compras y cobrar ventas.
+                    Aún no hay insumos en inventario. El stock se mueve al recibir compras y cobrar
+                    ventas.
                   </div>
                 ) : null}
-                {!itemsQuery.isLoading ? items.map((item) => <ItemRow key={item.id} item={item} />) : null}
+                {!itemsQuery.isLoading
+                  ? items.map((item) => <ItemRow key={item.id} item={item} />)
+                  : null}
               </div>
             </div>
           </CardContent>
@@ -156,25 +220,65 @@ export function InventoryWorkspace() {
 
         <Card className="gap-4 rounded-2xl border-border/80 bg-surface-raised py-5 shadow-sm">
           <CardHeader className="px-5">
-            <CardTitle>Kardex reciente</CardTitle>
-            <CardDescription>Nunca se actualiza stock sin movimiento trazable</CardDescription>
-          </CardHeader>
-          <CardContent className="px-0 pb-0">
-            {movementsQuery.isLoading ? (
-              <div className="space-y-2 px-5">
-                {[0, 1, 2].map((row) => (
-                  <Skeleton key={row} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : movements.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-muted-foreground">Aún no hay movimientos registrados.</p>
-            ) : (
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                {movements.map((movement) => (
-                  <MovementRow key={movement.id} movement={movement} />
-                ))}
+                <CardTitle>Kardex</CardTitle>
+                <CardDescription>
+                  Movimientos trazables con paginación y filtros del lado del servidor
+                </CardDescription>
               </div>
-            )}
+              <Select
+                value={stockMovements.params.type ?? ALL_MOVEMENTS}
+                onValueChange={(value) =>
+                  stockMovements.setType(
+                    value === ALL_MOVEMENTS ? undefined : (value as StockMovementType),
+                  )
+                }
+              >
+                <SelectTrigger
+                  className="w-[210px] bg-background"
+                  aria-label="Filtrar movimientos de Kardex"
+                >
+                  <SelectValue placeholder="Filtrar movimiento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_MOVEMENTS}>Todos los movimientos</SelectItem>
+                  {MOVEMENT_TYPES.map(([type, meta]) => (
+                    <SelectItem key={type} value={type}>
+                      {meta.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5">
+            <DataTable
+              columns={movementColumns}
+              data={movements}
+              isLoading={stockMovements.query.isLoading}
+              emptyMessage="Aún no hay movimientos registrados."
+              sorting={stockMovements.sorting}
+              onSortingChange={stockMovements.setSorting}
+              manualSorting
+              pagination={
+                movementsPage
+                  ? {
+                      pageIndex: movementsPage.meta.page - 1,
+                      pageCount: movementsPage.meta.totalPages,
+                      total: movementsPage.meta.total,
+                      pageSize: movementsPage.meta.pageSize,
+                      onPageChange: stockMovements.setPage,
+                    }
+                  : {
+                      pageIndex: (stockMovements.params.page ?? 1) - 1,
+                      pageCount: 1,
+                      total: 0,
+                      pageSize: stockMovements.params.pageSize ?? 15,
+                      onPageChange: stockMovements.setPage,
+                    }
+              }
+            />
           </CardContent>
         </Card>
       </section>
@@ -185,7 +289,9 @@ export function InventoryWorkspace() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <CardTitle className="text-white">Alertas de stock</CardTitle>
-                <CardDescription className="text-white/55">Reabastecimiento recomendado</CardDescription>
+                <CardDescription className="text-white/55">
+                  Reabastecimiento recomendado
+                </CardDescription>
               </div>
               <Boxes className="size-5 text-orange" />
             </div>
@@ -194,7 +300,9 @@ export function InventoryWorkspace() {
             {itemsQuery.isLoading ? (
               [0, 1, 2].map((row) => <Skeleton key={row} className="h-14 w-full bg-white/10" />)
             ) : lowItems.length === 0 ? (
-              <p className="text-sm text-white/55">Todo el inventario está por encima del mínimo.</p>
+              <p className="text-sm text-white/55">
+                Todo el inventario está por encima del mínimo.
+              </p>
             ) : (
               lowItems.map((item) => {
                 const status = stockStatus(item);

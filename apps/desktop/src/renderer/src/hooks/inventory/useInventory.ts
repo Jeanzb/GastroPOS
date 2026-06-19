@@ -8,10 +8,5 @@ export function useInventory() {
     queryFn: () => InventoryService.getItems({ page: 1, pageSize: 100 }),
   });
 
-  const movementsQuery = useQuery({
-    queryKey: [QUERY_KEYS.stockMovements, { page: 1, pageSize: 12 }],
-    queryFn: () => InventoryService.getMovements({ page: 1, pageSize: 12 }),
-  });
-
-  return { itemsQuery, movementsQuery };
+  return { itemsQuery };
 }

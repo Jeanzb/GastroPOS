@@ -8,6 +8,16 @@ export type StockMovementType =
   | 'TRANSFER_OUT'
   | 'RETURN';
 
+export type SortDirection = 'asc' | 'desc';
+
+export type StockMovementSortBy =
+  | 'createdAt'
+  | 'inventoryItemName'
+  | 'type'
+  | 'quantity'
+  | 'stockAfter'
+  | 'totalCost';
+
 export interface InventoryItemDto {
   id: string;
   branchId: string | null;
@@ -56,4 +66,6 @@ export interface StockMovementListParams {
   branchId?: string;
   inventoryItemId?: string;
   type?: StockMovementType;
+  sortBy?: StockMovementSortBy;
+  sortDir?: SortDirection;
 }

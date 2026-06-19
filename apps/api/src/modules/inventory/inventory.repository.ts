@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, type InventoryItem, type StockMovementType } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
 import type { StockMovementWithItem } from './inventory.mapper';
+import type { SortDirection, StockMovementSortField } from './dto/list-stock-movements-query.dto';
 
 export interface InventoryItemFilters {
   branchId?: string;
@@ -13,6 +14,11 @@ export interface StockMovementFilters {
   branchId?: string;
   inventoryItemId?: string;
   type?: StockMovementType;
+}
+
+export interface StockMovementSorting {
+  sortBy: StockMovementSortField;
+  sortDir: SortDirection;
 }
 
 @Injectable()
@@ -40,11 +46,12 @@ export class InventoryRepository {
   findMovements(
     filters: StockMovementFilters,
     pagination: { skip: number; take: number },
+    sorting: StockMovementSorting,
   ): Promise<StockMovementWithItem[]> {
     return this.prisma.tenantScoped.stockMovement.findMany({
       where: this.movementScope(filters),
       include: { inventoryItem: { select: { id: true, name: true } } },
-      orderBy: [{ createdAt: 'desc' }],
+      orderBy: this.movementOrderBy(sorting),
       skip: pagination.skip,
       take: pagination.take,
     });
@@ -80,5 +87,17 @@ export class InventoryRepository {
       ...(filters.inventoryItemId ? { inventoryItemId: filters.inventoryItemId } : {}),
       ...(filters.type ? { type: filters.type } : {}),
     };
+  }
+
+  private movementOrderBy(
+    sorting: StockMovementSorting,
+  ): Prisma.StockMovementOrderByWithRelationInput[] {
+    const sortDir = sorting.sortDir;
+
+    if (sorting.sortBy === 'inventoryItemName') {
+      return [{ inventoryItem: { name: sortDir } }, { createdAt: 'desc' }];
+    }
+
+    return [{ [sorting.sortBy]: sortDir }, { createdAt: 'desc' }];
   }
 }
