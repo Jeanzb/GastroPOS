@@ -10,5 +10,6 @@ export * from './cash/cash.contracts';
 export * from './customers/customer.contracts';
 export * from './suppliers/supplier.contracts';
 export * from './purchases/purchase.contracts';
+export * from './inventory/inventory.contracts';
 export * from './employees/employee.contracts';
 export * from './operations/operations.contracts';

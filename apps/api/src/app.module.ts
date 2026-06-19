@@ -14,6 +14,7 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { HealthModule } from './modules/health/health.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { OperationsModule } from './modules/operations/operations.module';
 import { PurchasesModule } from './modules/purchases/purchases.module';
 import { SalesModule } from './modules/sales/sales.module';
@@ -35,6 +36,7 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
     EmployeesModule,
     SuppliersModule,
     PurchasesModule,
+    InventoryModule,
     OperationsModule,
     SalesModule,
     FiscalModule,

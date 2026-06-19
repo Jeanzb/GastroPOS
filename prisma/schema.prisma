@@ -92,6 +92,9 @@ model Tenant {
   suppliers         Supplier[]
   purchases         Purchase[]
   purchaseItems     PurchaseItem[]
+  unitsOfMeasure    UnitOfMeasure[]
+  inventoryItems    InventoryItem[]
+  stockMovements    StockMovement[]
   diningZones       DiningZone[]
   diningTables      DiningTable[]
 
@@ -130,15 +133,17 @@ model Branch {
   createdById String?
   updatedById String?
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users        User[]
-  sessions     Session[]
-  invoices     Invoice[]
-  cashSessions CashSession[]
-  sales        Sale[]
-  purchases    Purchase[]
-  diningZones  DiningZone[]
-  diningTables DiningTable[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users          User[]
+  sessions       Session[]
+  invoices       Invoice[]
+  cashSessions   CashSession[]
+  sales          Sale[]
+  purchases      Purchase[]
+  inventoryItems InventoryItem[]
+  stockMovements StockMovement[]
+  diningZones    DiningZone[]
+  diningTables   DiningTable[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -364,10 +369,11 @@ model Product {
   createdById String?
   updatedById String?
 
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category      ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  saleItems     SaleItem[]
-  purchaseItems PurchaseItem[]
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category       ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  inventoryItems InventoryItem[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -799,6 +805,17 @@ enum PurchaseStatus {
   CANCELLED
 }
 
+enum StockMovementType {
+  PURCHASE
+  SALE_CONSUMPTION
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  WASTE
+  TRANSFER_IN
+  TRANSFER_OUT
+  RETURN
+}
+
 /// A supplier/vendor the tenant buys from.
 model Supplier {
   id             String  @id @default(cuid())
@@ -848,10 +865,11 @@ model Purchase {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch   Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  supplier Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  items    PurchaseItem[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  supplier       Supplier        @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items          PurchaseItem[]
+  stockMovements StockMovement[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -873,11 +891,105 @@ model PurchaseItem {
 
   createdAt DateTime @default(now())
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  product  Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchase       Purchase        @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product        Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  stockMovements StockMovement[]
 
   @@index([tenantId])
   @@index([purchaseId])
   @@map("purchase_items")
+}
+
+/// Unit catalog used by inventory items. Conversions are explicit future work.
+model UnitOfMeasure {
+  id       String @id @default(cuid())
+  tenantId String
+  code     String
+  name     String
+
+  isActive Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inventoryItems InventoryItem[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("unit_of_measures")
+}
+
+/// Current inventory balance for an item in a branch. Mutations must create movements.
+model InventoryItem {
+  id        String  @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  productId String?
+  unitId    String?
+
+  name               String
+  sku                String?
+  stockOnHand        Int     @default(0)
+  minimumStock       Int     @default(0)
+  averageCost        Int     @default(0)
+  isActive           Boolean @default(true)
+  allowNegativeStock Boolean @default(false)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch    Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  unit      UnitOfMeasure?  @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  movements StockMovement[]
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, productId])
+  @@index([tenantId, isActive])
+  @@map("inventory_items")
+}
+
+/// Kardex-style inventory movement. Every stock-changing workflow writes one.
+model StockMovement {
+  id              String            @id @default(cuid())
+  tenantId        String
+  branchId        String?
+  inventoryItemId String
+  purchaseId      String?
+  purchaseItemId  String?
+  type            StockMovementType
+
+  quantity    Int
+  unitCost    Int?
+  totalCost   Int?
+  stockBefore Int
+  stockAfter  Int
+  reason      String?
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch        Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  purchase      Purchase?     @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  purchaseItem  PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([inventoryItemId])
+  @@index([purchaseId])
+  @@index([tenantId, type, createdAt])
+  @@map("stock_movements")
 }

@@ -108,7 +108,19 @@ export class PurchaseService {
       throw invalidStatus(existing.status, 'receive');
     }
 
-    const updated = await this.repository.receive(id);
+    const received = await this.repository.receive({
+      id,
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.actorUserId,
+    });
+    if (!received) {
+      throw notFound();
+    }
+    if (!received.received) {
+      throw invalidStatus(received.purchase.status, 'receive');
+    }
+
+    const updated = received.purchase;
     const result = toPurchaseDto(updated);
     await this.auditService.tryRecord({
       ...auditBase(ctx),
@@ -117,6 +129,18 @@ export class PurchaseService {
       entityId: id,
       before: asJson(toPurchaseDto(existing)),
       after: asJson(result),
+      metadata: asJson({ stockMovementCount: received.stockMovementCount }),
+    });
+
+    await this.auditService.tryRecord({
+      ...auditBase(ctx),
+      action: 'STOCK_MOVEMENTS_CREATED',
+      entityType: 'Purchase',
+      entityId: id,
+      metadata: asJson({
+        reason: 'PURCHASE_RECEIVED',
+        stockMovementCount: received.stockMovementCount,
+      }),
     });
 
     return result;

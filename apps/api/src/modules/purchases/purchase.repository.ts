@@ -32,6 +32,18 @@ export interface CreatePurchaseData {
   items: CreatePurchaseItemData[];
 }
 
+export interface ReceivePurchaseData {
+  id: string;
+  tenantId: string;
+  actorUserId: string;
+}
+
+export interface ReceivePurchaseResult {
+  purchase: PurchaseWithDetails;
+  received: boolean;
+  stockMovementCount: number;
+}
+
 @Injectable()
 export class PurchaseRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -105,14 +117,37 @@ export class PurchaseRepository {
     });
   }
 
-  receive(id: string): Promise<PurchaseWithDetails> {
-    return this.prisma.tenantScoped.purchase.update({
-      where: { id },
-      data: {
-        status: 'RECEIVED',
-        receivedAt: new Date(),
-      },
-      include: this.includeDetails(),
+  receive(data: ReceivePurchaseData): Promise<ReceivePurchaseResult | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const purchase = await tx.purchase.findFirst({
+        where: { id: data.id, tenantId: data.tenantId, deletedAt: null },
+        include: this.includeDetails(),
+      });
+
+      if (!purchase) {
+        return null;
+      }
+
+      if (purchase.status !== 'DRAFT') {
+        return { purchase, received: false, stockMovementCount: 0 };
+      }
+
+      let stockMovementCount = 0;
+      for (const item of purchase.items) {
+        await this.receiveItemIntoInventory(tx, purchase, item, data.actorUserId);
+        stockMovementCount += 1;
+      }
+
+      const updated = await tx.purchase.update({
+        where: { id: data.id },
+        data: {
+          status: 'RECEIVED',
+          receivedAt: new Date(),
+        },
+        include: this.includeDetails(),
+      });
+
+      return { purchase: updated, received: true, stockMovementCount };
     });
   }
 
@@ -151,4 +186,97 @@ export class PurchaseRepository {
         : {}),
     };
   }
+
+  private async receiveItemIntoInventory(
+    tx: Prisma.TransactionClient,
+    purchase: PurchaseWithDetails,
+    item: PurchaseWithDetails['items'][number],
+    actorUserId: string,
+  ): Promise<void> {
+    const inventoryItem = await this.findOrCreateInventoryItem(tx, purchase, item, actorUserId);
+    const stockBefore = inventoryItem.stockOnHand;
+    const stockAfter = stockBefore + item.quantity;
+    const averageCost = weightedAverageCost(
+      stockBefore,
+      inventoryItem.averageCost,
+      item.quantity,
+      item.unitCost,
+    );
+
+    await tx.inventoryItem.update({
+      where: { id: inventoryItem.id },
+      data: {
+        stockOnHand: stockAfter,
+        averageCost,
+        updatedById: actorUserId,
+      },
+    });
+
+    await tx.stockMovement.create({
+      data: {
+        tenantId: purchase.tenantId,
+        branchId: purchase.branchId,
+        inventoryItemId: inventoryItem.id,
+        purchaseId: purchase.id,
+        purchaseItemId: item.id,
+        type: 'PURCHASE',
+        quantity: item.quantity,
+        unitCost: item.unitCost,
+        totalCost: item.lineTotal,
+        stockBefore,
+        stockAfter,
+        reason: `Purchase ${purchase.reference ?? purchase.id} received`,
+        createdById: actorUserId,
+      },
+    });
+  }
+
+  private async findOrCreateInventoryItem(
+    tx: Prisma.TransactionClient,
+    purchase: PurchaseWithDetails,
+    item: PurchaseWithDetails['items'][number],
+    actorUserId: string,
+  ) {
+    const existing = await tx.inventoryItem.findFirst({
+      where: {
+        tenantId: purchase.tenantId,
+        branchId: purchase.branchId,
+        deletedAt: null,
+        ...(item.productId
+          ? { productId: item.productId }
+          : { productId: null, name: item.nameSnapshot }),
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return tx.inventoryItem.create({
+      data: {
+        tenantId: purchase.tenantId,
+        branchId: purchase.branchId,
+        productId: item.productId,
+        name: item.nameSnapshot,
+        stockOnHand: 0,
+        averageCost: item.unitCost,
+        createdById: actorUserId,
+      },
+    });
+  }
+}
+
+function weightedAverageCost(
+  stockBefore: number,
+  previousAverageCost: number,
+  quantity: number,
+  unitCost: number,
+): number {
+  const stockAfter = stockBefore + quantity;
+  if (stockAfter <= 0 || stockBefore <= 0) {
+    return unitCost;
+  }
+
+  return Math.round((stockBefore * previousAverageCost + quantity * unitCost) / stockAfter);
 }

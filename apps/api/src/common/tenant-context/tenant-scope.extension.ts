@@ -10,6 +10,9 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'Supplier',
   'Purchase',
   'PurchaseItem',
+  'UnitOfMeasure',
+  'InventoryItem',
+  'StockMovement',
   'DiningZone',
   'DiningTable',
 ]);

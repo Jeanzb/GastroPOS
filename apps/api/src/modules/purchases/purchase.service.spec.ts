@@ -153,4 +153,39 @@ describe('PurchaseService', () => {
 
     expect(repo.receive).not.toHaveBeenCalled();
   });
+
+  it('receives a draft purchase and audits generated stock movements', async () => {
+    const draft = purchase();
+    const received = purchase({
+      status: PurchaseStatus.RECEIVED,
+      receivedAt: now,
+    });
+    repo.findById.mockResolvedValue(draft);
+    repo.receive.mockResolvedValue({
+      purchase: received,
+      received: true,
+      stockMovementCount: 1,
+    });
+
+    const result = await service.receive(ctx, 'purchase_1');
+
+    expect(repo.receive).toHaveBeenCalledWith({
+      id: 'purchase_1',
+      tenantId: 'tenant_1',
+      actorUserId: 'user_1',
+    });
+    expect(audit.tryRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'PURCHASE_RECEIVED',
+        metadata: { stockMovementCount: 1 },
+      }),
+    );
+    expect(audit.tryRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'STOCK_MOVEMENTS_CREATED',
+        metadata: { reason: 'PURCHASE_RECEIVED', stockMovementCount: 1 },
+      }),
+    );
+    expect(result.status).toBe(PurchaseStatus.RECEIVED);
+  });
 });
