@@ -35,15 +35,20 @@ async function bootstrap() {
     }),
   );
 
-  // OpenAPI / Swagger docs.
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('GastroAI API')
-    .setDescription('Operational core API for restaurants and food businesses.')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
+  // OpenAPI / Swagger docs — exposed only outside production unless explicitly enabled.
+  const enableSwagger =
+    config.get('ENABLE_SWAGGER', { infer: true }) ??
+    config.get('NODE_ENV', { infer: true }) !== 'production';
+  if (enableSwagger) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('GastroAI API')
+      .setDescription('Operational core API for restaurants and food businesses.')
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
+  }
 
   const port = config.get('API_PORT', { infer: true });
   await app.listen(port);
@@ -52,10 +57,12 @@ async function bootstrap() {
     `GastroAI API ready at http://localhost:${port}/${globalPrefix}`,
     'Bootstrap',
   );
-  Logger.log(
-    `Swagger docs at http://localhost:${port}/${globalPrefix}/docs`,
-    'Bootstrap',
-  );
+  if (enableSwagger) {
+    Logger.log(
+      `Swagger docs at http://localhost:${port}/${globalPrefix}/docs`,
+      'Bootstrap',
+    );
+  }
 }
 
 void bootstrap();

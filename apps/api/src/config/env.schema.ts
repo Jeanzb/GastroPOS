@@ -18,6 +18,9 @@ export const envSchema = z.object({
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(1_209_600),
 
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
+
+  // When unset, Swagger is served only outside production.
+  ENABLE_SWAGGER: z.stringbool().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
