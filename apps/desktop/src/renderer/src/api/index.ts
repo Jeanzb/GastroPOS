@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/constants';
+import { localizeApiError } from '@/lib/api-errors';
 import { useAuthStore } from '@/stores/auth.store';
 import type { LoginResponse } from '@/types/auth';
 
@@ -89,7 +90,7 @@ async function toApiError(response: Response): Promise<ApiError> {
     code = String(response.status);
   }
 
-  return new ApiError(response.status, code, message, details);
+  return new ApiError(response.status, code, localizeApiError(code, message), details);
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
