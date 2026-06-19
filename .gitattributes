@@ -1,6 +1,19 @@
 # Normalize line endings: LF in the repository for all text files.
 * text=auto eol=lf
 
+# Source, schema, SQL, docs, and web assets are expected to be UTF-8.
+*.ts text working-tree-encoding=UTF-8 eol=lf
+*.tsx text working-tree-encoding=UTF-8 eol=lf
+*.js text working-tree-encoding=UTF-8 eol=lf
+*.jsx text working-tree-encoding=UTF-8 eol=lf
+*.json text working-tree-encoding=UTF-8 eol=lf
+*.md text working-tree-encoding=UTF-8 eol=lf
+*.prisma text working-tree-encoding=UTF-8 eol=lf
+*.sql text working-tree-encoding=UTF-8 eol=lf
+*.html text working-tree-encoding=UTF-8 eol=lf
+*.css text working-tree-encoding=UTF-8 eol=lf
+*.svg text working-tree-encoding=UTF-8 eol=lf
+
 # Windows-specific scripts keep CRLF on checkout.
 *.bat text eol=crlf
 *.cmd text eol=crlf

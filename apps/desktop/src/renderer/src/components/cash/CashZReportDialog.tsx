@@ -162,7 +162,7 @@ export function CashZReportDialog({
                       <div key={method.method} className="flex items-center justify-between text-sm">
                         <span>{METHOD_LABELS[method.method]}</span>
                         <span className="nums font-semibold">
-                          {formatMoney(method.amount, report.currency)} · {method.count}
+                          {formatMoney(method.amount, report.currency)} - {method.count}
                         </span>
                       </div>
                     ))
@@ -180,7 +180,7 @@ export function CashZReportDialog({
                       <div key={product.name} className="flex items-center justify-between gap-3 text-sm">
                         <span className="truncate">{product.name}</span>
                         <span className="nums shrink-0 font-semibold">
-                          x{product.quantity} · {formatMoney(product.total, report.currency)}
+                          x{product.quantity} - {formatMoney(product.total, report.currency)}
                         </span>
                       </div>
                     ))
@@ -198,7 +198,7 @@ export function CashZReportDialog({
                   report.movements.map((movement) => (
                     <div key={movement.id} className="flex items-center justify-between gap-3 text-sm">
                       <span className="min-w-0 truncate">
-                        {MOVEMENT_LABELS[movement.type]} · {movement.reference ?? movement.notes ?? 'Sin detalle'}
+                        {MOVEMENT_LABELS[movement.type]} - {movement.reference ?? movement.notes ?? 'Sin detalle'}
                       </span>
                       <span className="nums shrink-0 font-semibold">
                         {formatMoney(movement.signedAmount, report.currency)}

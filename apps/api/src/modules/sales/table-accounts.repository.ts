@@ -545,7 +545,7 @@ export class TableAccountsRepository {
           quantity: item.quantity,
           stockBefore,
           stockAfter,
-          reason: `Venta mesa · ${sale.id}`,
+          reason: `Venta mesa - ${sale.id}`,
           createdById: data.chargedById,
         },
       });
