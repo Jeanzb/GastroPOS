@@ -43,15 +43,15 @@ function toCategoryPayload(values: CategoryFormValues): CreateCategoryPayload {
 
 function toProductPayload(values: ProductFormValues): CreateProductPayload {
   return {
-    name: values.name,
-    priceAmount: values.priceAmount,
-    currency: values.currency.toUpperCase(),
-    categoryId: normalizeOptionalString(values.categoryId),
-    sku: normalizeOptionalString(values.sku),
-    description: normalizeOptionalString(values.description),
-    isActive: values.isActive,
-    isSellable: values.isSellable,
-    isInventoried: values.isInventoried,
+    name: values.identity.name,
+    priceAmount: values.pricing.amount,
+    currency: values.pricing.currency.toUpperCase(),
+    categoryId: normalizeOptionalString(values.identity.categoryId),
+    sku: normalizeOptionalString(values.identity.sku),
+    description: normalizeOptionalString(values.details.description),
+    isActive: values.availability.isActive,
+    isSellable: values.availability.isSellable,
+    isInventoried: values.availability.isInventoried,
   };
 }
 
@@ -101,7 +101,7 @@ export function ProductsPage() {
   const onCreateCategory = async (values: CategoryFormValues) => {
     try {
       await categories.createMutation.mutateAsync(toCategoryPayload(values));
-      appToast.success('Categoria creada', `${values.name} ya puede agrupar productos del menu.`);
+      appToast.success('Categoria creada', `${values.name} ya puede agrupar productos del menú.`);
     } catch (error) {
       appToast.error(
         'No se pudo crear la categoria',
@@ -117,7 +117,10 @@ export function ProductsPage() {
         id,
         payload: toCategoryPayload(values),
       });
-      appToast.success('Categoria actualizada', `${values.name} quedo sincronizada con el catalogo.`);
+      appToast.success(
+        'Categoria actualizada',
+        `${values.name} quedo sincronizada con el catalogo.`,
+      );
     } catch (error) {
       appToast.error(
         'No se pudo actualizar la categoria',
@@ -147,12 +150,18 @@ export function ProductsPage() {
           id: selectedProduct.id,
           payload: toProductPayload(values),
         });
-        appToast.success('Producto actualizado', `${values.name} quedo listo para POS e inventario.`);
+        appToast.success(
+          'Producto actualizado',
+          `${values.identity.name} quedó listo para POS e inventario.`,
+        );
         return;
       }
 
       await products.createMutation.mutateAsync(toProductPayload(values));
-      appToast.success('Producto creado', `${values.name} ya aparece en el catalogo operativo.`);
+      appToast.success(
+        'Producto creado',
+        `${values.identity.name} ya aparece en el catálogo operativo.`,
+      );
     } catch (error) {
       appToast.error(
         'No se pudo guardar el producto',
@@ -233,6 +242,7 @@ export function ProductsPage() {
       <ProductFormDialog
         open={isProductFormOpen}
         product={selectedProduct}
+        products={productList}
         categories={categoryList}
         isSubmitting={isProductSaving}
         onOpenChange={setIsProductFormOpen}
