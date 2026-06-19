@@ -10,6 +10,7 @@ const ctx: TenantRequestContext = {
   branchId: 'branch_1',
   actorUserId: 'user_1',
   role: 'OWNER',
+  permissions: [],
   sessionId: 'session_1',
 };
 
@@ -66,9 +67,9 @@ describe('SupplierService', () => {
   it('rejects a duplicate supplier name', async () => {
     repo.findByName.mockResolvedValue(supplier());
 
-    await expect(
-      service.create(ctx, { name: 'Carnes del Valle' }),
-    ).rejects.toBeInstanceOf(ApplicationException);
+    await expect(service.create(ctx, { name: 'Carnes del Valle' })).rejects.toBeInstanceOf(
+      ApplicationException,
+    );
     expect(repo.create).not.toHaveBeenCalled();
   });
 
@@ -89,8 +90,6 @@ describe('SupplierService', () => {
   it('returns 404 when the supplier does not exist', async () => {
     repo.findById.mockResolvedValue(null);
 
-    await expect(service.getById(ctx, 'missing')).rejects.toBeInstanceOf(
-      ApplicationException,
-    );
+    await expect(service.getById(ctx, 'missing')).rejects.toBeInstanceOf(ApplicationException);
   });
 });

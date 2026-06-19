@@ -1,3 +1,4 @@
+import type { AppPermission, RoleProfile } from '@gastroai/contracts';
 import type { UserRole } from '../../../generated/prisma';
 
 export type { UserRole };
@@ -7,6 +8,8 @@ export interface AuthenticatedUser {
   email: string;
   fullName: string;
   role: UserRole;
+  permissions: AppPermission[];
+  availableRoles: RoleProfile[];
   tenantId: string;
   branchId: string | null;
   sessionId: string;
@@ -17,6 +20,7 @@ export interface TenantRequestContext {
   branchId: string | null;
   actorUserId: string;
   role: UserRole;
+  permissions: AppPermission[];
   sessionId: string;
 }
 

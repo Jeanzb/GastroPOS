@@ -10,15 +10,15 @@ interface MetricCardProps {
 const TREND_STYLES = {
   up: {
     icon: ArrowUpRight,
-    className: 'text-emerald-700',
+    className: 'bg-success-soft text-success',
   },
   down: {
     icon: ArrowDownRight,
-    className: 'text-red-700',
+    className: 'bg-warning-soft text-[#9A6A1C]',
   },
   neutral: {
     icon: ArrowRight,
-    className: 'text-muted-foreground',
+    className: 'bg-surface-quiet text-muted-foreground',
   },
 };
 
@@ -27,7 +27,7 @@ export function MetricCard({ metric }: MetricCardProps) {
   const TrendIcon = trendStyle.icon;
 
   return (
-    <Card className="motion-press group gap-4 overflow-hidden border-border/80 bg-surface-raised py-5 hover:border-orange/35 hover:shadow-md">
+    <Card className="motion-press group gap-4 overflow-hidden rounded-2xl border-border/80 bg-surface-raised py-5 hover:-translate-y-0.5 hover:border-orange/35 hover:shadow-md">
       <CardHeader className="px-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -40,7 +40,7 @@ export function MetricCard({ metric }: MetricCardProps) {
       <CardContent className="px-5">
         <div
           className={cn(
-            'inline-flex h-7 items-center gap-1 rounded-full border border-current/15 bg-background/70 px-2.5 text-xs font-semibold',
+            'inline-flex h-7 items-center gap-1 rounded-[7px] px-2.5 text-xs font-bold',
             trendStyle.className,
           )}
         >

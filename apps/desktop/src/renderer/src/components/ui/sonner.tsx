@@ -50,6 +50,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           '--normal-text': '#f3efe8',
           '--normal-border': '#2e2a25',
           '--border-radius': '14px',
+          '--width': '420px',
         } as React.CSSProperties
       }
       {...props}

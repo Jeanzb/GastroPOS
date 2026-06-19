@@ -11,8 +11,12 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CashModule } from './modules/cash/cash.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { EmployeesModule } from './modules/employees/employees.module';
 import { FiscalModule } from './modules/fiscal/fiscal.module';
 import { HealthModule } from './modules/health/health.module';
+import { OperationsModule } from './modules/operations/operations.module';
+import { PurchasesModule } from './modules/purchases/purchases.module';
+import { SalesModule } from './modules/sales/sales.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 
 @Module({
@@ -28,7 +32,11 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
     CashModule,
     CatalogModule,
     CustomersModule,
+    EmployeesModule,
     SuppliersModule,
+    PurchasesModule,
+    OperationsModule,
+    SalesModule,
     FiscalModule,
     HealthModule,
   ],

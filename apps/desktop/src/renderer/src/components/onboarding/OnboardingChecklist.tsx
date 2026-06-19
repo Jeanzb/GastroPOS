@@ -29,7 +29,9 @@ function SetupStepRow({ step }: { step: SetupStep }) {
     <div
       className={cn(
         'flex items-start gap-4 rounded-lg border p-4',
-        step.status === 'current' ? 'border-orange/35 bg-orange/10' : 'border-border bg-background',
+        step.status === 'current'
+          ? 'border-orange/35 bg-orange/10'
+          : 'border-border bg-background/75',
       )}
     >
       <div
@@ -67,7 +69,7 @@ function renderSetupStep(step: SetupStep) {
 export function OnboardingChecklist() {
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <Card className="gap-4 border-border/80 py-5 shadow-none">
+      <Card className="gap-4 border-border/80 bg-surface-raised py-5 shadow-sm">
         <CardHeader className="px-5">
           <CardTitle>Checklist del MVP</CardTitle>
           <CardDescription>Orden recomendado antes de operar ventas reales</CardDescription>
@@ -76,13 +78,15 @@ export function OnboardingChecklist() {
       </Card>
 
       <aside>
-        <Card className="gap-4 border-border/80 py-5 shadow-none">
+        <Card className="gap-4 border-border/80 bg-carbon py-5 text-white shadow-lg shadow-carbon/10">
           <CardHeader className="px-5">
             <CardTitle>Siguiente decision</CardTitle>
-            <CardDescription>Completar catalogo antes de POS real</CardDescription>
+            <CardDescription className="text-white/55">
+              Completar catalogo antes de POS real
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 px-5">
-            <p className="text-sm leading-6 text-muted-foreground">
+            <p className="text-sm leading-6 text-white/60">
               La rebanada vertical correcta es login, contexto de sede, categorias y productos.
               Despues se conecta apertura de caja y venta cerrada.
             </p>

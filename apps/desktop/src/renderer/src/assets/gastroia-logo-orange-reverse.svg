@@ -1,0 +1,68 @@
+<svg
+  width="980"
+  height="260"
+  viewBox="0 0 980 260"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="GastroIA - version reversa"
+>
+  <defs>
+    <linearGradient id="gastroia-reverse-bg" x1="0" y1="0" x2="980" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF7A16" />
+      <stop offset="1" stop-color="#FF5A00" />
+    </linearGradient>
+  </defs>
+  <rect width="980" height="260" rx="28" fill="url(#gastroia-reverse-bg)" />
+  <g transform="translate(18 34) scale(0.125)">
+    <g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M356 974C356 625 599 390 900 390C1201 390 1444 625 1444 974" stroke-width="58" />
+      <path d="M244 1082H746" stroke-width="58" />
+      <path d="M1054 1082H1556" stroke-width="58" />
+      <path d="M244 1082C258 1182 321 1226 410 1226H1390C1479 1226 1542 1182 1556 1082" stroke-width="58" />
+    </g>
+    <g>
+      <circle cx="900" cy="302" r="113" fill="#FFFFFF" />
+      <circle cx="900" cy="302" r="58" fill="#FF6A00" />
+      <circle cx="900" cy="302" r="28" fill="#FFFFFF" />
+    </g>
+    <g stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M900 520L710 650" />
+      <path d="M900 520L1090 650" />
+      <path d="M900 520V726" />
+      <path d="M710 650L520 842" />
+      <path d="M710 650V842" />
+      <path d="M710 650L900 726" />
+      <path d="M520 842H710" />
+      <path d="M710 842L900 726" />
+      <path d="M710 842L900 948" />
+      <path d="M900 726L1090 842" />
+      <path d="M900 726V948" />
+      <path d="M900 948L1090 842" />
+      <path d="M900 948V1092" />
+      <path d="M1090 650V842" />
+      <path d="M1090 650L1280 842" />
+      <path d="M1090 842H1280" />
+    </g>
+    <g fill="#FFFFFF">
+      <circle cx="900" cy="520" r="50" />
+      <circle cx="710" cy="650" r="50" />
+      <circle cx="1090" cy="650" r="50" />
+      <circle cx="900" cy="726" r="54" />
+      <circle cx="520" cy="842" r="50" />
+      <circle cx="710" cy="842" r="50" />
+      <circle cx="1090" cy="842" r="50" />
+      <circle cx="1280" cy="842" r="50" />
+      <circle cx="900" cy="948" r="50" />
+    </g>
+  </g>
+  <text x="260" y="145" fill="#FFFFFF" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="116" font-weight="400" letter-spacing="-1">
+    Gastro
+  </text>
+  <text x="668" y="145" fill="#FFFFFF" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="116" font-weight="800">
+    AI
+  </text>
+  <text x="265" y="204" fill="#FFFFFF" opacity="0.82" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="23" font-weight="700" letter-spacing="10">
+    OPERACION &amp; DATA RESTAURANTERA
+  </text>
+</svg>

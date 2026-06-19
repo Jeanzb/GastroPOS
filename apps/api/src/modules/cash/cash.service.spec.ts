@@ -15,6 +15,7 @@ const ctx: TenantRequestContext = {
   branchId: 'branch_1',
   actorUserId: 'user_1',
   role: 'CASHIER',
+  permissions: [],
   sessionId: 'session_1',
 };
 

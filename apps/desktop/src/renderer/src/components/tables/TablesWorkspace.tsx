@@ -44,10 +44,10 @@ function getMinutes(table: DiningTableDto): number | null {
 function tableDetail(table: DiningTableDto): string | null {
   if (table.status === 'OCCUPIED' || table.status === 'PENDING_BILL') {
     const minutes = getMinutes(table);
-    return `${minutes ?? 0} min · ${table.waiterName ?? 'Sin mesero'}`;
+    return `${minutes ?? 0} min - ${table.waiterName ?? 'Sin mesero'}`;
   }
   if (table.status === 'RESERVED') {
-    return `${table.reservationTime ?? 'Sin hora'} · ${table.reservationName ?? 'Reserva'}`;
+    return `${table.reservationTime ?? 'Sin hora'} - ${table.reservationName ?? 'Reserva'}`;
   }
   return null;
 }
@@ -134,11 +134,11 @@ function TableCard({ table, onOpen }: { table: DiningTableDto; onOpen: (table: D
       type="button"
       onClick={() => onOpen(table)}
       className={cn(
-        'group relative flex min-h-[140px] flex-col overflow-hidden rounded-2xl border border-border bg-card text-left transition',
-        'hover:-translate-y-[3px] hover:border-carbon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40',
+        'group relative flex min-h-[156px] flex-col overflow-hidden rounded-[14px] border border-border bg-card text-left transition',
+        'hover:-translate-y-[3px] hover:border-orange/45 hover:shadow-md hover:shadow-carbon/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40',
       )}
     >
-      <span className={cn('h-1.5 w-full', status.strip)} />
+      <span className={cn('h-1 w-full', status.strip)} />
       <div className="flex flex-1 flex-col p-[15px]">
         <div className="flex items-start justify-between">
           <div>
@@ -151,7 +151,18 @@ function TableCard({ table, onOpen }: { table: DiningTableDto; onOpen: (table: D
           </span>
         </div>
         <div className="mt-auto pt-3">
-          <StatusPill tone={status.tone}>{status.label}</StatusPill>
+          <span
+            className={cn(
+              'nums inline-flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[11px] font-bold',
+              status.tone === 'green' && 'bg-success-soft text-success',
+              status.tone === 'red' && 'bg-danger-soft text-[#C0431A]',
+              status.tone === 'amber' && 'bg-warning-soft text-[#9A6A1C]',
+              status.tone === 'neutral' && 'bg-surface-quiet text-[#6B6359]',
+            )}
+          >
+            <span className={cn('size-1.5 rounded-full', status.dot)} />
+            {status.label}
+          </span>
           {detail ? (
             <p className="nums mt-2.5 border-t border-dashed border-[#ECE6DD] pt-2.5 text-[11px] text-muted-foreground">
               {detail}
@@ -194,7 +205,7 @@ export function TablesWorkspace() {
     <section key={zone.id} className="space-y-3">
       <div className="flex items-center gap-3">
         <h2 className="font-display text-[17px] font-bold tracking-tight">{zone.name}</h2>
-        <StatusPill tone="neutral">{`${zone.tables.length} mesas · ${activeCount(zone.tables)} activas`}</StatusPill>
+        <StatusPill tone="neutral">{`${zone.tables.length} mesas - ${activeCount(zone.tables)} activas`}</StatusPill>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[13px]">
         {zone.tables.map(renderTable)}
@@ -251,7 +262,7 @@ export function TablesWorkspace() {
       </div>
 
       <p className="nums text-sm text-muted-foreground">
-        {countByStatus(allTables, 'FREE')} libres · {activeCount(allTables)} activas ·{' '}
+        {countByStatus(allTables, 'FREE')} libres - {activeCount(allTables)} activas -{' '}
         {allTables.length} mesas en total
       </p>
 

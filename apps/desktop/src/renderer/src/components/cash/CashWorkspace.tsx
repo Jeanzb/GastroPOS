@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { AlertCircle, Banknote, Loader2, LockKeyhole, Plus, ReceiptText } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Loader2,
+  LockKeyhole,
+  Plus,
+  ReceiptText,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { StatusPill } from '@/components/operations';
 import { Button } from '@/components/ui/button';
@@ -8,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCashSession } from '@/hooks/cash';
 import { formatMoney } from '@/lib';
+import { cn } from '@/lib/utils';
 import type {
   CashMovementFormValues,
   CloseCashSessionFormValues,
@@ -68,25 +77,45 @@ function formatDateTime(value: string): string {
 
 function MovementIcon({ type }: { type: CashMovementType }) {
   if (type === 'SALE_PAYMENT' || type === 'OPENING_BALANCE') {
-    return <ReceiptText className="h-4 w-4 text-orange" />;
+    return <ReceiptText className="h-4 w-4" />;
   }
-  return <Banknote className="h-4 w-4 text-orange" />;
+  if (MOVEMENT_SIGN[type] < 0) {
+    return <ArrowDownLeft className="h-4 w-4" />;
+  }
+  return <ArrowUpRight className="h-4 w-4" />;
 }
 
 function MovementRow({ movement, currency }: { movement: CashMovementDto; currency: string }) {
   const signedAmount = MOVEMENT_SIGN[movement.type] * movement.amount;
   const detail = movement.reference ?? movement.notes ?? formatDateTime(movement.createdAt);
+  const isNegative = signedAmount < 0;
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3">
+    <div className="motion-press flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 hover:border-orange/30 hover:bg-orange/5">
       <div className="flex min-w-0 items-center gap-3">
-        <MovementIcon type={movement.type} />
+        <span
+          className={cn(
+            'grid h-9 w-9 place-items-center rounded-lg border',
+            isNegative
+              ? 'border-destructive/20 bg-danger-soft text-destructive'
+              : 'border-success/20 bg-success-soft text-success',
+          )}
+        >
+          <MovementIcon type={movement.type} />
+        </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{MOVEMENT_LABELS[movement.type]}</p>
           <p className="truncate text-xs text-muted-foreground">{detail}</p>
         </div>
       </div>
-      <p className="nums shrink-0 text-sm font-semibold">{formatMoney(signedAmount, currency)}</p>
+      <p
+        className={cn(
+          'nums shrink-0 text-sm font-semibold',
+          isNegative ? 'text-destructive' : 'text-success',
+        )}
+      >
+        {formatMoney(signedAmount, currency)}
+      </p>
     </div>
   );
 }
@@ -114,9 +143,13 @@ export function CashWorkspace() {
         openingBalance: values.openingBalance,
         notes: optionalString(values.notes),
       });
-      toast.success('Caja abierta');
+      toast.success('Caja abierta', {
+        description: `Base inicial ${formatMoney(values.openingBalance, currency)} lista para el turno.`,
+      });
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo abrir la caja'));
+      toast.error('No se pudo abrir la caja', {
+        description: getErrorMessage(error, 'Revisa la conexion o el estado del turno.'),
+      });
       throw error;
     }
   };
@@ -136,9 +169,13 @@ export function CashWorkspace() {
           notes: optionalString(values.notes),
         },
       });
-      toast.success('Movimiento registrado');
+      toast.success('Movimiento registrado', {
+        description: `${MOVEMENT_LABELS[values.type]} por ${formatMoney(values.amount, currency)} quedo auditado.`,
+      });
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo registrar el movimiento'));
+      toast.error('No se pudo registrar el movimiento', {
+        description: getErrorMessage(error, 'Valida el monto y vuelve a intentarlo.'),
+      });
       throw error;
     }
   };
@@ -156,9 +193,13 @@ export function CashWorkspace() {
           notes: optionalString(values.notes),
         },
       });
-      toast.success('Caja cerrada');
+      toast.success('Caja cerrada', {
+        description: `Diferencia registrada: ${formatMoney(values.countedAmount - expectedAmount, currency)}.`,
+      });
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo cerrar la caja'));
+      toast.error('No se pudo cerrar la caja', {
+        description: getErrorMessage(error, 'Confirma el conteo y las notas del cierre.'),
+      });
       throw error;
     }
   };
@@ -171,7 +212,7 @@ export function CashWorkspace() {
     <>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-4">
-          <Card className="gap-5 border-border/80 py-5 shadow-none">
+          <Card className="gap-5 overflow-hidden border-border/80 bg-surface-raised py-5 shadow-sm">
             <CardHeader className="px-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -202,7 +243,7 @@ export function CashWorkspace() {
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-lg border border-border bg-background p-4">
+                  <div className="rounded-lg border border-success/20 bg-success-soft p-4 text-success">
                     <p className="text-sm text-muted-foreground">Efectivo esperado</p>
                     <p className="nums mt-2 font-display text-3xl font-semibold">
                       {formatMoney(expectedAmount, currency)}
@@ -214,7 +255,7 @@ export function CashWorkspace() {
                       {formatMoney(session?.openingBalance ?? 0, currency)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border bg-background p-4">
+                  <div className="rounded-lg border border-orange/20 bg-orange/10 p-4">
                     <p className="text-sm text-muted-foreground">Apertura</p>
                     <p className="mt-2 font-display text-xl font-semibold">
                       {session ? formatDateTime(session.openedAt) : 'Sin turno'}
@@ -225,7 +266,7 @@ export function CashWorkspace() {
             </CardContent>
           </Card>
 
-          <Card className="gap-4 border-border/80 py-5 shadow-none">
+          <Card className="gap-4 border-border/80 bg-surface-raised py-5 shadow-sm">
             <CardHeader className="px-5">
               <CardTitle>Movimientos recientes</CardTitle>
               <CardDescription>Cada movimiento queda auditado por usuario y sede</CardDescription>
@@ -248,13 +289,15 @@ export function CashWorkspace() {
         </section>
 
         <aside className="space-y-4">
-          <Card className="gap-4 border-border/80 py-5 shadow-none">
+          <Card className="gap-4 border-border/80 bg-carbon py-5 text-white shadow-lg shadow-carbon/10">
             <CardHeader className="px-5">
               <CardTitle>Cierre de turno</CardTitle>
-              <CardDescription>Compara esperado contra contado antes de cerrar</CardDescription>
+              <CardDescription className="text-white/55">
+                Compara esperado contra contado antes de cerrar
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 px-5">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+              <div className="rounded-lg border border-warning/25 bg-warning-soft p-4 text-amber-900">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="mt-0.5 h-4 w-4" />
                   <p className="text-sm">
@@ -262,9 +305,9 @@ export function CashWorkspace() {
                   </p>
                 </div>
               </div>
-              <Separator />
-              <div className="rounded-lg border border-border bg-background p-4">
-                <p className="text-sm text-muted-foreground">Esperado actual</p>
+              <Separator className="bg-white/10" />
+              <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-sm text-white/55">Esperado actual</p>
                 <p className="nums mt-1 text-2xl font-semibold">
                   {formatMoney(expectedAmount, currency)}
                 </p>

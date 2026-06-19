@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
 import {
   CatalogDeleteDialog,
   CategoriesPanel,
@@ -9,6 +8,7 @@ import {
 } from '@/components/catalog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCategories, useProducts } from '@/hooks/catalog';
+import { useAppToast } from '@/hooks/ui';
 import type { CategoryFormValues, ProductFormValues } from '@/schemas/catalog';
 import type {
   CreateCategoryPayload,
@@ -63,6 +63,7 @@ function buildCategoryNames(categories: ProductCategoryDto[]): Record<string, st
 }
 
 export function ProductsPage() {
+  const appToast = useAppToast();
   const categories = useCategories();
   const products = useProducts();
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -100,9 +101,12 @@ export function ProductsPage() {
   const onCreateCategory = async (values: CategoryFormValues) => {
     try {
       await categories.createMutation.mutateAsync(toCategoryPayload(values));
-      toast.success('Categoria creada');
+      appToast.success('Categoria creada', `${values.name} ya puede agrupar productos del menu.`);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo crear la categoria'));
+      appToast.error(
+        'No se pudo crear la categoria',
+        getErrorMessage(error, 'Revisa el nombre y vuelve a intentarlo.'),
+      );
       throw error;
     }
   };
@@ -113,9 +117,12 @@ export function ProductsPage() {
         id,
         payload: toCategoryPayload(values),
       });
-      toast.success('Categoria actualizada');
+      appToast.success('Categoria actualizada', `${values.name} quedo sincronizada con el catalogo.`);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo actualizar la categoria'));
+      appToast.error(
+        'No se pudo actualizar la categoria',
+        getErrorMessage(error, 'El cambio no fue guardado.'),
+      );
       throw error;
     }
   };
@@ -123,9 +130,12 @@ export function ProductsPage() {
   const onDeleteCategory = async (id: string) => {
     try {
       await categories.deleteMutation.mutateAsync(id);
-      toast.success('Categoria eliminada');
+      appToast.success('Categoria eliminada', 'El catalogo se actualizo para la sede activa.');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo eliminar la categoria'));
+      appToast.error(
+        'No se pudo eliminar la categoria',
+        getErrorMessage(error, 'Puede tener productos asociados.'),
+      );
       throw error;
     }
   };
@@ -137,14 +147,17 @@ export function ProductsPage() {
           id: selectedProduct.id,
           payload: toProductPayload(values),
         });
-        toast.success('Producto actualizado');
+        appToast.success('Producto actualizado', `${values.name} quedo listo para POS e inventario.`);
         return;
       }
 
       await products.createMutation.mutateAsync(toProductPayload(values));
-      toast.success('Producto creado');
+      appToast.success('Producto creado', `${values.name} ya aparece en el catalogo operativo.`);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo guardar el producto'));
+      appToast.error(
+        'No se pudo guardar el producto',
+        getErrorMessage(error, 'Valida precio, categoria y estado.'),
+      );
       throw error;
     }
   };
@@ -156,10 +169,13 @@ export function ProductsPage() {
 
     try {
       await products.deleteMutation.mutateAsync(productToDelete.id);
-      toast.success('Producto eliminado');
+      appToast.success('Producto eliminado', `${productToDelete.name} salio del catalogo activo.`);
       setProductToDelete(undefined);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo eliminar el producto'));
+      appToast.error(
+        'No se pudo eliminar el producto',
+        getErrorMessage(error, 'Si tiene historial, debe inactivarse.'),
+      );
       throw error;
     }
   };
@@ -176,6 +192,7 @@ export function ProductsPage() {
         <aside>
           <CategoriesPanel
             categories={categoryList}
+            totalProducts={products.listQuery.data?.meta.total ?? productList.length}
             isLoading={categories.listQuery.isLoading}
             isSaving={isCategorySaving}
             isDeleting={categories.deleteMutation.isPending}
@@ -185,7 +202,7 @@ export function ProductsPage() {
           />
         </aside>
 
-        <Card className="gap-4 border-border/80 py-5 shadow-none">
+        <Card className="gap-4 border-border/80 bg-surface-raised py-5 shadow-sm">
           <CardHeader className="px-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -196,7 +213,6 @@ export function ProductsPage() {
               </div>
               <ProductsToolbar
                 search={products.params.search ?? ''}
-                total={products.listQuery.data?.meta.total ?? 0}
                 onSearch={onSearch}
                 onCreate={onCreateProductClick}
               />

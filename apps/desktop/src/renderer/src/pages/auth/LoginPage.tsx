@@ -22,7 +22,9 @@ export function LoginPage() {
     <div className="grid min-h-screen bg-background lg:grid-cols-[1.1fr_0.9fr]">
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex">
         <div className="flex items-center gap-3">
-          <LogoMark className="h-11 w-11" />
+          <div className="grid h-14 w-14 place-items-center rounded-xl bg-white shadow-lg shadow-black/15">
+            <LogoMark className="h-12 w-12" />
+          </div>
           <div>
             <Wordmark className="text-2xl" />
             <p className="mt-1 text-xs text-sidebar-foreground/50">
@@ -45,15 +47,15 @@ export function LoginPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-sm">
             <p className="nums text-2xl font-semibold">$2.8M</p>
             <p className="mt-1 text-xs text-sidebar-foreground/48">Ventas hoy</p>
           </div>
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-sm">
             <p className="nums text-2xl font-semibold">64</p>
             <p className="mt-1 text-xs text-sidebar-foreground/48">Tickets</p>
           </div>
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-sm">
             <p className="nums text-2xl font-semibold">3</p>
             <p className="mt-1 text-xs text-sidebar-foreground/48">Alertas</p>
           </div>

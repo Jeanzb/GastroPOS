@@ -1,1 +1,1 @@
-export { Logo, LogoMark, Wordmark } from './logo';
+export { DarkLogoLockup, Logo, LogoMark, Wordmark } from './logo';

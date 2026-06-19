@@ -1,0 +1,80 @@
+<svg
+  width="1800"
+  height="1400"
+  viewBox="0 0 1800 1400"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="GastroIA"
+>
+  <defs>
+    <linearGradient id="gastroia-dark" x1="360" y1="260" x2="1440" y2="1220" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2B3038" />
+      <stop offset="1" stop-color="#171B22" />
+    </linearGradient>
+    <linearGradient id="gastroia-orange" x1="420" y1="490" x2="1200" y2="1110" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF861F" />
+      <stop offset="1" stop-color="#FF5A00" />
+    </linearGradient>
+  </defs>
+
+  <g stroke="url(#gastroia-dark)" stroke-linecap="round" stroke-linejoin="round">
+    <path
+      d="M356 974C356 625 599 390 900 390C1201 390 1444 625 1444 974"
+      stroke-width="58"
+    />
+    <path
+      d="M244 1082H746"
+      stroke-width="58"
+    />
+    <path
+      d="M1054 1082H1556"
+      stroke-width="58"
+    />
+    <path
+      d="M244 1082C258 1182 321 1226 410 1226H1390C1479 1226 1542 1182 1556 1082"
+      stroke-width="58"
+    />
+  </g>
+
+  <g>
+    <circle cx="900" cy="302" r="113" fill="url(#gastroia-dark)" />
+    <circle cx="900" cy="302" r="58" fill="white" />
+    <circle cx="900" cy="302" r="28" fill="url(#gastroia-orange)" />
+  </g>
+
+  <g stroke="url(#gastroia-orange)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M900 520L710 650" />
+    <path d="M900 520L1090 650" />
+    <path d="M900 520V726" />
+
+    <path d="M710 650L520 842" />
+    <path d="M710 650V842" />
+    <path d="M710 650L900 726" />
+
+    <path d="M520 842H710" />
+    <path d="M710 842L900 726" />
+    <path d="M710 842L900 948" />
+
+    <path d="M900 726L1090 842" />
+    <path d="M900 726V948" />
+    <path d="M900 948L1090 842" />
+    <path d="M900 948V1092" />
+
+    <path d="M1090 650V842" />
+    <path d="M1090 650L1280 842" />
+    <path d="M1090 842H1280" />
+  </g>
+
+  <g fill="url(#gastroia-orange)">
+    <circle cx="900" cy="520" r="50" />
+    <circle cx="710" cy="650" r="50" />
+    <circle cx="1090" cy="650" r="50" />
+    <circle cx="900" cy="726" r="54" />
+    <circle cx="520" cy="842" r="50" />
+    <circle cx="710" cy="842" r="50" />
+    <circle cx="1090" cy="842" r="50" />
+    <circle cx="1280" cy="842" r="50" />
+    <circle cx="900" cy="948" r="50" />
+  </g>
+</svg>

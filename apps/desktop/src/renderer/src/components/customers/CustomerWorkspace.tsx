@@ -1,6 +1,5 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
 import { Plus, Receipt, Search } from 'lucide-react';
-import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { KpiCard } from '@/components/operations';
 import { useCustomers } from '@/hooks/customers';
+import { useAppToast } from '@/hooks/ui';
 import type { CustomerFormValues } from '@/schemas/customers';
 import type { CreateCustomerPayload, CustomerDto } from '@/types/customers';
 import { CustomerFormDialog } from './CustomerFormDialog';
@@ -54,6 +54,7 @@ function toCustomerPayload(values: CustomerFormValues): CreateCustomerPayload {
 }
 
 export function CustomerWorkspace() {
+  const appToast = useAppToast();
   const customers = useCustomers();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDto>();
@@ -100,19 +101,16 @@ export function CustomerWorkspace() {
           id: selectedCustomer.id,
           payload: toCustomerPayload(values),
         });
-        toast.success('Cliente actualizado', {
-          description: `${values.name} quedo listo para facturacion electronica.`,
-        });
+        appToast.success('Cliente actualizado', `${values.name} quedo listo para facturacion electronica.`);
         return;
       }
       await customers.createMutation.mutateAsync(toCustomerPayload(values));
-      toast.success('Cliente registrado', {
-        description: 'Datos listos para facturación electrónica DIAN',
-      });
+      appToast.clienteRegistrado();
     } catch (error) {
-      toast.error('No se pudo guardar el cliente', {
-        description: getErrorMessage(error, 'Revisa documento, nombre y correo.'),
-      });
+      appToast.error(
+        'No se pudo guardar el cliente',
+        getErrorMessage(error, 'Revisa documento, nombre y correo.'),
+      );
       throw error;
     }
   };
@@ -123,14 +121,13 @@ export function CustomerWorkspace() {
     }
     try {
       await customers.deleteMutation.mutateAsync(customerToDelete.id);
-      toast.success('Cliente eliminado', {
-        description: `${customerToDelete.name} salio del registro fiscal activo.`,
-      });
+      appToast.success('Cliente eliminado', `${customerToDelete.name} salio del registro fiscal activo.`);
       setCustomerToDelete(undefined);
     } catch (error) {
-      toast.error('No se pudo eliminar el cliente', {
-        description: getErrorMessage(error, 'El registro puede estar relacionado con documentos.'),
-      });
+      appToast.error(
+        'No se pudo eliminar el cliente',
+        getErrorMessage(error, 'El registro puede estar relacionado con documentos.'),
+      );
     }
   };
 

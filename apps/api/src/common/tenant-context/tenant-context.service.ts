@@ -23,7 +23,10 @@ export class TenantContextService {
     const store = this.storage.getStore();
     if (store) {
       store.value = context;
+      return;
     }
+
+    this.storage.enterWith({ value: context });
   }
 
   get(): TenantContext | undefined {

@@ -1,0 +1,18 @@
+export type {
+  CreateDiningTableRequest,
+  CreateDiningZoneRequest,
+  DiningTableDto,
+  DiningTableStatus,
+  DiningZoneDto,
+  KitchenCommandDto,
+  OpenTableAccountRequest,
+  ReceiptDto,
+  TableAccountDto,
+  TablePaymentMethod,
+  AddTableAccountItemRequest,
+  ChargeTableAccountRequest,
+  UpdateTableAccountItemRequest,
+  UpdateDiningTableRequest,
+  UpdateDiningTableStatusRequest,
+  UpdateDiningZoneRequest,
+} from '@gastroai/contracts';

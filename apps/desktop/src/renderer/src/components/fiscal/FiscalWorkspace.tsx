@@ -157,9 +157,13 @@ export function FiscalWorkspace() {
   const onSubmitProfile = async (values: FiscalProfileFormValues) => {
     try {
       await fiscal.upsertMutation.mutateAsync(toFiscalPayload(values));
-      toast.success('Perfil fiscal guardado');
+      toast.success('Perfil fiscal guardado', {
+        description: `${values.legalName} quedo en modo ${ENVIRONMENT_LABELS[values.environment].toLowerCase()}.`,
+      });
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo guardar el perfil fiscal'));
+      toast.error('No se pudo guardar el perfil fiscal', {
+        description: getErrorMessage(error, 'Valida NIT, resolucion y proveedor.'),
+      });
       throw error;
     }
   };
@@ -168,12 +172,18 @@ export function FiscalWorkspace() {
     try {
       const result = await fiscal.testConnectionMutation.mutateAsync();
       if (result.status === 'CONNECTION_TESTED') {
-        toast.success(result.message);
+        toast.success('Conexion fiscal validada', {
+          description: result.message,
+        });
         return;
       }
-      toast.error(result.message);
+      toast.error('Proveedor fiscal requiere revision', {
+        description: result.message,
+      });
     } catch (error) {
-      toast.error(getErrorMessage(error, 'No se pudo probar la conexion fiscal'));
+      toast.error('No se pudo probar la conexion fiscal', {
+        description: getErrorMessage(error, 'Revisa endpoint, credenciales y entorno.'),
+      });
     }
   };
 
@@ -181,7 +191,7 @@ export function FiscalWorkspace() {
     <>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-4">
-          <Card className="gap-5 border-border/80 py-5 shadow-none">
+          <Card className="gap-5 border-border/80 bg-surface-raised py-5 shadow-sm">
             <CardHeader className="px-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -252,7 +262,7 @@ export function FiscalWorkspace() {
             </CardContent>
           </Card>
 
-          <Card className="gap-4 border-border/80 py-5 shadow-none">
+          <Card className="gap-4 border-border/80 bg-surface-raised py-5 shadow-sm">
             <CardHeader className="px-5">
               <CardTitle>Monitor de documentos</CardTitle>
               <CardDescription>Estados, reintentos y referencias externas</CardDescription>
@@ -275,12 +285,14 @@ export function FiscalWorkspace() {
         </section>
 
         <aside className="space-y-4">
-          <Card className="gap-4 border-border/80 py-5 shadow-none">
+          <Card className="gap-4 border-border/80 bg-carbon py-5 text-white shadow-lg shadow-carbon/10">
             <CardHeader className="px-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <CardTitle>Readiness</CardTitle>
-                  <CardDescription>Sin promesa legal hasta validar</CardDescription>
+                  <CardDescription className="text-white/55">
+                    Sin promesa legal hasta validar
+                  </CardDescription>
                 </div>
                 {profile?.isReady ? (
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -290,7 +302,7 @@ export function FiscalWorkspace() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 px-5">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+              <div className="rounded-lg border border-warning/25 bg-warning-soft p-4 text-amber-900">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-4 w-4" />
                   <p className="text-sm">
@@ -300,16 +312,16 @@ export function FiscalWorkspace() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border bg-background p-4">
-                <p className="text-sm text-muted-foreground">Razon social</p>
+              <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-sm text-white/55">Razon social</p>
                 <p className="mt-1 font-semibold">{profile?.legalName ?? 'Pendiente'}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-white/50">
                   NIT {profile?.nit ?? 'sin configurar'}
                 </p>
               </div>
 
-              <div className="rounded-lg border border-border bg-background p-4">
-                <p className="text-sm text-muted-foreground">Ultima prueba</p>
+              <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-sm text-white/55">Ultima prueba</p>
                 <p className="mt-1 font-semibold">
                   {provider?.lastConnectionTestAt
                     ? formatDate(provider.lastConnectionTestAt)

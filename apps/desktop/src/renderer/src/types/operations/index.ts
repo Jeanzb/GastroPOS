@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import type { AppPermission } from '@/types/auth';
 
 export type TrendDirection = 'up' | 'down' | 'neutral';
 
@@ -6,20 +7,25 @@ export type NavigationSection = 'operation' | 'administration';
 
 export type NavigationIcon =
   | 'dashboard'
+  | 'tables'
   | 'pos'
   | 'products'
   | 'cash'
   | 'inventory'
   | 'customers'
+  | 'purchases'
+  | 'employees'
   | 'fiscal'
   | 'reports'
-  | 'onboarding';
+  | 'onboarding'
+  | 'floor';
 
 export interface NavigationItem {
   label: string;
   path: string;
   section: NavigationSection;
   icon: NavigationIcon;
+  requiredPermission?: AppPermission;
   badge?: string;
   badgeTone?: 'orange' | 'green';
 }
@@ -117,16 +123,41 @@ export interface SetupStep {
   status: 'done' | 'current' | 'pending';
 }
 
+export type DiningTableStatus = 'free' | 'occupied' | 'pending_bill' | 'reserved';
+
+export interface DiningTable {
+  id: string;
+  number: string;
+  zone: string;
+  seats: number;
+  status: DiningTableStatus;
+  waiter?: string;
+  minutes?: number;
+  total?: string;
+  items?: number;
+  reservationTime?: string;
+  reservationName?: string;
+}
+
+export interface DiningZone {
+  name: string;
+  tables: DiningTable[];
+}
+
 export interface NavigationIconMap {
   dashboard: LucideIcon;
+  tables: LucideIcon;
   pos: LucideIcon;
   products: LucideIcon;
   cash: LucideIcon;
   inventory: LucideIcon;
   customers: LucideIcon;
+  purchases: LucideIcon;
+  employees: LucideIcon;
   fiscal: LucideIcon;
   reports: LucideIcon;
   onboarding: LucideIcon;
+  floor: LucideIcon;
 }
 
 export interface RouteMeta {

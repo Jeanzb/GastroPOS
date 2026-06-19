@@ -8,6 +8,13 @@ export const QUERY_KEYS = {
   cashSession: 'cash-session',
   cashMovements: 'cash-movements',
   customers: 'customers',
+  suppliers: 'suppliers',
+  purchases: 'purchases',
+  employees: 'employees',
+  diningZones: 'dining-zones',
+  tableAccount: 'table-account',
+  tableAccountCommand: 'table-account-command',
+  tableAccountReceipt: 'table-account-receipt',
 } as const;
 
 export const AUTH_STORAGE_KEY = 'gastroai-auth';

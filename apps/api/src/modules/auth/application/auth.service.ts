@@ -15,6 +15,7 @@ import {
 } from '../auth.types';
 import { AuthRepository } from '../infrastructure/auth.repository';
 import { PasswordHashingService } from './password-hashing.service';
+import { buildAccessProfile } from './access-profile';
 import {
   createRefreshTokenSecret,
   formatRefreshToken,
@@ -41,10 +42,7 @@ export class AuthService {
     metadata: AuthRequestMetadata;
   }): Promise<AuthResponse> {
     const email = input.email.trim().toLowerCase();
-    const users = await this.usersRepository.findActiveLoginCandidates(
-      email,
-      input.tenantSlug,
-    );
+    const users = await this.usersRepository.findActiveLoginCandidates(email, input.tenantSlug);
 
     if (users.length === 0) {
       await this.passwordHashing.verifyAgainstDummy(input.password);
@@ -60,10 +58,7 @@ export class AuthService {
     }
 
     const user = users[0];
-    const passwordMatches = await this.passwordHashing.verify(
-      input.password,
-      user.passwordHash,
-    );
+    const passwordMatches = await this.passwordHashing.verify(input.password, user.passwordHash);
 
     if (!passwordMatches) {
       await this.auditFailedLogin(email, input.tenantSlug, input.metadata);
@@ -95,9 +90,7 @@ export class AuthService {
       throw invalidRefreshToken();
     }
 
-    const storedToken = await this.authRepository.findRefreshTokenById(
-      parsedToken.id,
-    );
+    const storedToken = await this.authRepository.findRefreshTokenById(parsedToken.id);
     if (!storedToken || isPast(storedToken.expiresAt)) {
       throw invalidRefreshToken();
     }
@@ -147,6 +140,7 @@ export class AuthService {
       email: session.user.email,
       fullName: session.user.fullName,
       role: session.user.role,
+      ...buildAccessProfile(session.user.role),
       tenantId: session.user.tenantId,
       branchId: session.branchId,
       sessionId: session.id,
@@ -167,18 +161,12 @@ export class AuthService {
       user,
       tokens: {
         accessToken: await this.signAccessToken(user),
-        refreshToken: formatRefreshToken(
-          rotatedToken.refreshTokenId,
-          refreshSecret,
-        ),
+        refreshToken: formatRefreshToken(rotatedToken.refreshTokenId, refreshSecret),
       },
     };
   }
 
-  async logout(
-    user: AuthenticatedUser,
-    metadata: AuthRequestMetadata,
-  ): Promise<void> {
+  async logout(user: AuthenticatedUser, metadata: AuthRequestMetadata): Promise<void> {
     await this.authRepository.revokeSession(user.sessionId);
     await this.auditService.tryRecord({
       tenantId: user.tenantId,
@@ -216,6 +204,7 @@ export class AuthService {
       email: user.email,
       fullName: user.fullName,
       role: user.role,
+      ...buildAccessProfile(user.role),
       tenantId: user.tenantId,
       branchId: user.branchId,
       sessionId: sessionToken.sessionId,
@@ -225,10 +214,7 @@ export class AuthService {
       user: authenticatedUser,
       tokens: {
         accessToken: await this.signAccessToken(authenticatedUser),
-        refreshToken: formatRefreshToken(
-          sessionToken.refreshTokenId,
-          refreshSecret,
-        ),
+        refreshToken: formatRefreshToken(sessionToken.refreshTokenId, refreshSecret),
       },
     };
   }

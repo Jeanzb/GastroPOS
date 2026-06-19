@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import type { AuthenticatedUser } from '../auth.types';
+import { buildAccessProfile } from '../application/access-profile';
 
 interface CreateSessionInput {
   tenantId: string;
@@ -46,9 +47,7 @@ interface RefreshTokenRecord {
 export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createSessionWithRefreshToken(
-    input: CreateSessionInput,
-  ): Promise<CreatedSessionToken> {
+  async createSessionWithRefreshToken(input: CreateSessionInput): Promise<CreatedSessionToken> {
     return this.prisma.$transaction(async (tx) => {
       const session = await tx.session.create({
         data: {
@@ -182,9 +181,7 @@ export class AuthRepository {
     ]);
   }
 
-  async findAuthenticatedUserBySession(
-    sessionId: string,
-  ): Promise<AuthenticatedUser | null> {
+  async findAuthenticatedUserBySession(sessionId: string): Promise<AuthenticatedUser | null> {
     const session = await this.prisma.session.findFirst({
       where: {
         id: sessionId,
@@ -224,6 +221,7 @@ export class AuthRepository {
       email: session.user.email,
       fullName: session.user.fullName,
       role: session.user.role,
+      ...buildAccessProfile(session.user.role),
       tenantId: session.user.tenantId,
       branchId: session.branchId,
       sessionId: session.id,

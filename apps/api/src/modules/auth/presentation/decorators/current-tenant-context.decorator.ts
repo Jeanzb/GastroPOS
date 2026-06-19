@@ -1,8 +1,4 @@
-import {
-  createParamDecorator,
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { createParamDecorator, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import type { AuthenticatedUser, TenantRequestContext } from '../../auth.types';
 
 interface RequestWithUser {
@@ -13,9 +9,7 @@ export const CurrentTenantContext = createParamDecorator(
   (_data: unknown, context: ExecutionContext): TenantRequestContext => {
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     if (!request.user) {
-      throw new UnauthorizedException(
-        'Authenticated user was not attached to the request.',
-      );
+      throw new UnauthorizedException('Authenticated user was not attached to the request.');
     }
 
     return {
@@ -23,6 +17,7 @@ export const CurrentTenantContext = createParamDecorator(
       branchId: request.user.branchId,
       actorUserId: request.user.id,
       role: request.user.role,
+      permissions: request.user.permissions,
       sessionId: request.user.sessionId,
     };
   },

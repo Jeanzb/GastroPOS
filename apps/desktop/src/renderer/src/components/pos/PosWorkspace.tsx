@@ -12,7 +12,6 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
 import { ChargeDialog, CommandDialog, ReceiptDialog } from '@/components/dining/AccountDialogs';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,9 +23,17 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCategories } from '@/hooks/catalog';
 import { useDiningRoom, useSellableProducts, useTableAccount } from '@/hooks/operations';
+import { useAppToast } from '@/hooks/ui';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
@@ -39,6 +46,7 @@ import type { ProductDto } from '@/types/catalog';
 import type { DiningTableDto, KitchenCommandDto, ReceiptDto } from '@/types/dining';
 
 const ALL = 'all';
+const REGISTERED_WAITERS = ['Diego Granados', 'Laura Mejia', 'Maria Restrepo'];
 
 function initials(name: string): string {
   return (
@@ -55,11 +63,13 @@ function initials(name: string): string {
 function OpenAccountForm({
   table,
   defaultWaiterName,
+  waiterOptions,
   isSubmitting,
   onSubmit,
 }: {
   table: DiningTableDto;
   defaultWaiterName: string;
+  waiterOptions: string[];
   isSubmitting: boolean;
   onSubmit: (values: OpenTableAccountValues) => Promise<void>;
 }) {
@@ -86,9 +96,20 @@ function OpenAccountForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Mesero</FormLabel>
-                <FormControl>
-                  <Input placeholder="María Restrepo" {...field} />
-                </FormControl>
+                <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecciona mesero" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {waiterOptions.map((waiter) => (
+                      <SelectItem key={waiter} value={waiter}>
+                        {waiter}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -138,6 +159,7 @@ function OpenAccountForm({
 }
 
 export function PosWorkspace() {
+  const appToast = useAppToast();
   const activeTableId = useOrderStore((state) => state.activeTableId);
   const user = useAuthStore((state) => state.user);
   const [activeCategory, setActiveCategory] = useState<string>(ALL);
@@ -161,6 +183,14 @@ export function PosWorkspace() {
   const categories = (categoriesQuery.listQuery.data?.data ?? []).filter((c) => c.isActive);
   const mesero = currentAccount?.waiterName ?? user?.fullName ?? 'Mesero';
   const currency = currentAccount?.currency ?? products[0]?.currency ?? 'COP';
+  const waiterOptions = useMemo(() => {
+    const names = [user?.fullName, ...REGISTERED_WAITERS].filter(
+      (name): name is string => Boolean(name?.trim()),
+    );
+
+    return Array.from(new Set(names));
+  }, [user?.fullName]);
+  const defaultWaiterName = table?.waiterName ?? waiterOptions[0] ?? 'Mesero';
 
   const isMutating =
     account.openAccountMutation.isPending ||
@@ -188,19 +218,21 @@ export function PosWorkspace() {
   const handleOpenAccount = async (values: OpenTableAccountValues) => {
     try {
       await account.openAccountMutation.mutateAsync(values);
-      toast.success('Cuenta abierta', {
-        description: table ? `Mesa ${table.number} lista para tomar pedido.` : undefined,
-      });
+      appToast.success(
+        'Cuenta abierta',
+        table ? `Mesa ${table.number} lista para tomar pedido.` : undefined,
+      );
     } catch (error) {
-      toast.error('No se pudo abrir la cuenta', {
-        description: error instanceof Error ? error.message : 'Intenta nuevamente.',
-      });
+      appToast.error(
+        'No se pudo abrir la cuenta',
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
     }
   };
 
   const handleAddProduct = async (product: ProductDto) => {
     if (!currentAccount) {
-      toast.info('Abre la cuenta primero', { description: 'Registra el mesero para tomar pedido.' });
+      appToast.info('Abre la cuenta primero', 'Registra el mesero para tomar pedido.');
       return;
     }
     try {
@@ -209,9 +241,10 @@ export function PosWorkspace() {
         payload: { productId: product.id, quantity: 1 },
       });
     } catch (error) {
-      toast.error('No se pudo agregar el producto', {
-        description: error instanceof Error ? error.message : 'Intenta nuevamente.',
-      });
+      appToast.error(
+        'No se pudo agregar el producto',
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
     }
   };
 
@@ -226,9 +259,10 @@ export function PosWorkspace() {
         payload: { quantity },
       });
     } catch (error) {
-      toast.error('No se pudo actualizar el item', {
-        description: error instanceof Error ? error.message : 'Intenta nuevamente.',
-      });
+      appToast.error(
+        'No se pudo actualizar el item',
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
     }
   };
 
@@ -239,13 +273,12 @@ export function PosWorkspace() {
     try {
       const result = await account.commandMutation.mutateAsync(currentAccount.id);
       setCommand(result);
-      toast.success('Comanda lista', {
-        description: `Mesa ${result.tableNumber} · ${result.totalItems} unidades`,
-      });
+      appToast.comandaEnviada(result.tableNumber, result.totalItems);
     } catch (error) {
-      toast.error('No se pudo generar la comanda', {
-        description: error instanceof Error ? error.message : 'Intenta nuevamente.',
-      });
+      appToast.error(
+        'No se pudo generar la comanda',
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
     }
   };
 
@@ -266,15 +299,17 @@ export function PosWorkspace() {
       });
       setReceipt(result);
       setChargeOpen(false);
-      toast.success('Cuenta cobrada', {
-        description: values.requiresInvoice
+      appToast.success(
+        'Cuenta cobrada',
+        values.requiresInvoice
           ? 'Se creó un borrador de factura electrónica.'
           : 'La mesa quedó liberada.',
-      });
+      );
     } catch (error) {
-      toast.error('No se pudo cobrar la cuenta', {
-        description: error instanceof Error ? error.message : 'Intenta nuevamente.',
-      });
+      appToast.error(
+        'No se pudo cobrar la cuenta',
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
     }
   };
 
@@ -302,10 +337,14 @@ export function PosWorkspace() {
       <div className="mx-auto flex h-full max-w-[1320px] gap-[18px]">
         <section className="flex min-w-0 flex-1 flex-col">
           <div className="mb-4 flex items-center gap-2.5">
-            <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
+            <Link
+              to="/tables"
+              className="motion-press flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 hover:-translate-y-0.5 hover:border-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40"
+              title="Volver a mesas"
+            >
               <span className="nums text-[11px] text-muted-foreground">MESA</span>
               <span className="font-display text-[17px] font-bold">{table.number}</span>
-            </div>
+            </Link>
             <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-orange/15 text-[11px] font-bold text-[#B5491F]">
                 {initials(mesero)}
@@ -404,7 +443,8 @@ export function PosWorkspace() {
                 ) : (
                   <OpenAccountForm
                     table={table}
-                    defaultWaiterName={user?.fullName ?? 'Mesero'}
+                    defaultWaiterName={defaultWaiterName}
+                    waiterOptions={waiterOptions}
                     isSubmitting={isMutating}
                     onSubmit={handleOpenAccount}
                   />

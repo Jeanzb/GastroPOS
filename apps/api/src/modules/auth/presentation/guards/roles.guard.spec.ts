@@ -51,13 +51,13 @@ function createContext(input: {
   controller?: object;
   user?: AuthenticatedUser;
 }): ExecutionContext {
-  return ({
+  return {
     getHandler: () => input.handler ?? (() => undefined),
     getClass: () => input.controller ?? class AnonymousController {},
     switchToHttp: () => ({
       getRequest: () => ({ user: input.user }),
     }),
-  } as unknown) as ExecutionContext;
+  } as unknown as ExecutionContext;
 }
 
 function userWithRole(role: UserRole): AuthenticatedUser {
@@ -66,6 +66,8 @@ function userWithRole(role: UserRole): AuthenticatedUser {
     email: 'user@gastroai.local',
     fullName: 'Test User',
     role,
+    permissions: [],
+    availableRoles: [],
     tenantId: 'tenant_1',
     branchId: 'branch_1',
     sessionId: 'session_1',

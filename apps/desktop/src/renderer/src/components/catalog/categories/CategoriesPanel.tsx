@@ -11,6 +11,7 @@ import { CategoryFormDialog } from './CategoryFormDialog';
 
 interface CategoriesPanelProps {
   categories: ProductCategoryDto[];
+  totalProducts: number;
   isLoading: boolean;
   isSaving: boolean;
   isDeleting: boolean;
@@ -93,6 +94,7 @@ function renderCategorySkeleton(row: number) {
 
 export function CategoriesPanel({
   categories,
+  totalProducts,
   isLoading,
   isSaving,
   isDeleting,
@@ -160,6 +162,9 @@ export function CategoriesPanel({
             <div>
               <CardTitle>Categorías</CardTitle>
               <CardDescription>Organización del menú</CardDescription>
+              <p className="nums mt-2 text-xs font-semibold text-[#6B6359]">
+                {totalProducts} productos totales
+              </p>
             </div>
             <Button
               type="button"

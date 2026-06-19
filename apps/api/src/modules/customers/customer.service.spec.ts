@@ -10,6 +10,7 @@ const ctx: TenantRequestContext = {
   branchId: 'branch_1',
   actorUserId: 'user_1',
   role: 'OWNER',
+  permissions: [],
   sessionId: 'session_1',
 };
 
@@ -100,8 +101,6 @@ describe('CustomerService', () => {
   it('returns 404 when the customer does not exist', async () => {
     repo.findById.mockResolvedValue(null);
 
-    await expect(service.getById(ctx, 'missing')).rejects.toBeInstanceOf(
-      ApplicationException,
-    );
+    await expect(service.getById(ctx, 'missing')).rejects.toBeInstanceOf(ApplicationException);
   });
 });

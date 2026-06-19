@@ -99,6 +99,7 @@ export function ProductsTable({ products, categoryNames, isLoading, onEdit, onDe
         <span className={cn(HEADER, 'text-right')}>Acciones</span>
       </div>
 
+      <div className="max-h-[calc(100vh-292px)] min-h-[320px] overflow-y-auto">
       {isLoading
         ? SKELETON_ROWS.map((row) => (
             <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-[15px]">
@@ -124,6 +125,7 @@ export function ProductsTable({ products, categoryNames, isLoading, onEdit, onDe
             />
           ))
         : null}
+      </div>
     </div>
   );
 }

@@ -1,10 +1,9 @@
 import type { UserRole } from '../enums/user-role';
+import type { AppPermission, RoleProfile } from './permissions.contracts';
 
 export interface LoginRequest {
   email: string;
   password: string;
-  /** Optional tenant slug for users who belong to more than one business. */
-  tenantSlug?: string;
 }
 
 export interface AuthTokens {
@@ -22,6 +21,8 @@ export interface CurrentUser {
   email: string;
   fullName: string;
   role: UserRole;
+  permissions: AppPermission[];
+  availableRoles: RoleProfile[];
   tenantId: string;
   branchId: string | null;
 }

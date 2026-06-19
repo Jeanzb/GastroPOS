@@ -1,0 +1,197 @@
+<svg
+  width="1200"
+  height="900"
+  viewBox="0 0 1200 900"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="GastroIA dark logo system"
+>
+  <defs>
+    <radialGradient id="sheet-glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(800 140) rotate(132) scale(870 560)">
+      <stop stop-color="#1E252C" />
+      <stop offset="1" stop-color="#0D1116" />
+    </radialGradient>
+    <linearGradient id="sheet-card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#1E252C" />
+      <stop offset="1" stop-color="#151A20" />
+    </linearGradient>
+    <linearGradient id="sheet-orange" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FF861F" />
+      <stop offset="1" stop-color="#FF5A00" />
+    </linearGradient>
+    <symbol id="gastroia-mark-dark" viewBox="0 0 260 205">
+      <g transform="translate(4 2) scale(0.14)">
+        <g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M356 974C356 625 599 390 900 390C1201 390 1444 625 1444 974" stroke-width="58" />
+          <path d="M244 1082H746" stroke-width="58" />
+          <path d="M1054 1082H1556" stroke-width="58" />
+          <path d="M244 1082C258 1182 321 1226 410 1226H1390C1479 1226 1542 1182 1556 1082" stroke-width="58" />
+        </g>
+        <g>
+          <circle cx="900" cy="302" r="113" fill="#FFFFFF" />
+          <circle cx="900" cy="302" r="58" fill="#101419" />
+          <circle cx="900" cy="302" r="28" fill="#FF5A00" />
+        </g>
+        <g stroke="#FF5A00" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M900 520L710 650" />
+          <path d="M900 520L1090 650" />
+          <path d="M900 520V726" />
+          <path d="M710 650L520 842" />
+          <path d="M710 650V842" />
+          <path d="M710 650L900 726" />
+          <path d="M520 842H710" />
+          <path d="M710 842L900 726" />
+          <path d="M710 842L900 948" />
+          <path d="M900 726L1090 842" />
+          <path d="M900 726V948" />
+          <path d="M900 948L1090 842" />
+          <path d="M900 948V1092" />
+          <path d="M1090 650V842" />
+          <path d="M1090 650L1280 842" />
+          <path d="M1090 842H1280" />
+        </g>
+        <g fill="#FF5A00">
+          <circle cx="900" cy="520" r="50" />
+          <circle cx="710" cy="650" r="50" />
+          <circle cx="1090" cy="650" r="50" />
+          <circle cx="900" cy="726" r="54" />
+          <circle cx="520" cy="842" r="50" />
+          <circle cx="710" cy="842" r="50" />
+          <circle cx="1090" cy="842" r="50" />
+          <circle cx="1280" cy="842" r="50" />
+          <circle cx="900" cy="948" r="50" />
+        </g>
+      </g>
+    </symbol>
+    <symbol id="gastroia-mark-white" viewBox="0 0 260 205">
+      <g transform="translate(4 2) scale(0.14)">
+        <g stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M356 974C356 625 599 390 900 390C1201 390 1444 625 1444 974" stroke-width="58" />
+          <path d="M244 1082H746" stroke-width="58" />
+          <path d="M1054 1082H1556" stroke-width="58" />
+          <path d="M244 1082C258 1182 321 1226 410 1226H1390C1479 1226 1542 1182 1556 1082" stroke-width="58" />
+        </g>
+        <circle cx="900" cy="302" r="113" fill="#FFFFFF" />
+        <circle cx="900" cy="302" r="58" fill="#FF6A00" />
+        <circle cx="900" cy="302" r="28" fill="#FFFFFF" />
+        <g stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M900 520L710 650" />
+          <path d="M900 520L1090 650" />
+          <path d="M900 520V726" />
+          <path d="M710 650L520 842" />
+          <path d="M710 650V842" />
+          <path d="M710 650L900 726" />
+          <path d="M520 842H710" />
+          <path d="M710 842L900 726" />
+          <path d="M710 842L900 948" />
+          <path d="M900 726L1090 842" />
+          <path d="M900 726V948" />
+          <path d="M900 948L1090 842" />
+          <path d="M900 948V1092" />
+          <path d="M1090 650V842" />
+          <path d="M1090 650L1280 842" />
+          <path d="M1090 842H1280" />
+        </g>
+        <g fill="#FFFFFF">
+          <circle cx="900" cy="520" r="50" />
+          <circle cx="710" cy="650" r="50" />
+          <circle cx="1090" cy="650" r="50" />
+          <circle cx="900" cy="726" r="54" />
+          <circle cx="520" cy="842" r="50" />
+          <circle cx="710" cy="842" r="50" />
+          <circle cx="1090" cy="842" r="50" />
+          <circle cx="1280" cy="842" r="50" />
+          <circle cx="900" cy="948" r="50" />
+        </g>
+      </g>
+    </symbol>
+  </defs>
+
+  <rect width="1200" height="900" fill="url(#sheet-glow)" />
+  <text x="28" y="55" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="4">
+    1. LOGO PRINCIPAL (HORIZONTAL)
+  </text>
+
+  <use href="#gastroia-mark-dark" x="115" y="112" width="265" height="210" />
+  <text x="420" y="238" fill="#FFFFFF" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="124" font-weight="400" letter-spacing="-1">
+    Gastro
+  </text>
+  <text x="858" y="238" fill="#FF5A00" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="124" font-weight="800">
+    AI
+  </text>
+  <text x="428" y="300" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="600" letter-spacing="11">
+    OPERACION &amp; DATA RESTAURANTERA
+  </text>
+
+  <line x1="28" y1="365" x2="1172" y2="365" stroke="#313841" />
+  <text x="28" y="405" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3">
+    2. APLICACIONES EN FONDOS OSCUROS
+  </text>
+
+  <text x="45" y="440" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2">
+    A. SOBRE GRIS CARBON
+  </text>
+  <rect x="28" y="457" width="360" height="245" rx="22" fill="url(#sheet-card)" />
+  <use href="#gastroia-mark-dark" x="108" y="482" width="150" height="118" />
+  <text x="86" y="642" fill="#FFFFFF" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="400">
+    Gastro
+  </text>
+  <text x="268" y="642" fill="#FF5A00" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="800">
+    AI
+  </text>
+  <text x="90" y="676" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="4">
+    OPERACION &amp; DATA RESTAURANTERA
+  </text>
+
+  <text x="438" y="440" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2">
+    B. SOBRE NEGRO PURO
+  </text>
+  <rect x="420" y="457" width="360" height="245" rx="22" fill="#000000" />
+  <use href="#gastroia-mark-dark" x="500" y="482" width="150" height="118" />
+  <text x="478" y="642" fill="#FFFFFF" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="400">
+    Gastro
+  </text>
+  <text x="660" y="642" fill="#FF5A00" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="800">
+    AI
+  </text>
+  <text x="482" y="676" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="4">
+    OPERACION &amp; DATA RESTAURANTERA
+  </text>
+
+  <text x="830" y="440" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2">
+    C. VERSION REVERSA SOBRE NARANJA
+  </text>
+  <rect x="812" y="457" width="360" height="245" rx="22" fill="url(#sheet-orange)" />
+  <use href="#gastroia-mark-white" x="892" y="482" width="150" height="118" />
+  <text x="870" y="642" fill="#FFFFFF" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="400">
+    Gastro
+  </text>
+  <text x="1052" y="642" fill="#FFFFFF" font-family="Sora, Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="800">
+    AI
+  </text>
+  <text x="874" y="676" fill="#FFFFFF" opacity="0.82" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" font-weight="700" letter-spacing="4">
+    OPERACION &amp; DATA RESTAURANTERA
+  </text>
+
+  <line x1="28" y1="735" x2="1172" y2="735" stroke="#313841" />
+  <text x="28" y="770" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3">
+    3. PALETA PARA MODO OSCURO
+  </text>
+
+  <rect x="66" y="792" width="78" height="78" rx="9" fill="#1F2328" stroke="#A6ADB6" />
+  <text x="164" y="812" fill="#FFFFFF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">CARBON</text>
+  <text x="164" y="834" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">#1F2328</text>
+
+  <rect x="346" y="792" width="78" height="78" rx="9" fill="url(#sheet-orange)" />
+  <text x="444" y="812" fill="#FFFFFF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">NARANJA VIVIDO</text>
+  <text x="444" y="834" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">#FF6A00</text>
+
+  <rect x="641" y="792" width="78" height="78" rx="9" fill="#FFFFFF" />
+  <text x="739" y="812" fill="#FFFFFF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">BLANCO</text>
+  <text x="739" y="834" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">#FFFFFF</text>
+
+  <rect x="930" y="792" width="78" height="78" rx="9" fill="#A6ADB6" />
+  <text x="1028" y="812" fill="#FFFFFF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">GRIS SUAVE</text>
+  <text x="1028" y="834" fill="#A6ADB6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">#A6ADB6</text>
+</svg>

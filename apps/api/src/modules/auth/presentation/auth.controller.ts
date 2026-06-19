@@ -9,19 +9,11 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOkResponse,
-  ApiTags,
-  ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import type { RoleProfile } from '@gastroai/contracts';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../application/auth.service';
-import type {
-  AuthenticatedUser,
-  AuthRequestMetadata,
-  AuthResponse,
-} from '../auth.types';
+import type { AuthenticatedUser, AuthRequestMetadata, AuthResponse } from '../auth.types';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -81,6 +73,14 @@ export class AuthController {
     return user;
   }
 
+  @Get('roles')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Roles the current user can operate as in the UI.' })
+  roles(@CurrentUser() user: AuthenticatedUser): RoleProfile[] {
+    return user.availableRoles;
+  }
+
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -91,10 +91,7 @@ export class AuthController {
     @Headers('user-agent') userAgent?: string,
     @Headers('x-forwarded-for') forwardedFor?: string,
   ): Promise<void> {
-    await this.authService.logout(
-      user,
-      requestMetadata(request, userAgent, forwardedFor),
-    );
+    await this.authService.logout(user, requestMetadata(request, userAgent, forwardedFor));
   }
 }
 

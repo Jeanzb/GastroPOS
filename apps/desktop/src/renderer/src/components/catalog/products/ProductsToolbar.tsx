@@ -5,19 +5,18 @@ import { Input } from '@/components/ui/input';
 
 interface ProductsToolbarProps {
   search: string;
-  total: number;
   onSearch: (value: string) => void;
   onCreate: () => void;
 }
 
-export function ProductsToolbar({ search, total, onSearch, onCreate }: ProductsToolbarProps) {
+export function ProductsToolbar({ search, onSearch, onCreate }: ProductsToolbarProps) {
   const onSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSearch(event.target.value);
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="relative w-full max-w-sm">
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="relative w-[min(420px,100%)]">
         <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
@@ -26,13 +25,10 @@ export function ProductsToolbar({ search, total, onSearch, onCreate }: ProductsT
           className="pl-9"
         />
       </div>
-      <div className="flex items-center gap-3">
-        <span className="nums text-sm text-muted-foreground">{total} productos</span>
-        <Button type="button" onClick={onCreate}>
-          <Plus className="h-4 w-4" />
-          Nuevo producto
-        </Button>
-      </div>
+      <Button type="button" onClick={onCreate}>
+        <Plus className="h-4 w-4" />
+        Nuevo producto
+      </Button>
     </div>
   );
 }
