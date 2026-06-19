@@ -16,6 +16,9 @@ export default defineConfig({
         '@': resolve('src/renderer/src'),
       },
     },
+    optimizeDeps: {
+      include: ['@gastroai/contracts'],
+    },
     plugins: [react(), tailwindcss()],
   },
 });
