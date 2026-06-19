@@ -26,6 +26,7 @@ import { UpdateSupplierDto } from './dto/update-supplier.dto';
 @ApiTags('suppliers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequireRoles('OWNER', 'ADMIN', 'INVENTORY_MANAGER', 'ACCOUNTANT')
 @Controller('suppliers')
 export class SupplierController {
   constructor(private readonly service: SupplierService) {}

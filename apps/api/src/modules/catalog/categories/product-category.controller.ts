@@ -26,6 +26,7 @@ import { ProductCategoryService } from './product-category.service';
 @ApiTags('catalog')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequireRoles('OWNER', 'ADMIN', 'CASHIER', 'WAITER', 'KITCHEN', 'INVENTORY_MANAGER')
 @Controller('product-categories')
 export class ProductCategoryController {
   constructor(private readonly service: ProductCategoryService) {}

@@ -26,6 +26,7 @@ import { UpdateCustomerDto } from './dto/update-customer.dto';
 @ApiTags('customers')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@RequireRoles('OWNER', 'ADMIN', 'CASHIER', 'ACCOUNTANT')
 @Controller('customers')
 export class CustomerController {
   constructor(private readonly service: CustomerService) {}
