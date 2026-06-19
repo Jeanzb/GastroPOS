@@ -46,19 +46,14 @@ export function LoginPage() {
           <ul className="space-y-3">{LOGIN_POINTS.map(renderLoginPoint)}</ul>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-sm">
-            <p className="nums text-2xl font-semibold">$2.8M</p>
-            <p className="mt-1 text-xs text-sidebar-foreground/48">Ventas hoy</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-sm">
-            <p className="nums text-2xl font-semibold">64</p>
-            <p className="mt-1 text-xs text-sidebar-foreground/48">Tickets</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4 shadow-sm">
-            <p className="nums text-2xl font-semibold">3</p>
-            <p className="mt-1 text-xs text-sidebar-foreground/48">Alertas</p>
-          </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.04] p-5 shadow-sm">
+          <p className="text-sm font-semibold text-sidebar-foreground">
+            Acceso seguro por usuario y sede
+          </p>
+          <p className="mt-2 max-w-lg text-sm leading-6 text-sidebar-foreground/58">
+            Los datos operativos se muestran solo despues de autenticar la cuenta y seleccionar el
+            contexto de trabajo correspondiente.
+          </p>
         </div>
       </aside>
 

@@ -52,7 +52,11 @@ function renderBranchCard(branch: BranchOption) {
 
 export function BranchSelector() {
   const user = useAuthStore((state) => state.user);
-  const { logout } = useAuth();
+  const { logout, isLoggingOut } = useAuth();
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -60,13 +64,14 @@ export function BranchSelector() {
         <Logo />
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-[13px] font-bold leading-tight">{user?.fullName ?? 'Usuario demo'}</p>
+            <p className="text-[13px] font-bold leading-tight">{user.fullName}</p>
             <p className="text-[12px] text-[#6B6359]">Administrador</p>
           </div>
           <Button
             type="button"
             variant="outline"
             size="icon"
+            disabled={isLoggingOut}
             className="rounded-lg bg-card"
             title="Cerrar sesion"
             onClick={() => void logout()}

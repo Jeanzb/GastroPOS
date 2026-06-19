@@ -4,8 +4,13 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
 export function AppLayout() {
+  const user = useAuthStore((state) => state.user);
   const activeRole = useAuthStore((state) => state.activeRole);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="operational-surface flex h-screen overflow-hidden bg-background">

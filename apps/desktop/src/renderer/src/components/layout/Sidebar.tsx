@@ -62,8 +62,12 @@ function getBadgeTone(item: NavigationItem): 'green' | 'orange' {
 }
 
 function canSeeItem(role: UserRole | null, item: NavigationItem): boolean {
-  if (!item.requiredPermission || !role) {
+  if (!item.requiredPermission) {
     return true;
+  }
+
+  if (!role) {
+    return false;
   }
 
   return canRole(role, item.requiredPermission);
@@ -145,11 +149,15 @@ function SidebarNavSection({
 export function Sidebar() {
   const user = useAuthStore((state) => state.user);
   const activeRole = useAuthStore((state) => state.activeRole);
-  const { logout } = useAuth();
+  const { logout, isLoggingOut } = useAuth();
   const visibleOperationItems = OPERATION_ITEMS.filter((item) => canSeeItem(activeRole, item));
   const visibleAdministrationItems = ADMINISTRATION_ITEMS.filter((item) =>
     canSeeItem(activeRole, item),
   );
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <aside className="flex w-[268px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-carbon/20">
@@ -170,14 +178,15 @@ export function Sidebar() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-sidebar-foreground">
-              {user?.fullName ?? 'Usuario demo'}
+              {user.fullName}
             </p>
             <p className="truncate text-xs text-sidebar-foreground/48">
-              {ROLE_LABELS[user?.role ?? 'ADMIN']}
+              {ROLE_LABELS[user.role]}
             </p>
           </div>
           <button
             type="button"
+            disabled={isLoggingOut}
             className="motion-press grid h-9 w-9 shrink-0 place-items-center rounded-md text-sidebar-foreground/48 hover:bg-white/[0.06] hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring/60"
             title="Cerrar sesion"
             onClick={() => void logout()}

@@ -177,9 +177,9 @@ model DiningZone {
   branch Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)
   tables DiningTable[]
 
-  @@unique([tenantId, branchId, name])
   @@index([tenantId])
   @@index([tenantId, branchId])
+  @@index([tenantId, branchId, name])
   @@map("dining_zones")
 }
 
@@ -211,9 +211,9 @@ model DiningTable {
   zone   DiningZone @relation(fields: [zoneId], references: [id], onDelete: Restrict)
   sales  Sale[]
 
-  @@unique([tenantId, branchId, number])
   @@index([tenantId])
   @@index([tenantId, branchId])
+  @@index([tenantId, branchId, number])
   @@index([zoneId])
   @@index([tenantId, branchId, status])
   @@map("dining_tables")

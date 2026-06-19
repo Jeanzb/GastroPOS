@@ -38,6 +38,19 @@ function nextTableNumber(zones: DiningZoneDto[]): string {
   return String(next).padStart(2, '0');
 }
 
+function nextZoneName(zones: DiningZoneDto[]): string {
+  const existingNames = new Set(zones.map((zone) => zone.name.trim().toLowerCase()));
+  let index = zones.length + 1;
+  let candidate = `Zona ${index}`;
+
+  while (existingNames.has(candidate.toLowerCase())) {
+    index += 1;
+    candidate = `Zona ${index}`;
+  }
+
+  return candidate;
+}
+
 function InlineEdit({
   value,
   onCommit,
@@ -135,8 +148,9 @@ export function FloorWorkspace() {
 
   const onCreateZone = async () => {
     try {
+      const name = nextZoneName(zones);
       await diningRoom.createZoneMutation.mutateAsync({
-        name: `Zona ${zones.length + 1}`,
+        name,
         sortOrder: zones.length + 1,
       });
       toast.success('Zona creada', { description: 'Renombrala y agrega sus mesas.' });

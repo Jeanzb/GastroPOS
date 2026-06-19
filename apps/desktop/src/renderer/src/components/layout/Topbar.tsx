@@ -51,6 +51,10 @@ function getRoleProfiles(userRole?: UserRole, availableRoles?: RoleProfile[]): R
     return availableRoles;
   }
 
+  if (!userRole) {
+    return [];
+  }
+
   return getAvailableRoleProfilesForRole(userRole ?? 'ADMIN');
 }
 
@@ -64,7 +68,7 @@ export function Topbar() {
   const setActiveRole = useAuthStore((state) => state.setActiveRole);
   const routeMeta = getRouteMeta(pathname);
   const availableRoles = getRoleProfiles(user?.role, user?.availableRoles);
-  const selectedRole = activeRole ?? availableRoles[0]?.role ?? user?.role ?? 'ADMIN';
+  const selectedRole = user ? (activeRole ?? availableRoles[0]?.role ?? user.role) : null;
   const rolesRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
 
@@ -75,7 +79,8 @@ export function Topbar() {
 
   useLayoutEffect(() => {
     const container = rolesRef.current;
-    if (!container) {
+    if (!container || !selectedRole) {
+      setPill((current) => ({ ...current, ready: false }));
       return;
     }
     const active = container.querySelector<HTMLButtonElement>('[data-active="true"]');
@@ -93,32 +98,36 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <div
-          ref={rolesRef}
-          className="relative hidden items-center rounded-lg border border-border bg-surface-raised p-1 lg:flex"
-        >
-          {pill.ready ? (
-            <span
-              aria-hidden
-              className="absolute top-1 bottom-1 left-0 rounded-md bg-carbon shadow-sm ease-[cubic-bezier(.34,1.38,.46,1)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
-              style={{ width: pill.width, transform: `translateX(${pill.left}px)` }}
-            />
-          ) : null}
-          {availableRoles.map((profile) => (
-            <button
-              key={profile.role}
-              type="button"
-              data-active={selectedRole === profile.role}
-              className={cn(
-                'relative z-10 h-7 rounded-md px-3 text-xs font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring/50',
-                selectedRole === profile.role ? 'text-white' : 'text-muted-foreground hover:text-foreground',
-              )}
-              onClick={() => setActiveRole(profile.role)}
-            >
-              {ROLE_SHORT_LABELS[profile.role]}
-            </button>
-          ))}
-        </div>
+        {user && availableRoles.length > 0 ? (
+          <div
+            ref={rolesRef}
+            className="relative hidden items-center rounded-lg border border-border bg-surface-raised p-1 lg:flex"
+          >
+            {pill.ready ? (
+              <span
+                aria-hidden
+                className="absolute top-1 bottom-1 left-0 rounded-md bg-carbon shadow-sm ease-[cubic-bezier(.34,1.38,.46,1)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
+                style={{ width: pill.width, transform: `translateX(${pill.left}px)` }}
+              />
+            ) : null}
+            {availableRoles.map((profile) => (
+              <button
+                key={profile.role}
+                type="button"
+                data-active={selectedRole === profile.role}
+                className={cn(
+                  'relative z-10 h-7 rounded-md px-3 text-xs font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring/50',
+                  selectedRole === profile.role
+                    ? 'text-white'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                onClick={() => setActiveRole(profile.role)}
+              >
+                {ROLE_SHORT_LABELS[profile.role]}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <Button variant="outline" asChild className="h-9 gap-2 rounded-lg px-3">
           <Link to="/sede">
