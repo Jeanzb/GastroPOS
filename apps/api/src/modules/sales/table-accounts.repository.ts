@@ -7,6 +7,7 @@ import {
   FiscalInvoiceStatus,
   PaymentMethod,
   SaleStatus,
+  StockMovementType,
   type CustomerDocumentType,
   type Invoice,
   type Prisma,
@@ -476,6 +477,8 @@ export class TableAccountsRepository {
         });
       }
 
+      await this.deductStockForSale(tx, data, sale);
+
       const account = await this.findByIdInTx(tx, data.tenantId, data.branchId, sale.id);
       if (!account) {
         return { status: 'ACCOUNT_NOT_FOUND' };
@@ -483,6 +486,70 @@ export class TableAccountsRepository {
 
       return { status: 'CHARGED', account, invoice };
     });
+  }
+
+  /**
+   * Kardex-accurate stock deduction for a charged sale. For each line tied to a
+   * product, the matching inventory item (branch-specific, then global) is
+   * decremented and a SALE_CONSUMPTION movement is recorded. Untracked products
+   * are skipped; the charge never fails on stock so the sale stays atomic.
+   */
+  private async deductStockForSale(
+    tx: Prisma.TransactionClient,
+    data: ChargeAccountData,
+    sale: TableAccountSaleRecord,
+  ): Promise<void> {
+    for (const item of sale.items) {
+      if (!item.productId) {
+        continue;
+      }
+
+      const inventoryItem =
+        (await tx.inventoryItem.findFirst({
+          where: {
+            tenantId: data.tenantId,
+            productId: item.productId,
+            isActive: true,
+            deletedAt: null,
+            branchId: data.branchId,
+          },
+        })) ??
+        (await tx.inventoryItem.findFirst({
+          where: {
+            tenantId: data.tenantId,
+            productId: item.productId,
+            isActive: true,
+            deletedAt: null,
+            branchId: null,
+          },
+        }));
+
+      if (!inventoryItem) {
+        continue;
+      }
+
+      const stockBefore = inventoryItem.stockOnHand;
+      const stockAfter = stockBefore - item.quantity;
+
+      await tx.inventoryItem.update({
+        where: { id: inventoryItem.id },
+        data: { stockOnHand: stockAfter, updatedById: data.chargedById },
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          tenantId: data.tenantId,
+          branchId: inventoryItem.branchId ?? data.branchId,
+          inventoryItemId: inventoryItem.id,
+          type: StockMovementType.SALE_CONSUMPTION,
+          quantity: item.quantity,
+          stockBefore,
+          stockAfter,
+          reason: `Venta mesa · ${sale.id}`,
+          createdById: data.chargedById,
+        },
+      });
+    }
   }
 
   private async recalculateAndFind(
