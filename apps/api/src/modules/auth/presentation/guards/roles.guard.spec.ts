@@ -66,6 +66,7 @@ function userWithRole(role: UserRole): AuthenticatedUser {
     email: 'user@gastroai.local',
     fullName: 'Test User',
     role,
+    authScope: 'TENANT',
     permissions: [],
     availableRoles: [],
     tenantId: 'tenant_1',

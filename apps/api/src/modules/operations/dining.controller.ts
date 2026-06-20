@@ -12,9 +12,12 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { DiningTableDto, DiningZoneDto } from '@gastroai/contracts';
 import { CurrentActor } from '../auth/presentation/decorators/current-actor.decorator';
+import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
 import { RequireRoles } from '../auth/presentation/decorators/require-roles.decorator';
+import { FeatureGuard } from '../auth/presentation/guards/feature.guard';
 import { JwtAuthGuard } from '../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/presentation/guards/roles.guard';
+import { TenantStatusGuard } from '../auth/presentation/guards/tenant-status.guard';
 import { CreateDiningTableDto } from './dto/create-dining-table.dto';
 import { CreateDiningZoneDto } from './dto/create-dining-zone.dto';
 import { UpdateDiningTableStatusDto } from './dto/update-dining-table-status.dto';
@@ -25,7 +28,8 @@ import type { OperationsActor } from './operations.types';
 
 @ApiTags('operations')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@RequireFeature('tables.enabled')
+@UseGuards(JwtAuthGuard, TenantStatusGuard, FeatureGuard, RolesGuard)
 @Controller()
 export class DiningController {
   constructor(private readonly service: DiningService) {}

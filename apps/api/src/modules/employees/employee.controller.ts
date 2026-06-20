@@ -15,9 +15,12 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { EmployeeDto, PaginatedResult } from '@gastroai/contracts';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { CurrentTenantContext } from '../auth/presentation/decorators/current-tenant-context.decorator';
+import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
 import { RequireRoles } from '../auth/presentation/decorators/require-roles.decorator';
+import { FeatureGuard } from '../auth/presentation/guards/feature.guard';
 import { JwtAuthGuard } from '../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/presentation/guards/roles.guard';
+import { TenantStatusGuard } from '../auth/presentation/guards/tenant-status.guard';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { ListEmployeesQueryDto } from './dto/list-employees-query.dto';
 import { SetEmployeePinDto } from './dto/set-employee-pin.dto';
@@ -27,7 +30,8 @@ import { EmployeeService } from './employee.service';
 
 @ApiTags('employees')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@RequireFeature('employees.enabled')
+@UseGuards(JwtAuthGuard, TenantStatusGuard, FeatureGuard, RolesGuard)
 @RequireRoles('OWNER', 'ADMIN')
 @Controller('employees')
 export class EmployeeController {

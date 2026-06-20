@@ -12,6 +12,7 @@ import {
   type AuthenticatedUser,
   type AuthRequestMetadata,
   type AuthResponse,
+  type TenantAuthScope,
 } from '../auth.types';
 import { AuthRepository } from '../infrastructure/auth.repository';
 import { PasswordHashingService } from './password-hashing.service';
@@ -145,6 +146,7 @@ export class AuthService {
       email: session.user.email,
       fullName: session.user.fullName,
       role: session.user.role,
+      authScope: session.authScope === 'POS' ? 'POS' : 'TENANT',
       ...buildAccessProfile(session.user.role),
       tenantId: session.user.tenantId,
       branchId: session.branchId,
@@ -204,7 +206,7 @@ export class AuthService {
       }
       if (await this.passwordHashing.verify(input.pin, candidate.pinHash)) {
         await this.authRepository.resetPinAttempts(candidate.id);
-        const authResponse = await this.issueSession(candidate, input.metadata);
+        const authResponse = await this.issueSession(candidate, input.metadata, 'POS');
         await this.auditService.tryRecord({
           tenantId: candidate.tenantId,
           branchId: candidate.branchId,
@@ -227,6 +229,7 @@ export class AuthService {
   private async issueSession(
     user: SessionUserRecord,
     metadata: AuthRequestMetadata,
+    authScope: TenantAuthScope = 'TENANT',
   ): Promise<AuthResponse> {
     const refreshSecret = createRefreshTokenSecret();
     const refreshTokenHash = await this.passwordHashing.hash(refreshSecret);
@@ -235,6 +238,7 @@ export class AuthService {
       tenantId: user.tenantId,
       branchId: user.branchId,
       userId: user.id,
+      authScope,
       refreshTokenHash,
       refreshTokenFamilyId: randomUUID(),
       sessionExpiresAt: refreshExpiresAt,
@@ -248,6 +252,7 @@ export class AuthService {
       email: user.email,
       fullName: user.fullName,
       role: user.role,
+      authScope,
       ...buildAccessProfile(user.role),
       tenantId: user.tenantId,
       branchId: user.branchId,
@@ -267,6 +272,7 @@ export class AuthService {
     const payload: AccessTokenPayload = {
       sub: user.id,
       email: user.email,
+      authScope: user.authScope,
       role: user.role,
       tenantId: user.tenantId,
       branchId: user.branchId,
@@ -274,9 +280,9 @@ export class AuthService {
     };
 
     return this.jwtService.signAsync(payload, {
-      secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
+      secret: this.config.get('TENANT_JWT_ACCESS_SECRET', { infer: true }),
       expiresIn: this.config.get('JWT_ACCESS_TTL', { infer: true }),
-      issuer: this.config.get('JWT_ISSUER', { infer: true }),
+      issuer: this.config.get('TENANT_JWT_ISSUER', { infer: true }),
       audience: this.config.get('JWT_AUDIENCE', { infer: true }),
     });
   }

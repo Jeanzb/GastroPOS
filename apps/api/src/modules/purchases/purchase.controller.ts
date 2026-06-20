@@ -12,16 +12,20 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { PaginatedResult, PurchaseDto } from '@gastroai/contracts';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { CurrentTenantContext } from '../auth/presentation/decorators/current-tenant-context.decorator';
+import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
 import { RequireRoles } from '../auth/presentation/decorators/require-roles.decorator';
+import { FeatureGuard } from '../auth/presentation/guards/feature.guard';
 import { JwtAuthGuard } from '../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/presentation/guards/roles.guard';
+import { TenantStatusGuard } from '../auth/presentation/guards/tenant-status.guard';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 import { ListPurchasesQueryDto } from './dto/list-purchases-query.dto';
 import { PurchaseService } from './purchase.service';
 
 @ApiTags('purchases')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@RequireFeature('purchases.enabled')
+@UseGuards(JwtAuthGuard, TenantStatusGuard, FeatureGuard, RolesGuard)
 @Controller('purchases')
 export class PurchaseController {
   constructor(private readonly service: PurchaseService) {}

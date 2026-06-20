@@ -17,6 +17,7 @@ export const CurrentTenantContext = createParamDecorator(
       branchId: request.user.branchId,
       actorUserId: request.user.id,
       role: request.user.role,
+      authScope: request.user.authScope,
       permissions: request.user.permissions,
       sessionId: request.user.sessionId,
     };

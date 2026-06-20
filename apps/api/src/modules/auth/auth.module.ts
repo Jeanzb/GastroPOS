@@ -7,7 +7,11 @@ import { PasswordHashingService } from './application/password-hashing.service';
 import { AuthRepository } from './infrastructure/auth.repository';
 import { AuthController } from './presentation/auth.controller';
 import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
+import { TenantJwtAuthGuard } from './presentation/guards/tenant-jwt-auth.guard';
+import { PosJwtAuthGuard } from './presentation/guards/pos-jwt-auth.guard';
 import { RolesGuard } from './presentation/guards/roles.guard';
+import { TenantStatusGuard } from './presentation/guards/tenant-status.guard';
+import { FeatureGuard } from './presentation/guards/feature.guard';
 
 @Module({
   imports: [AuditModule, JwtModule.register({}), UsersModule],
@@ -16,15 +20,23 @@ import { RolesGuard } from './presentation/guards/roles.guard';
     AuthRepository,
     AuthService,
     JwtAuthGuard,
+    TenantJwtAuthGuard,
+    PosJwtAuthGuard,
     PasswordHashingService,
     RolesGuard,
+    TenantStatusGuard,
+    FeatureGuard,
   ],
   // Export the guards plus their dependencies (JwtService, AuthRepository) so
   // other feature modules can protect routes with JwtAuthGuard/RolesGuard.
   exports: [
     AuthService,
     JwtAuthGuard,
+    TenantJwtAuthGuard,
+    PosJwtAuthGuard,
     RolesGuard,
+    TenantStatusGuard,
+    FeatureGuard,
     JwtModule,
     AuthRepository,
     PasswordHashingService,

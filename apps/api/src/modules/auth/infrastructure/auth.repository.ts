@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import type { AuthenticatedUser } from '../auth.types';
+import type { AuthenticatedUser, TenantAuthScope } from '../auth.types';
 import { buildAccessProfile } from '../application/access-profile';
 
 interface CreateSessionInput {
   tenantId: string;
   branchId: string | null;
   userId: string;
+  authScope: TenantAuthScope;
   refreshTokenHash: string;
   refreshTokenFamilyId: string;
   sessionExpiresAt: Date;
@@ -30,6 +31,7 @@ interface RefreshTokenRecord {
     id: string;
     tenantId: string;
     branchId: string | null;
+    authScope: TenantAuthScope | 'PLATFORM';
     isActive: boolean;
     expiresAt: Date;
     revokedAt: Date | null;
@@ -54,6 +56,7 @@ export class AuthRepository {
           tenantId: input.tenantId,
           branchId: input.branchId,
           userId: input.userId,
+          authScope: input.authScope,
           expiresAt: input.sessionExpiresAt,
           ipAddress: input.ipAddress,
           userAgent: input.userAgent,
@@ -104,6 +107,7 @@ export class AuthRepository {
             id: true,
             tenantId: true,
             branchId: true,
+            authScope: true,
             isActive: true,
             expiresAt: true,
             revokedAt: true,
@@ -200,6 +204,7 @@ export class AuthRepository {
       select: {
         id: true,
         branchId: true,
+        authScope: true,
         user: {
           select: {
             id: true,
@@ -221,6 +226,7 @@ export class AuthRepository {
       email: session.user.email,
       fullName: session.user.fullName,
       role: session.user.role,
+      authScope: session.authScope === 'POS' ? 'POS' : 'TENANT',
       ...buildAccessProfile(session.user.role),
       tenantId: session.user.tenantId,
       branchId: session.branchId,

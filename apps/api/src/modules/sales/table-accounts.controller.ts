@@ -12,9 +12,12 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { KitchenCommandDto, ReceiptDto, TableAccountDto } from '@gastroai/contracts';
 import { CurrentActor } from '../auth/presentation/decorators/current-actor.decorator';
+import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
 import { RequireRoles } from '../auth/presentation/decorators/require-roles.decorator';
+import { FeatureGuard } from '../auth/presentation/guards/feature.guard';
 import { JwtAuthGuard } from '../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/presentation/guards/roles.guard';
+import { TenantStatusGuard } from '../auth/presentation/guards/tenant-status.guard';
 import type { OperationsActor } from '../operations/operations.types';
 import { AddTableAccountItemDto } from './dto/add-table-account-item.dto';
 import { ChargeTableAccountDto } from './dto/charge-table-account.dto';
@@ -24,7 +27,8 @@ import { TableAccountsService } from './table-accounts.service';
 
 @ApiTags('sales')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@RequireFeature('pos.enabled')
+@UseGuards(JwtAuthGuard, TenantStatusGuard, FeatureGuard, RolesGuard)
 @Controller()
 export class TableAccountsController {
   constructor(private readonly service: TableAccountsService) {}

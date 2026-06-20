@@ -3,9 +3,12 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { CashMovementDto, CashSessionDto, CashZReportDto } from '@gastroai/contracts';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { CurrentTenantContext } from '../auth/presentation/decorators/current-tenant-context.decorator';
+import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
 import { RequireRoles } from '../auth/presentation/decorators/require-roles.decorator';
+import { FeatureGuard } from '../auth/presentation/guards/feature.guard';
 import { JwtAuthGuard } from '../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/presentation/guards/roles.guard';
+import { TenantStatusGuard } from '../auth/presentation/guards/tenant-status.guard';
 import { CashService } from './cash.service';
 import { ActiveCashSessionQueryDto } from './dto/active-cash-session-query.dto';
 import { CloseCashSessionDto } from './dto/close-cash-session.dto';
@@ -14,7 +17,8 @@ import { RegisterCashMovementDto } from './dto/register-cash-movement.dto';
 
 @ApiTags('cash')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@RequireFeature('cash.enabled')
+@UseGuards(JwtAuthGuard, TenantStatusGuard, FeatureGuard, RolesGuard)
 @Controller('cash-sessions')
 export class CashController {
   constructor(private readonly cashService: CashService) {}

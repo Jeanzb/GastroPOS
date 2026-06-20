@@ -54,8 +54,8 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<Record<string, unknown>>(
         token,
         {
-          secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
-          issuer: this.config.get('JWT_ISSUER', { infer: true }),
+          secret: this.config.get('TENANT_JWT_ACCESS_SECRET', { infer: true }),
+          issuer: this.config.get('TENANT_JWT_ISSUER', { infer: true }),
           audience: this.config.get('JWT_AUDIENCE', { infer: true }),
         },
       );
@@ -95,6 +95,7 @@ function isAccessTokenPayload(value: unknown): value is AccessTokenPayload {
   return (
     typeof payload.sub === 'string' &&
     typeof payload.email === 'string' &&
+    (payload.authScope === 'TENANT' || payload.authScope === 'POS') &&
     typeof payload.role === 'string' &&
     typeof payload.tenantId === 'string' &&
     typeof payload.sessionId === 'string' &&
