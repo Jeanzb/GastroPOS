@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
 import { RequestIdMiddleware } from './common/request-context/request-id.middleware';
 import { TenantContextMiddleware, TenantContextModule } from './common/tenant-context';
+import { AccessModule } from './common/access/access.module';
 import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './database/prisma.module';
 import { AuditModule } from './modules/audit/audit.module';
@@ -26,6 +27,7 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
   imports: [
     AppConfigModule,
     TenantContextModule,
+    AccessModule,
     PrismaModule,
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: 100 }],
