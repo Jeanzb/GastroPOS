@@ -23,6 +23,8 @@ export const QUERY_KEYS = {
   platformTenants: 'platform-tenants',
   platformTenant: 'platform-tenant',
   platformPlans: 'platform-plans',
+  platformFeatures: 'platform-features',
+  platformTenantFeatures: 'platform-tenant-features',
 } as const;
 
 export const AUTH_STORAGE_KEY = 'gastroai-auth';

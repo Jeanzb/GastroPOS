@@ -4,6 +4,7 @@ import { PlatformService } from '@/services/platform';
 import type {
   CreatePlatformTenantRequest,
   PlatformLoginRequest,
+  UpdateTenantFeatureOverrideRequest,
   UpdateTenantPlanRequest,
   UpdateTenantStatusRequest,
 } from '@gastroai/contracts';
@@ -48,6 +49,21 @@ export function usePlatformPlans() {
   });
 }
 
+export function usePlatformFeatures() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.platformFeatures],
+    queryFn: () => PlatformService.listFeatures(),
+  });
+}
+
+export function usePlatformTenantFeatures(id: string | null) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.platformTenantFeatures, id],
+    queryFn: () => PlatformService.listTenantFeatures(id ?? ''),
+    enabled: Boolean(id),
+  });
+}
+
 export function useCreatePlatformTenant() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -78,6 +94,31 @@ export function useUpdateTenantPlan(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenants] });
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });
+    },
+  });
+}
+
+export function useUpdateTenantFeatureOverride(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { featureCode: string; payload: UpdateTenantFeatureOverrideRequest }) =>
+      PlatformService.updateTenantFeatureOverride(id, input.featureCode, input.payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenantFeatures, id] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformFeatures] });
+    },
+  });
+}
+
+export function useDeleteTenantFeatureOverride(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (featureCode: string) => PlatformService.deleteTenantFeatureOverride(id, featureCode),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenantFeatures, id] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformFeatures] });
     },
   });
 }

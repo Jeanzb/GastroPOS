@@ -16,12 +16,18 @@ interface PlatformTenantResponse {
   status: string;
 }
 
+interface TenantLoginResponse {
+  tokens: {
+    accessToken: string;
+  };
+}
+
 function appPath(path: string): string {
   return `/#${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 describe('SaaS platform', () => {
-  it('logs in, lists tenants and creates a BASIC tenant', () => {
+  it('creates a tenant and controls access -> tenant and feature guards block operations', () => {
     const stamp = `${Date.now()}-${Cypress._.random(1000, 9999)}`;
     const tenantName = `Cypress Restaurante ${stamp}`;
     const tenantSlug = `cy-rest-${stamp}`;
@@ -66,18 +72,81 @@ describe('SaaS platform', () => {
     cy.get('[data-cy="platform-tenant-branch-code"]').clear().type('MAIN');
     cy.get('[data-cy="platform-tenant-submit"]').click();
 
-    cy.wait('@platformCreateTenant')
-      .its('response.body')
-      .should((tenant: PlatformTenantResponse) => {
-        expect(tenant.name).to.eq(tenantName);
-        expect(tenant.slug).to.eq(tenantSlug);
-        expect(tenant.planCode).to.eq('BASIC');
-        expect(tenant.status).to.eq('ACTIVE');
-      });
+    cy.wait('@platformCreateTenant').then(({ response }) => {
+      const tenant = response?.body as PlatformTenantResponse;
+      expect(tenant.name).to.eq(tenantName);
+      expect(tenant.slug).to.eq(tenantSlug);
+      expect(tenant.planCode).to.eq('BASIC');
+      expect(tenant.status).to.eq('ACTIVE');
+    });
     cy.wait('@platformTenants');
     cy.contains('[data-cy="platform-tenant-row"]', tenantName)
       .should('be.visible')
       .and('contain', 'BASIC')
       .and('contain', 'ACTIVE');
+
+    cy.intercept('PATCH', '**/api/v1/platform/tenants/*/status').as('updateTenantStatus');
+    cy.contains('[data-cy="platform-tenant-row"]', tenantName)
+      .find('[data-cy="platform-tenant-status-action"]')
+      .click();
+    cy.get('[data-cy="platform-tenant-status-confirm"]').click();
+    cy.wait('@updateTenantStatus').its('response.body.status').should('eq', 'SUSPENDED');
+
+    cy.env<{ apiUrl: string }>(['apiUrl']).then(({ apiUrl }) => {
+      cy.request<TenantLoginResponse>({
+        method: 'POST',
+        url: `${apiUrl}/auth/login`,
+        body: {
+          email: ownerEmail,
+          password: 'Temporal123!',
+          tenantSlug,
+        },
+      }).then(({ body }) => {
+        cy.request({
+          method: 'GET',
+          url: `${apiUrl}/inventory-items`,
+          headers: { Authorization: `Bearer ${body.tokens.accessToken}` },
+          failOnStatusCode: false,
+        }).its('status').should('eq', 403);
+      });
+    });
+
+    cy.contains('[data-cy="platform-tenant-row"]', tenantName)
+      .find('[data-cy="platform-tenant-status-action"]')
+      .click();
+    cy.get('[data-cy="platform-tenant-status-confirm"]').click();
+    cy.wait('@updateTenantStatus').its('response.body.status').should('eq', 'ACTIVE');
+
+    cy.intercept('GET', '**/api/v1/platform/tenants/*/features').as('getTenantFeatures');
+    cy.intercept('PATCH', '**/api/v1/platform/tenants/*/features/inventory.enabled').as(
+      'disableInventory',
+    );
+    cy.visit(appPath('/platform/features'));
+    cy.get('[data-cy="platform-feature-tenant-select"]').click();
+    cy.contains('[role="option"]', tenantName).click();
+    cy.wait('@getTenantFeatures');
+    cy.get('[data-cy="platform-feature-toggle-inventory.enabled"]').click();
+    cy.get('[data-cy="platform-feature-disable-reason"]').type('Bloqueo Cypress de inventario');
+    cy.get('[data-cy="platform-feature-disable-confirm"]').click();
+    cy.wait('@disableInventory').its('response.body').should('be.an', 'array');
+
+    cy.env<{ apiUrl: string }>(['apiUrl']).then(({ apiUrl }) => {
+      cy.request<TenantLoginResponse>({
+        method: 'POST',
+        url: `${apiUrl}/auth/login`,
+        body: {
+          email: ownerEmail,
+          password: 'Temporal123!',
+          tenantSlug,
+        },
+      }).then(({ body }) => {
+        cy.request({
+          method: 'GET',
+          url: `${apiUrl}/inventory-items`,
+          headers: { Authorization: `Bearer ${body.tokens.accessToken}` },
+          failOnStatusCode: false,
+        }).its('status').should('eq', 403);
+      });
+    });
   });
 });

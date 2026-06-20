@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
-import { Building2, LayoutDashboard, LogOut, ShieldCheck, Tags } from 'lucide-react';
+import { Building2, LayoutDashboard, LogOut, ShieldCheck, SlidersHorizontal, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlatformAuth } from '@/hooks/platform';
 import { usePlatformAuthStore } from '@/stores';
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 const NAV_ITEMS = [
   { to: '/platform', label: 'Overview', icon: LayoutDashboard },
   { to: '/platform/tenants', label: 'Restaurantes', icon: Building2 },
+  { to: '/platform/features', label: 'Modulos', icon: SlidersHorizontal },
   { to: '/platform/plans', label: 'Plan BASIC', icon: Tags },
 ] as const;
 

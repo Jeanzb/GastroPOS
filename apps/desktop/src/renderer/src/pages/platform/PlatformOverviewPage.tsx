@@ -9,6 +9,9 @@ export function PlatformOverviewPage() {
   const overviewQuery = usePlatformOverview();
   const tenantsQuery = usePlatformTenants();
   const overview = overviewQuery.data;
+  const alertTenants = (tenantsQuery.data ?? []).filter((tenant) =>
+    ['SUSPENDED', 'PAST_DUE', 'CANCELLED'].includes(tenant.status),
+  );
 
   return (
     <PlatformShell
@@ -60,6 +63,32 @@ export function PlatformOverviewPage() {
             </div>
           ) : (
             <StatusCard title="Sin tenants" description="Crea el primer restaurante desde Restaurantes." />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 border-orange/25">
+        <CardHeader>
+          <CardTitle>Alertas de acceso</CardTitle>
+          <CardDescription>Clientes que requieren accion de soporte o cobranza.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {tenantsQuery.isLoading ? (
+            <Skeleton className="h-16 rounded-lg" />
+          ) : alertTenants.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {alertTenants.map((tenant) => (
+                <div key={tenant.id} className="rounded-lg border border-orange/25 bg-orange/8 p-4">
+                  <p className="font-semibold">{tenant.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{tenant.slug}</p>
+                  <span className="mt-3 inline-flex rounded-full bg-carbon px-2.5 py-1 text-xs font-semibold text-white">
+                    {tenant.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <StatusCard title="Sin alertas" description="No hay tenants suspendidos, cancelados o en mora." />
           )}
         </CardContent>
       </Card>

@@ -2,11 +2,14 @@ import { platformApiClient } from '@/api';
 import type {
   CreatePlatformTenantRequest,
   PlatformAuthResponse,
+  PlatformFeatureDto,
   PlatformLoginRequest,
   PlatformOverviewDto,
   PlatformTenantDetailDto,
   PlatformTenantDto,
   PlanDto,
+  TenantFeatureOverrideDto,
+  UpdateTenantFeatureOverrideRequest,
   UpdateTenantPlanRequest,
   UpdateTenantStatusRequest,
 } from '@gastroai/contracts';
@@ -53,5 +56,30 @@ export const PlatformService = {
 
   listPlans() {
     return platformApiClient.get<PlanDto[]>('/platform/plans');
+  },
+
+  listFeatures() {
+    return platformApiClient.get<PlatformFeatureDto[]>('/platform/features');
+  },
+
+  listTenantFeatures(id: string) {
+    return platformApiClient.get<TenantFeatureOverrideDto[]>(`/platform/tenants/${id}/features`);
+  },
+
+  updateTenantFeatureOverride(
+    id: string,
+    featureCode: string,
+    payload: UpdateTenantFeatureOverrideRequest,
+  ) {
+    return platformApiClient.patch<TenantFeatureOverrideDto[]>(
+      `/platform/tenants/${id}/features/${featureCode}`,
+      payload,
+    );
+  },
+
+  deleteTenantFeatureOverride(id: string, featureCode: string) {
+    return platformApiClient.delete<TenantFeatureOverrideDto[]>(
+      `/platform/tenants/${id}/features/${featureCode}`,
+    );
   },
 };
