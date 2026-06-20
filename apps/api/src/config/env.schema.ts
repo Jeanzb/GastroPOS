@@ -16,9 +16,13 @@ export const envSchema = z.object({
   JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_SECRET: z.string().min(1),
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(1_209_600),
-  // Token issuer/audience — rejects tokens minted for another app/environment.
   JWT_ISSUER: z.string().min(1).default('gastroai-api'),
   JWT_AUDIENCE: z.string().min(1).default('gastroai-app'),
+
+  TENANT_JWT_ACCESS_SECRET: z.string().min(1).optional(),
+  TENANT_JWT_ISSUER: z.string().min(1).optional(),
+  PLATFORM_JWT_ACCESS_SECRET: z.string().min(1).optional(),
+  PLATFORM_JWT_ISSUER: z.string().min(1).optional(),
 
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
 
@@ -29,7 +33,15 @@ export const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 export function validateEnv(config: Record<string, unknown>): Env {
-  const result = envSchema.safeParse(config);
+  const normalizedConfig = {
+    ...config,
+    TENANT_JWT_ACCESS_SECRET: config.TENANT_JWT_ACCESS_SECRET ?? config.JWT_ACCESS_SECRET,
+    TENANT_JWT_ISSUER: config.TENANT_JWT_ISSUER ?? config.JWT_ISSUER ?? 'gastroai-api',
+    PLATFORM_JWT_ACCESS_SECRET:
+      config.PLATFORM_JWT_ACCESS_SECRET ?? config.JWT_ACCESS_SECRET,
+    PLATFORM_JWT_ISSUER: config.PLATFORM_JWT_ISSUER ?? 'gastroai-platform-api',
+  };
+  const result = envSchema.safeParse(normalizedConfig);
 
   if (!result.success) {
     const message = z.prettifyError(result.error);

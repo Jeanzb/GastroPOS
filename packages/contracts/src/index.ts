@@ -1,4 +1,7 @@
 export * from './enums/user-role';
+export * from './enums/auth-scope';
+export * from './enums/platform-role';
+export * from './enums/tenant-status';
 export * from './common/api-error';
 export * from './common/pagination';
 export * from './auth/auth.contracts';
@@ -14,3 +17,4 @@ export * from './inventory/inventory.contracts';
 export * from './employees/employee.contracts';
 export * from './operations/operations.contracts';
 export * from './reports/reports.contracts';
+export * from './platform/platform.contracts';

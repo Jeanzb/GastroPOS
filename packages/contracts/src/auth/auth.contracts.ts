@@ -1,4 +1,5 @@
 import type { UserRole } from '../enums/user-role';
+import type { AuthScope } from '../enums/auth-scope';
 import type { AppPermission, RoleProfile } from './permissions.contracts';
 
 export interface LoginRequest {
@@ -27,6 +28,7 @@ export interface CurrentUser {
   email: string;
   fullName: string;
   role: UserRole;
+  authScope: Exclude<AuthScope, 'PLATFORM'>;
   permissions: AppPermission[];
   availableRoles: RoleProfile[];
   tenantId: string;

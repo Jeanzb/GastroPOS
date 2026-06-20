@@ -23,6 +23,27 @@ enum UserRole {
   ACCOUNTANT
 }
 
+enum AuthScope {
+  TENANT
+  POS
+  PLATFORM
+}
+
+enum PlatformRole {
+  PLATFORM_OWNER
+  PLATFORM_ADMIN
+  SUPPORT_AGENT
+}
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+  ARCHIVED
+}
+
 enum FiscalProviderType {
   DIAN_DIRECT
   TECHNOLOGY_PROVIDER
@@ -69,15 +90,25 @@ model Tenant {
   name     String
   slug     String  @unique
   isActive Boolean @default(true)
+  status   TenantStatus @default(ACTIVE)
+
+  planId           String?
+  trialEndsAt      DateTime?
+  suspendedAt      DateTime?
+  cancelledAt      DateTime?
+  archivedAt       DateTime?
+  suspensionReason String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  plan              Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
   settings          TenantSettings?
   branches          Branch[]
   users             User[]
   sessions          Session[]
+  featureOverrides  TenantFeatureOverride[]
   productCategories ProductCategory[]
   products          Product[]
   fiscalProfile     FiscalProfile?
@@ -99,7 +130,143 @@ model Tenant {
   diningZones       DiningZone[]
   diningTables      DiningTable[]
 
+  @@index([planId])
+  @@index([status])
   @@map("tenants")
+}
+
+model PlatformUser {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  fullName     String
+  role         PlatformRole @default(PLATFORM_ADMIN)
+  isActive     Boolean      @default(true)
+  lastLoginAt  DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  sessions PlatformSession[]
+
+  @@index([isActive])
+  @@map("platform_users")
+}
+
+model PlatformSession {
+  id             String @id @default(cuid())
+  platformUserId String
+
+  isActive  Boolean   @default(true)
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          PlatformUser           @relation(fields: [platformUserId], references: [id], onDelete: Cascade)
+  refreshTokens PlatformRefreshToken[]
+
+  @@index([platformUserId])
+  @@index([expiresAt])
+  @@map("platform_sessions")
+}
+
+model PlatformRefreshToken {
+  id                String @id @default(cuid())
+  platformSessionId String
+  tokenHash         String
+  familyId          String
+
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?
+
+  createdAt DateTime @default(now())
+
+  session PlatformSession @relation(fields: [platformSessionId], references: [id], onDelete: Cascade)
+
+  @@index([platformSessionId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("platform_refresh_tokens")
+}
+
+model Plan {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenants  Tenant[]
+  features PlanFeature[]
+
+  @@index([isActive])
+  @@map("plans")
+}
+
+model Feature {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plans           PlanFeature[]
+  tenantOverrides TenantFeatureOverride[]
+
+  @@index([isActive])
+  @@map("features")
+}
+
+model PlanFeature {
+  id        String @id @default(cuid())
+  planId    String
+  featureId String
+  enabled   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plan    Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureId])
+  @@index([featureId])
+  @@map("plan_features")
+}
+
+model TenantFeatureOverride {
+  id        String @id @default(cuid())
+  tenantId  String
+  featureId String
+  enabled   Boolean
+  reason    String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, featureId])
+  @@index([featureId])
+  @@map("tenant_feature_overrides")
 }
 
 /// Per-tenant configuration that business logic must not hardcode.
@@ -261,6 +428,7 @@ model Session {
   tenantId String
   branchId String?
   userId   String
+  authScope AuthScope @default(TENANT)
 
   isActive  Boolean   @default(true)
   expiresAt DateTime

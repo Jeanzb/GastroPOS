@@ -17,24 +17,98 @@ async function main(): Promise<void> {
   const branchCode = envValue('SEED_BRANCH_CODE', 'MAIN');
   const ownerEmail = envValue('SEED_OWNER_EMAIL', 'owner@gastroai.local');
   const ownerPassword = envValue('SEED_OWNER_PASSWORD', 'ChangeMe123!');
+  const platformOwnerEmail = envValue('SEED_PLATFORM_OWNER_EMAIL', 'platform@gastroai.local');
+  const platformOwnerPassword = envValue(
+    'SEED_PLATFORM_OWNER_PASSWORD',
+    'ChangeMePlatform123!',
+  );
 
   if (ownerPassword.length < 12) {
     throw new Error('SEED_OWNER_PASSWORD must be at least 12 characters long.');
   }
+  if (platformOwnerPassword.length < 12) {
+    throw new Error('SEED_PLATFORM_OWNER_PASSWORD must be at least 12 characters long.');
+  }
 
   const passwordHash = await bcrypt.hash(ownerPassword, BCRYPT_ROUNDS);
+  const platformPasswordHash = await bcrypt.hash(platformOwnerPassword, BCRYPT_ROUNDS);
 
   const result = await prisma.$transaction(async (tx) => {
+    const platformOwner = await tx.platformUser.upsert({
+      where: { email: platformOwnerEmail },
+      update: {
+        fullName: 'GastroIA Platform Owner',
+        role: 'PLATFORM_OWNER',
+        isActive: true,
+        deletedAt: null,
+      },
+      create: {
+        email: platformOwnerEmail,
+        fullName: 'GastroIA Platform Owner',
+        role: 'PLATFORM_OWNER',
+        passwordHash: platformPasswordHash,
+      },
+    });
+
+    const basicPlan = await tx.plan.upsert({
+      where: { code: 'BASIC' },
+      update: { name: 'Basic', isActive: true },
+      create: {
+        code: 'BASIC',
+        name: 'Basic',
+        description: 'Suscripcion unica con todos los modulos incluidos.',
+      },
+    });
+
+    const featureDefinitions = [
+      ['pos.enabled', 'POS'],
+      ['tables.enabled', 'Mesas'],
+      ['cash.enabled', 'Caja'],
+      ['inventory.enabled', 'Inventario'],
+      ['purchases.enabled', 'Compras'],
+      ['employees.enabled', 'Empleados'],
+      ['reports.basic', 'Reportes basicos'],
+      ['reports.advanced', 'Reportes avanzados'],
+      ['multi_branch.enabled', 'Multi-sede'],
+      ['dian.enabled', 'DIAN readiness'],
+    ] as const;
+
+    for (const [code, name] of featureDefinitions) {
+      const feature = await tx.feature.upsert({
+        where: { code },
+        update: { name, isActive: true },
+        create: { code, name, isActive: true },
+      });
+      await tx.planFeature.upsert({
+        where: {
+          planId_featureId: {
+            planId: basicPlan.id,
+            featureId: feature.id,
+          },
+        },
+        update: { enabled: true },
+        create: {
+          planId: basicPlan.id,
+          featureId: feature.id,
+          enabled: true,
+        },
+      });
+    }
+
     const tenant = await tx.tenant.upsert({
       where: { slug: tenantSlug },
       update: {
         name: tenantName,
         isActive: true,
+        status: 'ACTIVE',
+        planId: basicPlan.id,
         deletedAt: null,
       },
       create: {
         name: tenantName,
         slug: tenantSlug,
+        status: 'ACTIVE',
+        planId: basicPlan.id,
         settings: {
           create: {},
         },
@@ -159,63 +233,70 @@ async function main(): Promise<void> {
     ];
 
     for (const zoneDefinition of zoneDefinitions) {
-      const zone = await tx.diningZone.upsert({
+      const existingZone = await tx.diningZone.findFirst({
         where: {
-          tenantId_branchId_name: {
             tenantId: tenant.id,
             branchId: branch.id,
             name: zoneDefinition.name,
-          },
-        },
-        update: {
-          sortOrder: zoneDefinition.sortOrder,
-          isActive: true,
-          deletedAt: null,
-          updatedById: owner.id,
-        },
-        create: {
-          tenantId: tenant.id,
-          branchId: branch.id,
-          name: zoneDefinition.name,
-          sortOrder: zoneDefinition.sortOrder,
-          createdById: owner.id,
         },
       });
+      const zone = existingZone
+        ? await tx.diningZone.update({
+            where: { id: existingZone.id },
+            data: {
+              sortOrder: zoneDefinition.sortOrder,
+              isActive: true,
+              deletedAt: null,
+              updatedById: owner.id,
+            },
+          })
+        : await tx.diningZone.create({
+            data: {
+              tenantId: tenant.id,
+              branchId: branch.id,
+              name: zoneDefinition.name,
+              sortOrder: zoneDefinition.sortOrder,
+              createdById: owner.id,
+            },
+          });
 
       for (const tableDefinition of zoneDefinition.tables) {
-        await tx.diningTable.upsert({
+        const existingTable = await tx.diningTable.findFirst({
           where: {
-            tenantId_branchId_number: {
               tenantId: tenant.id,
               branchId: branch.id,
               number: tableDefinition.number,
-            },
-          },
-          update: {
-            zoneId: zone.id,
-            seats: tableDefinition.seats,
-            status: tableDefinition.status,
-            waiterName: tableDefinition.waiterName ?? null,
-            openedAt: tableDefinition.openedAt ?? null,
-            reservationName: tableDefinition.reservationName ?? null,
-            reservationTime: tableDefinition.reservationTime ?? null,
-            deletedAt: null,
-            updatedById: owner.id,
-          },
-          create: {
-            tenantId: tenant.id,
-            branchId: branch.id,
-            zoneId: zone.id,
-            number: tableDefinition.number,
-            seats: tableDefinition.seats,
-            status: tableDefinition.status,
-            waiterName: tableDefinition.waiterName,
-            openedAt: tableDefinition.openedAt,
-            reservationName: tableDefinition.reservationName,
-            reservationTime: tableDefinition.reservationTime,
-            createdById: owner.id,
           },
         });
+        const tableData = {
+          zoneId: zone.id,
+          seats: tableDefinition.seats,
+          status: tableDefinition.status,
+          waiterName: tableDefinition.waiterName ?? null,
+          openedAt: tableDefinition.openedAt ?? null,
+          reservationName: tableDefinition.reservationName ?? null,
+          reservationTime: tableDefinition.reservationTime ?? null,
+        };
+        if (existingTable) {
+          await tx.diningTable.update({
+            where: { id: existingTable.id },
+            data: {
+              ...tableData,
+              deletedAt: null,
+              updatedById: owner.id,
+            },
+          });
+        } else {
+          await tx.diningTable.create({
+            data: {
+              tenantId: tenant.id,
+              branchId: branch.id,
+              number: tableDefinition.number,
+              ...tableData,
+              createdById: owner.id,
+            },
+          });
+        }
       }
     }
 
@@ -335,11 +416,11 @@ async function main(): Promise<void> {
       }
     }
 
-    return { tenant, branch, owner };
+    return { tenant, branch, owner, platformOwner };
   });
 
   console.log(
-    `Seed ready: tenant=${result.tenant.slug}, branch=${result.branch.code}, owner=${result.owner.email}`,
+    `Seed ready: tenant=${result.tenant.slug}, branch=${result.branch.code}, owner=${result.owner.email}, platform=${result.platformOwner.email}`,
   );
 }
 
