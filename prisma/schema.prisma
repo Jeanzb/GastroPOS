@@ -93,7 +93,8 @@ model Tenant {
   purchases         Purchase[]
   purchaseItems     PurchaseItem[]
   unitsOfMeasure    UnitOfMeasure[]
-  inventoryItems    InventoryItem[]
+  inventoryIngredients InventoryIngredient[]
+  inventoryBalances    InventoryBalance[]
   stockMovements    StockMovement[]
   diningZones       DiningZone[]
   diningTables      DiningTable[]
@@ -140,7 +141,7 @@ model Branch {
   cashSessions   CashSession[]
   sales          Sale[]
   purchases      Purchase[]
-  inventoryItems InventoryItem[]
+  inventoryBalances InventoryBalance[]
   stockMovements StockMovement[]
   diningZones    DiningZone[]
   diningTables   DiningTable[]
@@ -231,6 +232,12 @@ model User {
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
 
+  // Fast POS terminal login. PIN is hashed; uniqueness per branch is enforced in app logic.
+  pinHash           String?
+  pinUpdatedAt      DateTime?
+  failedPinAttempts Int       @default(0)
+  pinLockedUntil    DateTime?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -244,6 +251,7 @@ model User {
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([branchId])
+  @@index([branchId, isActive])
   @@map("users")
 }
 
@@ -373,7 +381,7 @@ model Product {
   category       ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   saleItems      SaleItem[]
   purchaseItems  PurchaseItem[]
-  inventoryItems InventoryItem[]
+  inventoryIngredients InventoryIngredient[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
@@ -917,7 +925,7 @@ model UnitOfMeasure {
   updatedById String?
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  inventoryItems InventoryItem[]
+  inventoryIngredients InventoryIngredient[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -925,21 +933,16 @@ model UnitOfMeasure {
   @@map("unit_of_measures")
 }
 
-/// Current inventory balance for an item in a branch. Mutations must create movements.
-model InventoryItem {
+/// Tenant-level ingredient catalog entry. Branch-specific stock lives in InventoryBalance.
+model InventoryIngredient {
   id        String  @id @default(cuid())
   tenantId  String
-  branchId  String?
   productId String?
-  unitId    String?
+  baseUnitId String
 
   name               String
-  sku                String?
-  stockOnHand        Int     @default(0)
-  minimumStock       Int     @default(0)
-  averageCost        Int     @default(0)
+  sku                String
   isActive           Boolean @default(true)
-  allowNegativeStock Boolean @default(false)
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -948,24 +951,55 @@ model InventoryItem {
   updatedById String?
 
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch    Branch?         @relation(fields: [branchId], references: [id], onDelete: SetNull)
   product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
-  unit      UnitOfMeasure?  @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  baseUnit  UnitOfMeasure   @relation(fields: [baseUnitId], references: [id], onDelete: Restrict)
+  balances  InventoryBalance[]
   movements StockMovement[]
 
+  @@unique([tenantId, sku])
   @@index([tenantId])
-  @@index([tenantId, branchId])
   @@index([tenantId, productId])
   @@index([tenantId, isActive])
-  @@map("inventory_items")
+  @@map("inventory_ingredients")
+}
+
+/// Current inventory balance for an ingredient in a branch. Mutations must create movements.
+model InventoryBalance {
+  id           String @id @default(cuid())
+  tenantId     String
+  branchId     String
+  ingredientId String
+
+  stockOnHand        Int     @default(0)
+  minimumStock       Int     @default(0)
+  averageCost        Int     @default(0)
+  allowNegativeStock Boolean @default(false)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch     Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  ingredient InventoryIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  movements  StockMovement[]
+
+  @@unique([tenantId, branchId, ingredientId])
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([ingredientId])
+  @@map("inventory_balances")
 }
 
 /// Kardex-style inventory movement. Every stock-changing workflow writes one.
 model StockMovement {
   id              String            @id @default(cuid())
   tenantId        String
-  branchId        String?
-  inventoryItemId String
+  branchId        String
+  inventoryBalanceId String
+  ingredientId    String
   purchaseId      String?
   purchaseItemId  String?
   type            StockMovementType
@@ -981,14 +1015,16 @@ model StockMovement {
   createdAt   DateTime @default(now())
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch        Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  branch        Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  inventoryBalance InventoryBalance @relation(fields: [inventoryBalanceId], references: [id], onDelete: Restrict)
+  ingredient    InventoryIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
   purchase      Purchase?     @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
   purchaseItem  PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, branchId])
-  @@index([inventoryItemId])
+  @@index([inventoryBalanceId])
+  @@index([ingredientId])
   @@index([purchaseId])
   @@index([tenantId, type, createdAt])
   @@map("stock_movements")
