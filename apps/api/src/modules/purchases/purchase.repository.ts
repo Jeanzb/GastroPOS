@@ -4,6 +4,7 @@ import { PrismaService } from '../../database/prisma.service';
 import type { PurchaseWithDetails } from './purchase.mapper';
 
 export interface PurchaseFilters {
+  branchId?: string;
   status?: PurchaseStatus;
   supplierId?: string;
   search?: string;
@@ -176,6 +177,7 @@ export class PurchaseRepository {
   private scope(filters: PurchaseFilters): Prisma.PurchaseWhereInput {
     return {
       deletedAt: null,
+      ...(filters.branchId ? { branchId: filters.branchId } : {}),
       ...(filters.status ? { status: filters.status } : {}),
       ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
       ...(filters.search

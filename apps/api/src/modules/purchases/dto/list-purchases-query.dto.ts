@@ -5,6 +5,12 @@ import { PurchaseStatus } from '../../../../generated/prisma';
 import { PaginationQueryDto } from '../../../common/pagination/pagination-query.dto';
 
 export class ListPurchasesQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  branchId?: string;
+
   @ApiPropertyOptional({ enum: PurchaseStatus })
   @IsOptional()
   @IsEnum(PurchaseStatus)

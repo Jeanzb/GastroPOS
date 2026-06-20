@@ -2,6 +2,7 @@ import { PurchaseStatus, type Supplier } from '../../../generated/prisma';
 import { ApplicationException } from '../../common/errors/application.exception';
 import type { TenantRequestContext } from '../auth/auth.types';
 import type { AuditService } from '../audit/audit.service';
+import type { BranchScopeService } from '../../common/access/branch-scope.service';
 import { PurchaseService } from './purchase.service';
 import type { PurchaseRepository } from './purchase.repository';
 import type { PurchaseWithDetails } from './purchase.mapper';
@@ -84,6 +85,7 @@ describe('PurchaseService', () => {
     cancel: jest.Mock;
   };
   let audit: { tryRecord: jest.Mock };
+  let branchScope: { resolve: jest.Mock; require: jest.Mock; assertResourceBranch: jest.Mock };
   let service: PurchaseService;
 
   beforeEach(() => {
@@ -98,9 +100,15 @@ describe('PurchaseService', () => {
       cancel: jest.fn(),
     };
     audit = { tryRecord: jest.fn() };
+    branchScope = {
+      resolve: jest.fn((_ctx, branchId) => branchId ?? ctx.branchId),
+      require: jest.fn((_ctx, branchId) => branchId ?? ctx.branchId),
+      assertResourceBranch: jest.fn(),
+    };
     service = new PurchaseService(
       repo as unknown as PurchaseRepository,
       audit as unknown as AuditService,
+      branchScope as unknown as BranchScopeService,
     );
   });
 

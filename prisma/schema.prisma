@@ -132,6 +132,8 @@ model Tenant {
 
   @@index([planId])
   @@index([status])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
   @@map("tenants")
 }
 
@@ -174,6 +176,7 @@ model PlatformSession {
   refreshTokens PlatformRefreshToken[]
 
   @@index([platformUserId])
+  @@index([platformUserId, isActive])
   @@index([expiresAt])
   @@map("platform_sessions")
 }
@@ -245,6 +248,7 @@ model PlanFeature {
   feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
 
   @@unique([planId, featureId])
+  @@index([planId])
   @@index([featureId])
   @@map("plan_features")
 }
@@ -265,6 +269,7 @@ model TenantFeatureOverride {
   feature Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, featureId])
+  @@index([tenantId])
   @@index([featureId])
   @@map("tenant_feature_overrides")
 }
@@ -315,6 +320,8 @@ model Branch {
 
   @@unique([tenantId, code])
   @@index([tenantId])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, isActive])
   @@map("branches")
 }
 
@@ -446,8 +453,10 @@ model Session {
   refreshTokens RefreshToken[]
 
   @@index([tenantId])
+  @@index([tenantId, branchId])
   @@index([userId])
   @@index([branchId])
+  @@index([isActive, expiresAt])
   @@index([expiresAt])
   @@map("sessions")
 }

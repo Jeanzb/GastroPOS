@@ -7,6 +7,7 @@ import {
   createPaginatedResult,
   normalizePagination,
 } from '../../common/pagination/pagination';
+import { BranchScopeService } from '../../common/access/branch-scope.service';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { PasswordHashingService } from '../auth/application/password-hashing.service';
 import { AuditService } from '../audit/audit.service';
@@ -23,6 +24,7 @@ export class EmployeeService {
     private readonly repository: EmployeeRepository,
     private readonly passwordHashing: PasswordHashingService,
     private readonly auditService: AuditService,
+    private readonly branchScope: BranchScopeService,
   ) {}
 
   async list(
@@ -34,7 +36,7 @@ export class EmployeeService {
       tenantId: ctx.tenantId,
       role: query.role,
       isActive: query.isActive,
-      branchId: query.branchId,
+      branchId: await this.branchScope.resolve(ctx, query.branchId),
       search: query.search,
     };
 
@@ -50,6 +52,9 @@ export class EmployeeService {
     const employee = await this.repository.findById(ctx.tenantId, id);
     if (!employee) {
       throw notFound();
+    }
+    if (employee.branchId) {
+      await this.branchScope.assertResourceBranch(ctx, employee.branchId);
     }
 
     return toEmployeeDto(employee);
@@ -96,6 +101,9 @@ export class EmployeeService {
     const existing = await this.repository.findById(ctx.tenantId, id);
     if (!existing) {
       throw notFound();
+    }
+    if (existing.branchId) {
+      await this.branchScope.assertResourceBranch(ctx, existing.branchId);
     }
 
     const email = dto.email ? normalizeEmail(dto.email) : undefined;
@@ -153,6 +161,9 @@ export class EmployeeService {
     if (!employee) {
       throw notFound();
     }
+    if (employee.branchId) {
+      await this.branchScope.assertResourceBranch(ctx, employee.branchId);
+    }
     if (!employee.branchId) {
       throw new ApplicationException(400, {
         code: ApiErrorCode.BAD_REQUEST,
@@ -194,6 +205,9 @@ export class EmployeeService {
     if (!existing) {
       throw notFound();
     }
+    if (existing.branchId) {
+      await this.branchScope.assertResourceBranch(ctx, existing.branchId);
+    }
 
     await this.repository.softDelete(ctx.tenantId, id, ctx.actorUserId);
     await this.auditService.tryRecord({
@@ -209,7 +223,11 @@ export class EmployeeService {
     ctx: TenantRequestContext,
     branchId: string | null | undefined,
   ): Promise<string | null> {
-    const resolved = branchId === undefined ? ctx.branchId : branchId?.trim() || null;
+    if (branchId === undefined) {
+      return ctx.branchId;
+    }
+
+    const resolved = await this.branchScope.resolve(ctx, branchId);
     if (!resolved) {
       return null;
     }

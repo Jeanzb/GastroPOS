@@ -7,6 +7,7 @@ import {
   createPaginatedResult,
   normalizePagination,
 } from '../../common/pagination/pagination';
+import { BranchScopeService } from '../../common/access/branch-scope.service';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { AuditService } from '../audit/audit.service';
 import { toPurchaseDto } from './purchase.mapper';
@@ -19,14 +20,16 @@ export class PurchaseService {
   constructor(
     private readonly repository: PurchaseRepository,
     private readonly auditService: AuditService,
+    private readonly branchScope: BranchScopeService,
   ) {}
 
   async list(
-    _ctx: TenantRequestContext,
+    ctx: TenantRequestContext,
     query: ListPurchasesQueryDto,
   ): Promise<PaginatedResult<PurchaseDto>> {
     const pagination = normalizePagination(query);
     const filters = {
+      branchId: await this.branchScope.resolve(ctx, query.branchId),
       status: query.status,
       supplierId: query.supplierId,
       search: query.search,
@@ -40,10 +43,13 @@ export class PurchaseService {
     return createPaginatedResult(rows.map(toPurchaseDto), total, pagination);
   }
 
-  async getById(_ctx: TenantRequestContext, id: string): Promise<PurchaseDto> {
+  async getById(ctx: TenantRequestContext, id: string): Promise<PurchaseDto> {
     const purchase = await this.repository.findById(id);
     if (!purchase) {
       throw notFound();
+    }
+    if (purchase.branchId) {
+      await this.branchScope.assertResourceBranch(ctx, purchase.branchId);
     }
 
     return toPurchaseDto(purchase);
@@ -74,7 +80,7 @@ export class PurchaseService {
 
     const created = await this.repository.create({
       tenantId: ctx.tenantId,
-      branchId: dto.branchId?.trim() || ctx.branchId,
+      branchId: await this.branchScope.require(ctx, dto.branchId),
       supplierId: supplier.id,
       status: 'DRAFT',
       currency: (dto.currency ?? 'COP').trim().toUpperCase(),
@@ -104,6 +110,9 @@ export class PurchaseService {
     if (!existing) {
       throw notFound();
     }
+    if (existing.branchId) {
+      await this.branchScope.assertResourceBranch(ctx, existing.branchId);
+    }
     if (existing.status !== 'DRAFT') {
       throw invalidStatus(existing.status, 'receive');
     }
@@ -111,7 +120,7 @@ export class PurchaseService {
     const received = await this.repository.receive({
       id,
       tenantId: ctx.tenantId,
-      branchId: ctx.branchId,
+      branchId: existing.branchId ?? ctx.branchId,
       actorUserId: ctx.actorUserId,
     });
     if (!received) {
@@ -157,6 +166,9 @@ export class PurchaseService {
     const existing = await this.repository.findById(id);
     if (!existing) {
       throw notFound();
+    }
+    if (existing.branchId) {
+      await this.branchScope.assertResourceBranch(ctx, existing.branchId);
     }
     if (existing.status !== 'DRAFT') {
       throw invalidStatus(existing.status, 'cancel');

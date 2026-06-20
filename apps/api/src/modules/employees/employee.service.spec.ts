@@ -3,6 +3,7 @@ import { ApplicationException } from '../../common/errors/application.exception'
 import type { TenantRequestContext } from '../auth/auth.types';
 import type { PasswordHashingService } from '../auth/application/password-hashing.service';
 import type { AuditService } from '../audit/audit.service';
+import type { BranchScopeService } from '../../common/access/branch-scope.service';
 import { EmployeeService } from './employee.service';
 import type { EmployeeRepository } from './employee.repository';
 import type { EmployeeWithBranch } from './employee.mapper';
@@ -76,6 +77,7 @@ describe('EmployeeService', () => {
   };
   let passwordHashing: { hash: jest.Mock; verify: jest.Mock };
   let audit: { tryRecord: jest.Mock };
+  let branchScope: { resolve: jest.Mock; assertResourceBranch: jest.Mock };
   let service: EmployeeService;
 
   beforeEach(() => {
@@ -93,10 +95,15 @@ describe('EmployeeService', () => {
     };
     passwordHashing = { hash: jest.fn(), verify: jest.fn() };
     audit = { tryRecord: jest.fn() };
+    branchScope = {
+      resolve: jest.fn((_ctx, branchId) => branchId ?? ctx.branchId),
+      assertResourceBranch: jest.fn(),
+    };
     service = new EmployeeService(
       repo as unknown as EmployeeRepository,
       passwordHashing as unknown as PasswordHashingService,
       audit as unknown as AuditService,
+      branchScope as unknown as BranchScopeService,
     );
   });
 
