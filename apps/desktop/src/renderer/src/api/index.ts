@@ -1,7 +1,9 @@
 import { API_BASE_URL } from '@/constants';
 import { localizeApiError } from '@/lib/api-errors';
 import { useAuthStore } from '@/stores/auth.store';
+import { usePlatformAuthStore } from '@/stores/platform-auth.store';
 import type { LoginResponse } from '@/types/auth';
+import type { PlatformAuthResponse } from '@gastroai/contracts';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -28,6 +30,7 @@ interface RequestOptions {
 }
 
 let refreshPromise: Promise<boolean> | null = null;
+let platformRefreshPromise: Promise<boolean> | null = null;
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   const url = new URL(`${API_BASE_URL}${path}`);
@@ -63,6 +66,28 @@ async function performRefresh(): Promise<boolean> {
   return true;
 }
 
+async function performPlatformRefresh(): Promise<boolean> {
+  const { refreshToken, setSession, clear } = usePlatformAuthStore.getState();
+  if (!refreshToken) {
+    return false;
+  }
+
+  const response = await fetch(buildUrl('/platform/auth/refresh'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) {
+    clear();
+    return false;
+  }
+
+  const data = (await response.json()) as PlatformAuthResponse;
+  setSession(data);
+  return true;
+}
+
 function refreshSession(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = performRefresh().finally(() => {
@@ -70,6 +95,15 @@ function refreshSession(): Promise<boolean> {
     });
   }
   return refreshPromise;
+}
+
+function refreshPlatformSession(): Promise<boolean> {
+  if (!platformRefreshPromise) {
+    platformRefreshPromise = performPlatformRefresh().finally(() => {
+      platformRefreshPromise = null;
+    });
+  }
+  return platformRefreshPromise;
 }
 
 async function toApiError(response: Response): Promise<ApiError> {
@@ -131,6 +165,44 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T;
 }
 
+async function platformRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { method = 'GET', body, query, auth = true } = options;
+
+  const execute = async (): Promise<Response> => {
+    const headers: Record<string, string> = {};
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (auth) {
+      const token = usePlatformAuthStore.getState().accessToken;
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return fetch(buildUrl(path, query), {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  };
+
+  let response = await execute();
+  if (response.status === 401 && auth) {
+    const refreshed = await refreshPlatformSession();
+    if (refreshed) {
+      response = await execute();
+    }
+  }
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return (await response.json()) as T;
+}
+
 export const apiClient = {
   request,
   get: <T>(path: string, query?: Record<string, QueryValue>) =>
@@ -138,4 +210,15 @@ export const apiClient = {
   post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+};
+
+export const platformApiClient = {
+  request: platformRequest,
+  get: <T>(path: string, query?: Record<string, QueryValue>) =>
+    platformRequest<T>(path, { method: 'GET', query }),
+  post: <T>(path: string, body?: unknown) =>
+    platformRequest<T>(path, { method: 'POST', body }),
+  patch: <T>(path: string, body?: unknown) =>
+    platformRequest<T>(path, { method: 'PATCH', body }),
+  delete: <T>(path: string) => platformRequest<T>(path, { method: 'DELETE' }),
 };

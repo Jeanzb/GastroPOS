@@ -19,9 +19,14 @@ export const QUERY_KEYS = {
   tableAccount: 'table-account',
   tableAccountCommand: 'table-account-command',
   tableAccountReceipt: 'table-account-receipt',
+  platformOverview: 'platform-overview',
+  platformTenants: 'platform-tenants',
+  platformTenant: 'platform-tenant',
+  platformPlans: 'platform-plans',
 } as const;
 
 export const AUTH_STORAGE_KEY = 'gastroai-auth';
+export const PLATFORM_AUTH_STORAGE_KEY = 'gastroai-platform-auth';
 
 export const DEFAULT_PAGE_SIZE = 20;
 
