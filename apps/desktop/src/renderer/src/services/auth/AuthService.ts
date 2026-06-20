@@ -1,9 +1,17 @@
 import { apiClient } from '@/api';
-import type { CurrentUser, LoginRequest, LoginResponse } from '@/types/auth';
+import type { CurrentUser, LoginRequest, LoginResponse, PinLoginRequest } from '@/types/auth';
 
 export class AuthService {
   static login(payload: LoginRequest): Promise<LoginResponse> {
     return apiClient.request<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: payload,
+      auth: false,
+    });
+  }
+
+  static pinLogin(payload: PinLoginRequest): Promise<LoginResponse> {
+    return apiClient.request<LoginResponse>('/auth/pin-login', {
       method: 'POST',
       body: payload,
       auth: false,

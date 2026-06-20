@@ -8,9 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useEmployees } from '@/hooks/employees';
 import { useAppToast } from '@/hooks/ui';
 import { formatDate } from '@/lib/format';
-import type { EmployeeFormValues } from '@/schemas/employees';
+import type { EmployeeFormValues, EmployeePinValues } from '@/schemas/employees';
 import type { EmployeeDto, UserRole } from '@/types/employees';
 import { EmployeeFormDialog } from './EmployeeFormDialog';
+import { EmployeePinDialog } from './EmployeePinDialog';
 
 const EMPTY_EMPLOYEES: EmployeeDto[] = [];
 const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
@@ -63,9 +64,11 @@ function toEmployeePayload(values: EmployeeFormValues) {
 
 function EmployeeCard({
   employee,
+  onSetPin,
   onToggle,
 }: {
   employee: EmployeeDto;
+  onSetPin: (employee: EmployeeDto) => void;
   onToggle: (employee: EmployeeDto) => void;
 }) {
   const role = ROLE_META[employee.role];
@@ -114,15 +117,28 @@ function EmployeeCard({
           />
           {employee.isActive ? 'Acceso activo' : 'Acceso suspendido'}
         </span>
-        <Button
-          type="button"
-          variant="outline"
-          data-cy="employee-toggle-access"
-          className={employee.isActive ? 'text-[#C0431A]' : 'text-success'}
-          onClick={() => onToggle(employee)}
-        >
-          {employee.isActive ? 'Suspender' : 'Activar'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            data-cy="employee-set-pin"
+            disabled={!employee.branchId}
+            title={employee.branchId ? 'Asignar PIN POS' : 'Asigna una sede antes del PIN'}
+            onClick={() => onSetPin(employee)}
+          >
+            <KeyRound className="size-4" />
+            PIN
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            data-cy="employee-toggle-access"
+            className={employee.isActive ? 'text-[#C0431A]' : 'text-success'}
+            onClick={() => onToggle(employee)}
+          >
+            {employee.isActive ? 'Suspender' : 'Activar'}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -132,6 +148,7 @@ export function EmployeesWorkspace() {
   const appToast = useAppToast();
   const employees = useEmployees();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [pinEmployee, setPinEmployee] = useState<EmployeeDto | null>(null);
   const employeeList = employees.listQuery.data?.data ?? EMPTY_EMPLOYEES;
   const total = employees.listQuery.data?.meta.total ?? employeeList.length;
 
@@ -182,6 +199,22 @@ export function EmployeesWorkspace() {
         'No se pudo cambiar el acceso',
         getErrorMessage(error, 'El backend rechazo el cambio de estado.'),
       );
+    }
+  };
+
+  const onSetPin = async (employee: EmployeeDto, values: EmployeePinValues) => {
+    try {
+      await employees.pinMutation.mutateAsync({
+        id: employee.id,
+        payload: { pin: values.pin },
+      });
+      appToast.success('PIN actualizado', `${employee.fullName} ya puede entrar desde POS.`);
+    } catch (error) {
+      appToast.error(
+        'No se pudo guardar el PIN',
+        getErrorMessage(error, 'Verifica que el PIN sea unico en la sede.'),
+      );
+      throw error;
     }
   };
 
@@ -245,7 +278,12 @@ export function EmployeesWorkspace() {
 
               {!employees.listQuery.isLoading
                 ? employeeList.map((employee) => (
-                    <EmployeeCard key={employee.id} employee={employee} onToggle={onToggle} />
+                    <EmployeeCard
+                      key={employee.id}
+                      employee={employee}
+                      onSetPin={setPinEmployee}
+                      onToggle={onToggle}
+                    />
                   ))
                 : null}
             </div>
@@ -263,6 +301,16 @@ export function EmployeesWorkspace() {
         isSubmitting={employees.createMutation.isPending}
         onOpenChange={setIsFormOpen}
         onSubmit={onSubmit}
+      />
+      <EmployeePinDialog
+        employee={pinEmployee}
+        isSubmitting={employees.pinMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPinEmployee(null);
+          }
+        }}
+        onSubmit={onSetPin}
       />
     </>
   );

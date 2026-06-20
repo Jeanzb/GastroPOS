@@ -3,6 +3,7 @@ export type {
   EmployeeDto,
   EmployeeListParams,
   PaginatedResult,
+  SetEmployeePinPayload,
   UpdateEmployeeAccessPayload,
   UpdateEmployeePayload,
   UserRole,

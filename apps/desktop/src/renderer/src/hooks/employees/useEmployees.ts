@@ -5,6 +5,7 @@ import { EmployeeService } from '@/services/employees';
 import type {
   CreateEmployeePayload,
   EmployeeListParams,
+  SetEmployeePinPayload,
   UpdateEmployeeAccessPayload,
   UpdateEmployeePayload,
 } from '@/types/employees';
@@ -41,6 +42,12 @@ export function useEmployees() {
     onSuccess: onMutationSuccess,
   });
 
+  const pinMutation = useMutation({
+    mutationFn: (input: { id: string; payload: SetEmployeePinPayload }) =>
+      EmployeeService.setEmployeePin(input.id, input.payload),
+    onSuccess: onMutationSuccess,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => EmployeeService.deleteEmployee(id),
     onSuccess: onMutationSuccess,
@@ -53,6 +60,7 @@ export function useEmployees() {
     createMutation,
     updateMutation,
     accessMutation,
+    pinMutation,
     deleteMutation,
   };
 }

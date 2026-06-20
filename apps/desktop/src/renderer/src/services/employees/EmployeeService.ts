@@ -4,6 +4,7 @@ import type {
   EmployeeDto,
   EmployeeListParams,
   PaginatedResult,
+  SetEmployeePinPayload,
   UpdateEmployeeAccessPayload,
   UpdateEmployeePayload,
 } from '@/types/employees';
@@ -26,6 +27,10 @@ export class EmployeeService {
     payload: UpdateEmployeeAccessPayload,
   ): Promise<EmployeeDto> {
     return apiClient.patch<EmployeeDto>(`/employees/${id}/access`, payload);
+  }
+
+  static setEmployeePin(id: string, payload: SetEmployeePinPayload): Promise<EmployeeDto> {
+    return apiClient.patch<EmployeeDto>(`/employees/${id}/pin`, payload);
   }
 
   static deleteEmployee(id: string): Promise<void> {

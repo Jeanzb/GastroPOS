@@ -45,22 +45,19 @@ export function useAppToast(): AppToastApi {
       clienteRegistrado: (name) =>
         toast.success(
           name ? `${name} registrado` : 'Cliente registrado',
-          withDefaults('Datos listos para facturación electrónica DIAN'),
+          withDefaults('Datos listos para facturacion electronica DIAN'),
         ),
       comandaEnviada: (tableNumber, itemCount) =>
         toast.info(
           'Comanda enviada a cocina',
           withDefaults(
             tableNumber
-              ? `Mesa ${tableNumber}${itemCount ? ` · ${itemCount} productos en preparación` : ''}`
-              : 'Pedido enviado a preparación',
+              ? `Mesa ${tableNumber}${itemCount ? ` · ${itemCount} productos en preparacion` : ''}`
+              : 'Pedido enviado a preparacion',
           ),
         ),
       empleadoSuspendido: (name) =>
-        toast.warning(
-          'Empleado suspendido',
-          withDefaults(`${name} ya no puede iniciar sesión`),
-        ),
+        toast.warning('Empleado suspendido', withDefaults(`${name} ya no puede iniciar sesion`)),
     }),
     [],
   );

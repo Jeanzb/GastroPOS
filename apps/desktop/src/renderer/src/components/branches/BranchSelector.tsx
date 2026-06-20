@@ -5,13 +5,25 @@ import { DcChip } from '@/components/operations';
 import { Button } from '@/components/ui/button';
 import { BRANCH_OPTIONS } from '@/constants';
 import { useAuth } from '@/hooks/auth';
+import { setTerminalBranch } from '@/lib/terminal-branch';
 import { useAuthStore } from '@/stores';
 import type { BranchOption } from '@/types/operations';
 
-function BranchCard({ branch }: { branch: BranchOption }) {
+function BranchCard({
+  branch,
+  branchId,
+}: {
+  branch: BranchOption;
+  branchId: string | null;
+}) {
   return (
     <Link
       to="/"
+      onClick={() => {
+        if (branchId) {
+          setTerminalBranch({ id: branchId, name: branch.name });
+        }
+      }}
       className="motion-press group flex min-h-[208px] flex-col rounded-2xl border border-border bg-card p-[22px] text-left hover:-translate-y-1 hover:border-orange/45 hover:shadow-lg hover:shadow-carbon/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40"
     >
       <div className="flex items-start justify-between gap-4">
@@ -44,10 +56,6 @@ function BranchCard({ branch }: { branch: BranchOption }) {
       </div>
     </Link>
   );
-}
-
-function renderBranchCard(branch: BranchOption) {
-  return <BranchCard key={branch.name} branch={branch} />;
 }
 
 export function BranchSelector() {
@@ -88,7 +96,7 @@ export function BranchSelector() {
               Restaurante La Sazon
             </p>
             <h1 className="mt-2 font-display text-[30px] font-bold tracking-tight">
-              ¿En qué sede vas a trabajar hoy?
+              ¿En que sede vas a trabajar hoy?
             </h1>
             <p className="mt-2 text-[14px] text-[#6B6359]">
               Tu turno, caja y comandas se asocian a la sede que elijas.
@@ -96,7 +104,9 @@ export function BranchSelector() {
           </div>
 
           <div className="grid gap-[18px] md:grid-cols-3">
-            {BRANCH_OPTIONS.map(renderBranchCard)}
+            {BRANCH_OPTIONS.map((branch) => (
+              <BranchCard key={branch.name} branch={branch} branchId={user.branchId} />
+            ))}
           </div>
         </section>
       </main>

@@ -4,6 +4,7 @@ export type {
   CurrentUser,
   LoginRequest,
   LoginResponse,
+  PinLoginRequest,
   RoleProfile,
   RefreshTokenRequest,
   UserRole,

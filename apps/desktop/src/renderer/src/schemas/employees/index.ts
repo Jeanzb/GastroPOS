@@ -26,3 +26,15 @@ export const employeeFormSchema = z.object({
 });
 
 export type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
+
+export const employeePinSchema = z
+  .object({
+    pin: z.string().regex(/^\d{4,6}$/, 'El PIN debe tener entre 4 y 6 digitos'),
+    confirmPin: z.string().regex(/^\d{4,6}$/, 'Confirma el PIN numerico'),
+  })
+  .refine((values) => values.pin === values.confirmPin, {
+    path: ['confirmPin'],
+    message: 'Los PIN no coinciden',
+  });
+
+export type EmployeePinValues = z.infer<typeof employeePinSchema>;
