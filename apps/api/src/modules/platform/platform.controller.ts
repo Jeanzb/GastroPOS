@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
@@ -15,9 +16,11 @@ import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type {
   PlatformAuthResponse,
   PlatformOverviewDto,
+  PlatformFeatureDto,
   PlatformTenantDetailDto,
   PlatformTenantDto,
   PlanDto,
+  TenantFeatureOverrideDto,
 } from '@gastroai/contracts';
 import { PlatformService } from './platform.service';
 import { PlatformLoginDto } from './dto/platform-login.dto';
@@ -25,6 +28,7 @@ import { PlatformRefreshTokenDto } from './dto/platform-refresh-token.dto';
 import { CreatePlatformTenantDto } from './dto/create-platform-tenant.dto';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
 import { UpdateTenantPlanDto } from './dto/update-tenant-plan.dto';
+import { UpdateTenantFeatureOverrideDto } from './dto/update-tenant-feature-override.dto';
 import { PlatformJwtAuthGuard } from './guards/platform-jwt-auth.guard';
 import { PlatformRolesGuard } from './guards/platform-roles.guard';
 import { CurrentPlatformUser } from './decorators/current-platform-user.decorator';
@@ -140,6 +144,45 @@ export class PlatformController {
   @ApiBearerAuth()
   listPlans(): Promise<PlanDto[]> {
     return this.platformService.listPlans();
+  }
+
+  @Get('features')
+  @UseGuards(PlatformJwtAuthGuard)
+  @ApiBearerAuth()
+  listFeatures(): Promise<PlatformFeatureDto[]> {
+    return this.platformService.listFeatures();
+  }
+
+  @Get('tenants/:id/features')
+  @UseGuards(PlatformJwtAuthGuard)
+  @ApiBearerAuth()
+  listTenantFeatures(@Param('id') id: string): Promise<TenantFeatureOverrideDto[]> {
+    return this.platformService.listTenantFeatures(id);
+  }
+
+  @Patch('tenants/:id/features/:featureCode')
+  @UseGuards(PlatformJwtAuthGuard, PlatformRolesGuard)
+  @RequirePlatformRoles('PLATFORM_OWNER', 'PLATFORM_ADMIN')
+  @ApiBearerAuth()
+  updateTenantFeatureOverride(
+    @CurrentPlatformUser() user: AuthenticatedPlatformUser,
+    @Param('id') id: string,
+    @Param('featureCode') featureCode: string,
+    @Body() dto: UpdateTenantFeatureOverrideDto,
+  ): Promise<TenantFeatureOverrideDto[]> {
+    return this.platformService.updateTenantFeatureOverride(user, id, featureCode, dto);
+  }
+
+  @Delete('tenants/:id/features/:featureCode')
+  @UseGuards(PlatformJwtAuthGuard, PlatformRolesGuard)
+  @RequirePlatformRoles('PLATFORM_OWNER', 'PLATFORM_ADMIN')
+  @ApiBearerAuth()
+  deleteTenantFeatureOverride(
+    @CurrentPlatformUser() user: AuthenticatedPlatformUser,
+    @Param('id') id: string,
+    @Param('featureCode') featureCode: string,
+  ): Promise<TenantFeatureOverrideDto[]> {
+    return this.platformService.deleteTenantFeatureOverride(user, id, featureCode);
   }
 }
 

@@ -202,6 +202,32 @@ export class PlatformRepository {
     });
   }
 
+  listFeatures() {
+    return this.prisma.feature.findMany({
+      orderBy: { code: 'asc' },
+      include: { _count: { select: { tenantOverrides: true } } },
+    });
+  }
+
+  findTenantFeatures(id: string) {
+    return this.prisma.tenant.findFirst({
+      where: { id, deletedAt: null },
+      select: {
+        id: true,
+        plan: {
+          select: {
+            features: {
+              include: { feature: true },
+            },
+          },
+        },
+        featureOverrides: {
+          include: { feature: true },
+        },
+      },
+    });
+  }
+
   async createTenant(data: PlatformTenantCreateData) {
     return this.prisma.$transaction(async (tx) => {
       const plan = await tx.plan.findUnique({ where: { code: 'BASIC' } });
@@ -267,6 +293,67 @@ export class PlatformRepository {
       where: { id },
       data: { planId: plan.id },
       include: this.tenantDetailInclude(),
+    });
+  }
+
+  async upsertTenantFeatureOverride(input: {
+    tenantId: string;
+    featureCode: string;
+    enabled: boolean;
+    reason?: string | null;
+    actorUserId: string;
+  }): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.findFirst({
+        where: { id: input.tenantId, deletedAt: null },
+        select: { id: true },
+      });
+      const feature = await tx.feature.findUnique({
+        where: { code: input.featureCode },
+        select: { id: true },
+      });
+      if (!tenant || !feature) {
+        return false;
+      }
+
+      await tx.tenantFeatureOverride.upsert({
+        where: {
+          tenantId_featureId: {
+            tenantId: input.tenantId,
+            featureId: feature.id,
+          },
+        },
+        update: {
+          enabled: input.enabled,
+          reason: input.reason?.trim() || null,
+          updatedById: input.actorUserId,
+        },
+        create: {
+          tenantId: input.tenantId,
+          featureId: feature.id,
+          enabled: input.enabled,
+          reason: input.reason?.trim() || null,
+          createdById: input.actorUserId,
+          updatedById: input.actorUserId,
+        },
+      });
+      return true;
+    });
+  }
+
+  async deleteTenantFeatureOverride(tenantId: string, featureCode: string): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const feature = await tx.feature.findUnique({
+        where: { code: featureCode },
+        select: { id: true },
+      });
+      if (!feature) {
+        return false;
+      }
+      const result = await tx.tenantFeatureOverride.deleteMany({
+        where: { tenantId, featureId: feature.id },
+      });
+      return result.count > 0;
     });
   }
 

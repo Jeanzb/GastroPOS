@@ -46,6 +46,14 @@ export interface TenantFeatureDto extends FeatureDto {
   source: 'PLAN' | 'OVERRIDE';
 }
 
+export interface PlatformFeatureDto extends FeatureDto {
+  tenantOverrideCount: number;
+}
+
+export interface TenantFeatureOverrideDto extends TenantFeatureDto {
+  overrideReason: string | null;
+}
+
 export interface PlatformTenantDto {
   id: string;
   name: string;
@@ -107,4 +115,9 @@ export interface UpdateTenantStatusRequest {
 
 export interface UpdateTenantPlanRequest {
   planCode: 'BASIC';
+}
+
+export interface UpdateTenantFeatureOverrideRequest {
+  enabled: boolean;
+  reason?: string | null;
 }

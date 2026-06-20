@@ -8,9 +8,12 @@ import type {
   PlatformOverviewDto,
   PlatformTenantDetailDto,
   PlatformTenantDto,
+  PlatformFeatureDto,
   PlanDto,
+  TenantFeatureOverrideDto,
   TenantStatus,
 } from '@gastroai/contracts';
+import { TenantAccessCacheService } from '../../common/access/tenant-access-cache.service';
 import { ApplicationException } from '../../common/errors/application.exception';
 import type { Env } from '../../config/env.schema';
 import { AuditService } from '../audit/audit.service';
@@ -22,9 +25,11 @@ import {
 } from '../auth/application/refresh-token.util';
 import {
   toPlanDto,
+  toPlatformFeatureDto,
   toPlatformTenantDetailDto,
   toPlatformTenantDto,
   toPlatformUserDto,
+  toTenantFeatureOverrideDtos,
 } from './platform.mapper';
 import { PlatformRepository } from './platform.repository';
 import type {
@@ -43,6 +48,7 @@ export class PlatformService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService<Env, true>,
     private readonly auditService: AuditService,
+    private readonly tenantAccessCache: TenantAccessCacheService,
   ) {}
 
   async login(input: {
@@ -214,6 +220,7 @@ export class PlatformService {
   ): Promise<PlatformTenantDetailDto> {
     await this.getTenant(id);
     const tenant = await this.repository.updateTenantStatus(id, status, suspensionReason);
+    await this.tenantAccessCache.setTenantStatus(id, status);
     await this.auditService.tryRecord({
       actorUserId: actor.id,
       action: 'PLATFORM_TENANT_STATUS_CHANGED',
@@ -231,6 +238,7 @@ export class PlatformService {
   ): Promise<PlatformTenantDetailDto> {
     await this.getTenant(id);
     const tenant = await this.repository.updateTenantPlan(id, planCode);
+    await this.tenantAccessCache.invalidateTenantFeatures(id);
     await this.auditService.tryRecord({
       actorUserId: actor.id,
       action: 'PLATFORM_TENANT_PLAN_CHANGED',
@@ -243,6 +251,63 @@ export class PlatformService {
 
   async listPlans(): Promise<PlanDto[]> {
     return (await this.repository.listPlans()).map(toPlanDto);
+  }
+
+  async listFeatures(): Promise<PlatformFeatureDto[]> {
+    return (await this.repository.listFeatures()).map(toPlatformFeatureDto);
+  }
+
+  async listTenantFeatures(id: string): Promise<TenantFeatureOverrideDto[]> {
+    const tenant = await this.repository.findTenantFeatures(id);
+    if (!tenant) {
+      throw tenantNotFound();
+    }
+    return toTenantFeatureOverrideDtos(tenant);
+  }
+
+  async updateTenantFeatureOverride(
+    actor: AuthenticatedPlatformUser,
+    id: string,
+    featureCode: string,
+    input: { enabled: boolean; reason?: string | null },
+  ): Promise<TenantFeatureOverrideDto[]> {
+    const updated = await this.repository.upsertTenantFeatureOverride({
+      tenantId: id,
+      featureCode,
+      enabled: input.enabled,
+      reason: input.reason,
+      actorUserId: actor.id,
+    });
+    if (!updated) {
+      throw tenantFeatureNotFound();
+    }
+    await this.tenantAccessCache.invalidateTenantFeatures(id);
+    await this.auditService.tryRecord({
+      actorUserId: actor.id,
+      action: 'PLATFORM_TENANT_FEATURE_OVERRIDE_CHANGED',
+      entityType: 'TenantFeatureOverride',
+      entityId: id,
+      metadata: { featureCode, enabled: input.enabled, reason: input.reason ?? null },
+    });
+    return this.listTenantFeatures(id);
+  }
+
+  async deleteTenantFeatureOverride(
+    actor: AuthenticatedPlatformUser,
+    id: string,
+    featureCode: string,
+  ): Promise<TenantFeatureOverrideDto[]> {
+    await this.getTenant(id);
+    await this.repository.deleteTenantFeatureOverride(id, featureCode);
+    await this.tenantAccessCache.invalidateTenantFeatures(id);
+    await this.auditService.tryRecord({
+      actorUserId: actor.id,
+      action: 'PLATFORM_TENANT_FEATURE_OVERRIDE_REMOVED',
+      entityType: 'TenantFeatureOverride',
+      entityId: id,
+      metadata: { featureCode },
+    });
+    return this.listTenantFeatures(id);
   }
 
   private async issueSession(
@@ -309,6 +374,13 @@ function tenantNotFound(): ApplicationException {
   return new ApplicationException(404, {
     code: 'TENANT_NOT_FOUND',
     message: 'Tenant was not found.',
+  });
+}
+
+function tenantFeatureNotFound(): ApplicationException {
+  return new ApplicationException(404, {
+    code: 'TENANT_FEATURE_NOT_FOUND',
+    message: 'Tenant or feature was not found.',
   });
 }
 

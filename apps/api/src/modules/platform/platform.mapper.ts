@@ -1,9 +1,11 @@
 import type {
   FeatureDto,
   PlanDto,
+  PlatformFeatureDto,
   PlatformRole,
   PlatformTenantDetailDto,
   PlatformTenantDto,
+  TenantFeatureOverrideDto,
   PlatformUserDto,
   TenantFeatureDto,
   TenantStatus,
@@ -151,6 +153,36 @@ export function toPlanDto(plan: PlanRecord): PlanDto {
       .map((feature) => toFeatureDto(feature.feature, feature.enabled))
       .sort((left, right) => left.code.localeCompare(right.code)),
   };
+}
+
+export function toPlatformFeatureDto(
+  feature: FeatureRecord & { _count: { tenantOverrides: number } },
+): PlatformFeatureDto {
+  return {
+    ...toFeatureDto(feature, feature.isActive),
+    tenantOverrideCount: feature._count.tenantOverrides,
+  };
+}
+
+export function toTenantFeatureOverrideDtos(tenant: {
+  plan: { features: PlanRecord['features'] } | null;
+  featureOverrides: Array<{ enabled: boolean; reason: string | null; feature: FeatureRecord }>;
+}): TenantFeatureOverrideDto[] {
+  const baseFeatures = tenant.plan?.features.map((planFeature) => ({
+    ...toFeatureDto(planFeature.feature, planFeature.enabled),
+    source: 'PLAN' as const,
+    overrideReason: null,
+  })) ?? [];
+  const overrideFeatures = tenant.featureOverrides.map((override) => ({
+    ...toFeatureDto(override.feature, override.enabled),
+    source: 'OVERRIDE' as const,
+    overrideReason: override.reason,
+  }));
+  const overrideCodes = new Set(overrideFeatures.map((feature) => feature.code));
+  return [
+    ...baseFeatures.filter((feature) => !overrideCodes.has(feature.code)),
+    ...overrideFeatures,
+  ].sort((left, right) => left.code.localeCompare(right.code));
 }
 
 function toFeatureDto(feature: FeatureRecord, enabled: boolean): FeatureDto {
