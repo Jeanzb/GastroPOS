@@ -234,6 +234,12 @@ export class TableAccountsService {
     if (charged.status === 'ACCOUNT_NOT_FOUND') {
       throw notFound('Table account');
     }
+    if (charged.status === 'INSUFFICIENT_STOCK') {
+      throw new ApplicationException(409, {
+        code: ApiErrorCode.CONFLICT,
+        message: `Insufficient stock for ${charged.itemName}.`,
+      });
+    }
 
     const receipt = toReceiptDto(charged.account, charged.invoice);
     await this.auditService.tryRecord({

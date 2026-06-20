@@ -20,11 +20,14 @@ export type StockMovementSortBy =
 
 export interface InventoryItemDto {
   id: string;
-  branchId: string | null;
+  ingredientId: string;
+  branchId: string;
   productId: string | null;
-  unitId: string | null;
+  baseUnitId: string;
+  baseUnitCode: string;
+  baseUnitName: string;
   name: string;
-  sku: string | null;
+  sku: string;
   stockOnHand: number;
   minimumStock: number;
   averageCost: number;
@@ -36,8 +39,9 @@ export interface InventoryItemDto {
 
 export interface StockMovementDto {
   id: string;
-  branchId: string | null;
+  branchId: string;
   inventoryItemId: string;
+  ingredientId: string;
   inventoryItemName: string;
   purchaseId: string | null;
   purchaseItemId: string | null;
@@ -50,6 +54,38 @@ export interface StockMovementDto {
   reason: string | null;
   createdById: string;
   createdAt: string;
+}
+
+export interface CreateInventoryItemRequest {
+  branchId: string;
+  sku: string;
+  name: string;
+  baseUnitCode: string;
+  baseUnitName?: string;
+  productId?: string | null;
+  initialStock?: number;
+  initialUnitCost?: number;
+  minimumStock?: number;
+  allowNegativeStock?: boolean;
+}
+
+export interface UpdateInventoryItemRequest {
+  sku?: string;
+  name?: string;
+  baseUnitCode?: string;
+  baseUnitName?: string;
+  minimumStock?: number;
+  allowNegativeStock?: boolean;
+  isActive?: boolean;
+}
+
+export type InventoryAdjustmentType = 'IN' | 'OUT';
+
+export interface AdjustInventoryStockRequest {
+  type: InventoryAdjustmentType;
+  quantity: number;
+  reason: string;
+  unitCost?: number;
 }
 
 export interface InventoryItemListParams {

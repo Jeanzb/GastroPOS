@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type InventoryItem, type StockMovementType } from '../../../generated/prisma';
+import { Prisma, type StockMovementType } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
-import type { StockMovementWithItem } from './inventory.mapper';
+import type { InventoryBalanceWithIngredient, StockMovementWithInventory } from './inventory.mapper';
 import type { SortDirection, StockMovementSortField } from './dto/list-stock-movements-query.dto';
 
 export interface InventoryItemFilters {
@@ -21,6 +21,60 @@ export interface StockMovementSorting {
   sortDir: SortDirection;
 }
 
+export interface CreateInventoryItemData {
+  tenantId: string;
+  branchId: string;
+  productId: string | null;
+  sku: string;
+  name: string;
+  baseUnitCode: string;
+  baseUnitName: string;
+  initialStock: number;
+  initialUnitCost: number | null;
+  minimumStock: number;
+  allowNegativeStock: boolean;
+  createdById: string;
+}
+
+export interface UpdateInventoryItemData {
+  tenantId: string;
+  id: string;
+  sku?: string;
+  name?: string;
+  baseUnitCode?: string;
+  baseUnitName?: string;
+  minimumStock?: number;
+  allowNegativeStock?: boolean;
+  isActive?: boolean;
+  updatedById: string;
+}
+
+export interface AdjustInventoryStockData {
+  tenantId: string;
+  id: string;
+  movementType: Extract<StockMovementType, 'ADJUSTMENT_IN' | 'ADJUSTMENT_OUT'>;
+  quantity: number;
+  unitCost: number | null;
+  reason: string;
+  actorUserId: string;
+}
+
+export type CreateInventoryItemResult =
+  | { status: 'CREATED'; item: InventoryBalanceWithIngredient }
+  | { status: 'INVALID_BRANCH' }
+  | { status: 'INVALID_PRODUCT' }
+  | { status: 'DUPLICATE_SKU' };
+
+export type UpdateInventoryItemResult =
+  | { status: 'UPDATED'; item: InventoryBalanceWithIngredient }
+  | { status: 'NOT_FOUND' }
+  | { status: 'DUPLICATE_SKU' };
+
+export type AdjustInventoryStockResult =
+  | { status: 'ADJUSTED'; item: InventoryBalanceWithIngredient }
+  | { status: 'NOT_FOUND' }
+  | { status: 'INSUFFICIENT_STOCK' };
+
 @Injectable()
 export class InventoryRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -28,18 +82,26 @@ export class InventoryRepository {
   findItems(
     filters: InventoryItemFilters,
     pagination: { skip: number; take: number },
-  ): Promise<InventoryItem[]> {
-    return this.prisma.tenantScoped.inventoryItem.findMany({
+  ): Promise<InventoryBalanceWithIngredient[]> {
+    return this.prisma.tenantScoped.inventoryBalance.findMany({
       where: this.itemScope(filters),
-      orderBy: [{ name: 'asc' }],
+      include: this.includeIngredient(),
+      orderBy: [{ ingredient: { name: 'asc' } }],
       skip: pagination.skip,
       take: pagination.take,
     });
   }
 
   countItems(filters: InventoryItemFilters): Promise<number> {
-    return this.prisma.tenantScoped.inventoryItem.count({
+    return this.prisma.tenantScoped.inventoryBalance.count({
       where: this.itemScope(filters),
+    });
+  }
+
+  findItemById(id: string): Promise<InventoryBalanceWithIngredient | null> {
+    return this.prisma.tenantScoped.inventoryBalance.findFirst({
+      where: { id, deletedAt: null, ingredient: { deletedAt: null } },
+      include: this.includeIngredient(),
     });
   }
 
@@ -47,10 +109,10 @@ export class InventoryRepository {
     filters: StockMovementFilters,
     pagination: { skip: number; take: number },
     sorting: StockMovementSorting,
-  ): Promise<StockMovementWithItem[]> {
+  ): Promise<StockMovementWithInventory[]> {
     return this.prisma.tenantScoped.stockMovement.findMany({
       where: this.movementScope(filters),
-      include: { inventoryItem: { select: { id: true, name: true } } },
+      include: { ingredient: { select: { id: true, name: true } } },
       orderBy: this.movementOrderBy(sorting),
       skip: pagination.skip,
       take: pagination.take,
@@ -63,20 +125,255 @@ export class InventoryRepository {
     });
   }
 
-  private itemScope(filters: InventoryItemFilters): Prisma.InventoryItemWhereInput {
+  createItem(data: CreateInventoryItemData): Promise<CreateInventoryItemResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const branch = await tx.branch.findFirst({
+        where: { id: data.branchId, tenantId: data.tenantId, deletedAt: null, isActive: true },
+        select: { id: true },
+      });
+      if (!branch) {
+        return { status: 'INVALID_BRANCH' };
+      }
+
+      if (data.productId) {
+        const product = await tx.product.findFirst({
+          where: { id: data.productId, tenantId: data.tenantId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!product) {
+          return { status: 'INVALID_PRODUCT' };
+        }
+      }
+
+      const existingSku = await tx.inventoryIngredient.findUnique({
+        where: { tenantId_sku: { tenantId: data.tenantId, sku: data.sku } },
+        select: { id: true },
+      });
+      if (existingSku) {
+        return { status: 'DUPLICATE_SKU' };
+      }
+
+      const unit = await this.findOrCreateUnit(tx, {
+        tenantId: data.tenantId,
+        code: data.baseUnitCode,
+        name: data.baseUnitName,
+        actorUserId: data.createdById,
+      });
+
+      const ingredient = await tx.inventoryIngredient.create({
+        data: {
+          tenantId: data.tenantId,
+          productId: data.productId,
+          baseUnitId: unit.id,
+          sku: data.sku,
+          name: data.name,
+          createdById: data.createdById,
+        },
+      });
+
+      const balance = await tx.inventoryBalance.create({
+        data: {
+          tenantId: data.tenantId,
+          branchId: data.branchId,
+          ingredientId: ingredient.id,
+          stockOnHand: data.initialStock,
+          minimumStock: data.minimumStock,
+          averageCost: data.initialStock > 0 ? data.initialUnitCost ?? 0 : 0,
+          allowNegativeStock: data.allowNegativeStock,
+          createdById: data.createdById,
+        },
+      });
+
+      if (data.initialStock > 0) {
+        await tx.stockMovement.create({
+          data: {
+            tenantId: data.tenantId,
+            branchId: data.branchId,
+            inventoryBalanceId: balance.id,
+            ingredientId: ingredient.id,
+            type: 'ADJUSTMENT_IN',
+            quantity: data.initialStock,
+            unitCost: data.initialUnitCost,
+            totalCost: data.initialUnitCost ? data.initialStock * data.initialUnitCost : null,
+            stockBefore: 0,
+            stockAfter: data.initialStock,
+            reason: 'Stock inicial',
+            createdById: data.createdById,
+          },
+        });
+      }
+
+      const item = await this.findItemByIdInTx(tx, data.tenantId, balance.id);
+      if (!item) {
+        throw new Error('Inventory item was created but could not be loaded.');
+      }
+
+      return { status: 'CREATED', item };
+    });
+  }
+
+  updateItem(data: UpdateInventoryItemData): Promise<UpdateInventoryItemResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await this.findItemByIdInTx(tx, data.tenantId, data.id);
+      if (!current) {
+        return { status: 'NOT_FOUND' };
+      }
+
+      if (data.sku && data.sku !== current.ingredient.sku) {
+        const existingSku = await tx.inventoryIngredient.findUnique({
+          where: { tenantId_sku: { tenantId: data.tenantId, sku: data.sku } },
+          select: { id: true },
+        });
+        if (existingSku && existingSku.id !== current.ingredientId) {
+          return { status: 'DUPLICATE_SKU' };
+        }
+      }
+
+      const unit =
+        data.baseUnitCode === undefined
+          ? null
+          : await this.findOrCreateUnit(tx, {
+              tenantId: data.tenantId,
+              code: data.baseUnitCode,
+              name: data.baseUnitName ?? data.baseUnitCode,
+              actorUserId: data.updatedById,
+            });
+
+      await tx.inventoryIngredient.update({
+        where: { id: current.ingredientId },
+        data: {
+          sku: data.sku,
+          name: data.name,
+          baseUnitId: unit?.id,
+          isActive: data.isActive,
+          updatedById: data.updatedById,
+        },
+      });
+
+      await tx.inventoryBalance.update({
+        where: { id: data.id },
+        data: {
+          minimumStock: data.minimumStock,
+          allowNegativeStock: data.allowNegativeStock,
+          updatedById: data.updatedById,
+        },
+      });
+
+      const item = await this.findItemByIdInTx(tx, data.tenantId, data.id);
+      if (!item) {
+        throw new Error('Inventory item was updated but could not be loaded.');
+      }
+
+      return { status: 'UPDATED', item };
+    });
+  }
+
+  adjustStock(data: AdjustInventoryStockData): Promise<AdjustInventoryStockResult> {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await this.findItemByIdInTx(tx, data.tenantId, data.id);
+      if (!current) {
+        return { status: 'NOT_FOUND' };
+      }
+
+      const stockBefore = current.stockOnHand;
+      const stockAfter =
+        data.movementType === 'ADJUSTMENT_IN'
+          ? stockBefore + data.quantity
+          : stockBefore - data.quantity;
+
+      if (stockAfter < 0 && !current.allowNegativeStock) {
+        return { status: 'INSUFFICIENT_STOCK' };
+      }
+
+      const averageCost =
+        data.movementType === 'ADJUSTMENT_IN' && data.unitCost
+          ? weightedAverageCost(stockBefore, current.averageCost, data.quantity, data.unitCost)
+          : current.averageCost;
+
+      await tx.inventoryBalance.update({
+        where: { id: current.id },
+        data: {
+          stockOnHand: stockAfter,
+          averageCost,
+          updatedById: data.actorUserId,
+        },
+      });
+
+      await tx.stockMovement.create({
+        data: {
+          tenantId: data.tenantId,
+          branchId: current.branchId,
+          inventoryBalanceId: current.id,
+          ingredientId: current.ingredientId,
+          type: data.movementType,
+          quantity: data.quantity,
+          unitCost: data.unitCost,
+          totalCost: data.unitCost ? data.quantity * data.unitCost : null,
+          stockBefore,
+          stockAfter,
+          reason: data.reason,
+          createdById: data.actorUserId,
+        },
+      });
+
+      const item = await this.findItemByIdInTx(tx, data.tenantId, data.id);
+      if (!item) {
+        throw new Error('Inventory item was adjusted but could not be loaded.');
+      }
+
+      return { status: 'ADJUSTED', item };
+    });
+  }
+
+  private findItemByIdInTx(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    id: string,
+  ): Promise<InventoryBalanceWithIngredient | null> {
+    return tx.inventoryBalance.findFirst({
+      where: { id, tenantId, deletedAt: null, ingredient: { deletedAt: null } },
+      include: this.includeIngredient(),
+    });
+  }
+
+  private async findOrCreateUnit(
+    tx: Prisma.TransactionClient,
+    data: { tenantId: string; code: string; name: string; actorUserId: string },
+  ) {
+    return tx.unitOfMeasure.upsert({
+      where: { tenantId_code: { tenantId: data.tenantId, code: data.code } },
+      update: {
+        name: data.name,
+        isActive: true,
+        deletedAt: null,
+        updatedById: data.actorUserId,
+      },
+      create: {
+        tenantId: data.tenantId,
+        code: data.code,
+        name: data.name,
+        createdById: data.actorUserId,
+      },
+    });
+  }
+
+  private itemScope(filters: InventoryItemFilters): Prisma.InventoryBalanceWhereInput {
     return {
       deletedAt: null,
+      ingredient: {
+        deletedAt: null,
+        ...(filters.search
+          ? {
+              OR: [
+                { name: { contains: filters.search, mode: 'insensitive' } },
+                { sku: { contains: filters.search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
       ...(filters.branchId ? { branchId: filters.branchId } : {}),
       ...(filters.lowStockOnly
-        ? { stockOnHand: { lte: this.prisma.inventoryItem.fields.minimumStock } }
-        : {}),
-      ...(filters.search
-        ? {
-            OR: [
-              { name: { contains: filters.search, mode: 'insensitive' } },
-              { sku: { contains: filters.search, mode: 'insensitive' } },
-            ],
-          }
+        ? { stockOnHand: { lte: this.prisma.inventoryBalance.fields.minimumStock } }
         : {}),
     };
   }
@@ -84,7 +381,7 @@ export class InventoryRepository {
   private movementScope(filters: StockMovementFilters): Prisma.StockMovementWhereInput {
     return {
       ...(filters.branchId ? { branchId: filters.branchId } : {}),
-      ...(filters.inventoryItemId ? { inventoryItemId: filters.inventoryItemId } : {}),
+      ...(filters.inventoryItemId ? { inventoryBalanceId: filters.inventoryItemId } : {}),
       ...(filters.type ? { type: filters.type } : {}),
     };
   }
@@ -95,9 +392,33 @@ export class InventoryRepository {
     const sortDir = sorting.sortDir;
 
     if (sorting.sortBy === 'inventoryItemName') {
-      return [{ inventoryItem: { name: sortDir } }, { createdAt: 'desc' }];
+      return [{ ingredient: { name: sortDir } }, { createdAt: 'desc' }];
     }
 
     return [{ [sorting.sortBy]: sortDir }, { createdAt: 'desc' }];
   }
+
+  private includeIngredient() {
+    return {
+      ingredient: {
+        include: {
+          baseUnit: { select: { id: true, code: true, name: true } },
+        },
+      },
+    } satisfies Prisma.InventoryBalanceInclude;
+  }
+}
+
+function weightedAverageCost(
+  stockBefore: number,
+  previousAverageCost: number,
+  quantity: number,
+  unitCost: number,
+): number {
+  const stockAfter = stockBefore + quantity;
+  if (stockAfter <= 0 || stockBefore <= 0) {
+    return unitCost;
+  }
+
+  return Math.round((stockBefore * previousAverageCost + quantity * unitCost) / stockAfter);
 }

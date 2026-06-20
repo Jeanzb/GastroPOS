@@ -179,8 +179,8 @@ describe('Restaurant operations', () => {
     cy.get('[data-cy="purchase-reference"]').type(reference);
     cy.get('[data-cy="purchase-item-name"]').type('Carne molida Cypress');
     cy.get('[data-cy="purchase-quantity"]').type('{selectall}2').should('have.value', '2');
-    cy.get('[data-cy="purchase-unit-cost"]').type('{selectall}10000').should('have.value', '10000');
-    cy.get('[data-cy="purchase-tax-total"]').type('{selectall}1900').should('have.value', '1900');
+    cy.get('[data-cy="purchase-unit-cost"]').type('{selectall}10000').should('have.value', '10.000');
+    cy.get('[data-cy="purchase-tax-total"]').type('{selectall}1900').should('have.value', '1.900');
     cy.get('[data-cy="purchase-submit"]').click();
     cy.wait('@createPurchase').its('response.body').should('include', {
       status: 'DRAFT',
@@ -202,6 +202,57 @@ describe('Restaurant operations', () => {
     cy.wait('@receivePurchase').its('response.body.status').should('eq', 'RECEIVED');
 
     cy.contains('[data-cy="purchase-row"]', supplierName).should('contain', 'Recibida');
+  });
+
+  it('creates an inventory item and adjusts stock -> Kardex shows the movement', () => {
+    const stamp = uniqueId('cy-inventory');
+    const sku = `CY-${stamp}`.toUpperCase();
+    const itemName = `Insumo ${stamp}`;
+
+    cy.intercept('GET', '**/api/v1/inventory-items*').as('getInventoryItems');
+    cy.intercept('GET', '**/api/v1/stock-movements*').as('getStockMovements');
+    cy.intercept('POST', '**/api/v1/inventory-items').as('createInventoryItem');
+    cy.intercept('POST', '**/api/v1/inventory-items/*/adjustments').as('adjustInventoryItem');
+
+    cy.loginByApi('/inventory');
+    cy.wait('@getInventoryItems');
+    cy.get('[data-cy="inventory-page"]').should('be.visible');
+
+    cy.get('[data-cy="inventory-new-item"]').click();
+    cy.get('[data-cy="inventory-item-dialog"]').should('be.visible');
+    cy.get('[data-cy="inventory-item-sku"]').type(sku);
+    cy.get('[data-cy="inventory-item-name"]').type(itemName);
+    cy.get('[data-cy="inventory-item-unit-code"]').type('{selectall}KG');
+    cy.get('[data-cy="inventory-item-unit-name"]').type('{selectall}Kilogramo');
+    cy.get('[data-cy="inventory-item-initial-stock"]').type('{selectall}5');
+    cy.get('[data-cy="inventory-item-initial-cost"]').type('{selectall}12000');
+    cy.get('[data-cy="inventory-item-minimum-stock"]').type('{selectall}2');
+    cy.get('[data-cy="inventory-item-submit"]').click();
+    cy.wait('@createInventoryItem').its('response.body').should('include', {
+      sku,
+      name: itemName,
+      stockOnHand: 5,
+    });
+    cy.wait('@getInventoryItems');
+
+    cy.contains('[data-cy="inventory-item-row"]', itemName)
+      .should('be.visible')
+      .and('contain', '5 KG')
+      .within(() => {
+        cy.get('[data-cy="inventory-adjust-row"]').click();
+      });
+
+    cy.get('[data-cy="inventory-adjust-dialog"]').should('be.visible');
+    cy.get('[data-cy="inventory-adjust-quantity"]').type('{selectall}3');
+    cy.get('[data-cy="inventory-adjust-unit-cost"]').type('{selectall}13000');
+    cy.get('[data-cy="inventory-adjust-reason"]').type('Conteo fisico Cypress');
+    cy.get('[data-cy="inventory-adjust-submit"]').click();
+    cy.wait('@adjustInventoryItem').its('response.body.stockOnHand').should('eq', 8);
+    cy.wait('@getInventoryItems');
+
+    cy.contains('[data-cy="inventory-item-row"]', itemName).should('contain', '8 KG');
+    cy.wait('@getStockMovements');
+    cy.contains(itemName).should('be.visible');
   });
 
   it('creates and suspends an employee -> access state updates in the card', () => {

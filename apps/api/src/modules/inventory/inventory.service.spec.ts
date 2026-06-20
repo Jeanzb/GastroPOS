@@ -1,8 +1,9 @@
-import { StockMovementType, type InventoryItem } from '../../../generated/prisma';
+import { StockMovementType } from '../../../generated/prisma';
+import type { AuditService } from '../audit/audit.service';
 import type { TenantRequestContext } from '../auth/auth.types';
-import { InventoryService } from './inventory.service';
+import type { InventoryBalanceWithIngredient, StockMovementWithInventory } from './inventory.mapper';
 import type { InventoryRepository } from './inventory.repository';
-import type { StockMovementWithItem } from './inventory.mapper';
+import { InventoryService } from './inventory.service';
 
 const ctx: TenantRequestContext = {
   tenantId: 'tenant_1',
@@ -15,35 +16,51 @@ const ctx: TenantRequestContext = {
 
 const now = new Date('2026-01-01T00:00:00.000Z');
 
-function inventoryItem(overrides: Partial<InventoryItem> = {}): InventoryItem {
+function inventoryBalance(
+  overrides: Partial<InventoryBalanceWithIngredient> = {},
+): InventoryBalanceWithIngredient {
   return {
     id: 'inventory_1',
     tenantId: 'tenant_1',
     branchId: 'branch_1',
-    productId: 'product_1',
-    unitId: null,
-    name: 'Carne molida',
-    sku: null,
+    ingredientId: 'ingredient_1',
     stockOnHand: 4,
     minimumStock: 2,
     averageCost: 10000,
-    isActive: true,
     allowNegativeStock: false,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
     createdById: 'user_1',
     updatedById: null,
+    ingredient: {
+      id: 'ingredient_1',
+      tenantId: 'tenant_1',
+      productId: 'product_1',
+      baseUnitId: 'unit_1',
+      name: 'Carne molida',
+      sku: 'INS-CARNE',
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+      createdById: 'user_1',
+      updatedById: null,
+      baseUnit: { id: 'unit_1', code: 'KG', name: 'Kilogramo' },
+    },
     ...overrides,
   };
 }
 
-function stockMovement(overrides: Partial<StockMovementWithItem> = {}): StockMovementWithItem {
+function stockMovement(
+  overrides: Partial<StockMovementWithInventory> = {},
+): StockMovementWithInventory {
   return {
     id: 'movement_1',
     tenantId: 'tenant_1',
     branchId: 'branch_1',
-    inventoryItemId: 'inventory_1',
+    inventoryBalanceId: 'inventory_1',
+    ingredientId: 'ingredient_1',
     purchaseId: 'purchase_1',
     purchaseItemId: 'purchase_item_1',
     type: StockMovementType.PURCHASE,
@@ -55,7 +72,7 @@ function stockMovement(overrides: Partial<StockMovementWithItem> = {}): StockMov
     reason: 'Purchase FC-100 received',
     createdById: 'user_1',
     createdAt: now,
-    inventoryItem: { id: 'inventory_1', name: 'Carne molida' },
+    ingredient: { id: 'ingredient_1', name: 'Carne molida' },
     ...overrides,
   };
 }
@@ -66,7 +83,12 @@ describe('InventoryService', () => {
     countItems: jest.Mock;
     findMovements: jest.Mock;
     countMovements: jest.Mock;
+    findItemById: jest.Mock;
+    createItem: jest.Mock;
+    updateItem: jest.Mock;
+    adjustStock: jest.Mock;
   };
+  let audit: { tryRecord: jest.Mock };
   let service: InventoryService;
 
   beforeEach(() => {
@@ -75,12 +97,20 @@ describe('InventoryService', () => {
       countItems: jest.fn(),
       findMovements: jest.fn(),
       countMovements: jest.fn(),
+      findItemById: jest.fn(),
+      createItem: jest.fn(),
+      updateItem: jest.fn(),
+      adjustStock: jest.fn(),
     };
-    service = new InventoryService(repo as unknown as InventoryRepository);
+    audit = { tryRecord: jest.fn() };
+    service = new InventoryService(
+      repo as unknown as InventoryRepository,
+      audit as unknown as AuditService,
+    );
   });
 
-  it('lists inventory items as DTOs', async () => {
-    repo.findItems.mockResolvedValue([inventoryItem()]);
+  it('lists inventory balances as item DTOs', async () => {
+    repo.findItems.mockResolvedValue([inventoryBalance()]);
     repo.countItems.mockResolvedValue(1);
 
     const result = await service.listItems(ctx, { page: 1, pageSize: 10 });
@@ -92,14 +122,17 @@ describe('InventoryService', () => {
     expect(result.data[0]).toEqual(
       expect.objectContaining({
         id: 'inventory_1',
+        ingredientId: 'ingredient_1',
         name: 'Carne molida',
+        sku: 'INS-CARNE',
+        baseUnitCode: 'KG',
         stockOnHand: 4,
       }),
     );
     expect(result.meta.total).toBe(1);
   });
 
-  it('lists stock movements with inventory item names', async () => {
+  it('lists stock movements with ingredient names', async () => {
     repo.findMovements.mockResolvedValue([stockMovement()]);
     repo.countMovements.mockResolvedValue(1);
 
@@ -120,31 +153,92 @@ describe('InventoryService', () => {
     );
     expect(result.data[0]).toEqual(
       expect.objectContaining({
+        inventoryItemId: 'inventory_1',
+        ingredientId: 'ingredient_1',
         inventoryItemName: 'Carne molida',
         type: StockMovementType.PURCHASE,
       }),
     );
   });
 
-  it('passes stock movement sorting to the repository', async () => {
-    repo.findMovements.mockResolvedValue([stockMovement()]);
-    repo.countMovements.mockResolvedValue(1);
+  it('creates an inventory item with normalized SKU and writes audit', async () => {
+    repo.createItem.mockResolvedValue({ status: 'CREATED', item: inventoryBalance() });
 
-    await service.listMovements(ctx, {
-      page: 1,
-      pageSize: 10,
-      sortBy: 'inventoryItemName',
-      sortDir: 'asc',
+    const result = await service.createItem(ctx, {
+      branchId: 'branch_1',
+      sku: ' ins-carne ',
+      name: ' Carne molida ',
+      baseUnitCode: ' kg ',
+      baseUnitName: 'Kilogramo',
+      initialStock: 4,
+      initialUnitCost: 10000,
+      minimumStock: 2,
     });
 
-    expect(repo.findMovements).toHaveBeenCalledWith(
-      {
+    expect(repo.createItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant_1',
         branchId: 'branch_1',
-        inventoryItemId: undefined,
-        type: undefined,
-      },
-      expect.objectContaining({ skip: 0, take: 10 }),
-      { sortBy: 'inventoryItemName', sortDir: 'asc' },
+        sku: 'INS-CARNE',
+        baseUnitCode: 'KG',
+      }),
     );
+    expect(result.id).toBe('inventory_1');
+    expect(audit.tryRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'INVENTORY_ITEM_CREATED' }),
+    );
+  });
+
+  it('rejects duplicate SKU on create', async () => {
+    repo.createItem.mockResolvedValue({ status: 'DUPLICATE_SKU' });
+
+    await expect(
+      service.createItem(ctx, {
+        branchId: 'branch_1',
+        sku: 'INS-CARNE',
+        name: 'Carne molida',
+        baseUnitCode: 'KG',
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('adjusts stock and audits the movement', async () => {
+    repo.findItemById.mockResolvedValue(inventoryBalance());
+    repo.adjustStock.mockResolvedValue({
+      status: 'ADJUSTED',
+      item: inventoryBalance({ stockOnHand: 7 }),
+    });
+
+    const result = await service.adjustStock(ctx, 'inventory_1', {
+      type: 'IN',
+      quantity: 3,
+      unitCost: 11000,
+      reason: 'Conteo fisico',
+    });
+
+    expect(repo.adjustStock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'inventory_1',
+        movementType: 'ADJUSTMENT_IN',
+        quantity: 3,
+      }),
+    );
+    expect(result.stockOnHand).toBe(7);
+    expect(audit.tryRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'INVENTORY_STOCK_ADJUSTED' }),
+    );
+  });
+
+  it('blocks stock adjustments that would leave negative stock', async () => {
+    repo.findItemById.mockResolvedValue(inventoryBalance());
+    repo.adjustStock.mockResolvedValue({ status: 'INSUFFICIENT_STOCK' });
+
+    await expect(
+      service.adjustStock(ctx, 'inventory_1', {
+        type: 'OUT',
+        quantity: 10,
+        reason: 'Merma',
+      }),
+    ).rejects.toMatchObject({ status: 409 });
   });
 });

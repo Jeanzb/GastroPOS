@@ -35,6 +35,7 @@ export interface CreatePurchaseData {
 export interface ReceivePurchaseData {
   id: string;
   tenantId: string;
+  branchId: string | null;
   actorUserId: string;
 }
 
@@ -42,6 +43,7 @@ export interface ReceivePurchaseResult {
   purchase: PurchaseWithDetails;
   received: boolean;
   stockMovementCount: number;
+  missingBranch?: boolean;
 }
 
 @Injectable()
@@ -132,9 +134,14 @@ export class PurchaseRepository {
         return { purchase, received: false, stockMovementCount: 0 };
       }
 
+      const branchId = purchase.branchId ?? data.branchId;
+      if (!branchId) {
+        return { purchase, received: false, stockMovementCount: 0, missingBranch: true };
+      }
+
       let stockMovementCount = 0;
       for (const item of purchase.items) {
-        await this.receiveItemIntoInventory(tx, purchase, item, data.actorUserId);
+        await this.receiveItemIntoInventory(tx, purchase, branchId, item, data.actorUserId);
         stockMovementCount += 1;
       }
 
@@ -190,10 +197,17 @@ export class PurchaseRepository {
   private async receiveItemIntoInventory(
     tx: Prisma.TransactionClient,
     purchase: PurchaseWithDetails,
+    branchId: string,
     item: PurchaseWithDetails['items'][number],
     actorUserId: string,
   ): Promise<void> {
-    const inventoryItem = await this.findOrCreateInventoryItem(tx, purchase, item, actorUserId);
+    const inventoryItem = await this.findOrCreateInventoryBalance(
+      tx,
+      purchase,
+      branchId,
+      item,
+      actorUserId,
+    );
     const stockBefore = inventoryItem.stockOnHand;
     const stockAfter = stockBefore + item.quantity;
     const averageCost = weightedAverageCost(
@@ -203,7 +217,7 @@ export class PurchaseRepository {
       item.unitCost,
     );
 
-    await tx.inventoryItem.update({
+    await tx.inventoryBalance.update({
       where: { id: inventoryItem.id },
       data: {
         stockOnHand: stockAfter,
@@ -215,8 +229,9 @@ export class PurchaseRepository {
     await tx.stockMovement.create({
       data: {
         tenantId: purchase.tenantId,
-        branchId: purchase.branchId,
-        inventoryItemId: inventoryItem.id,
+        branchId,
+        inventoryBalanceId: inventoryItem.id,
+        ingredientId: inventoryItem.ingredientId,
         purchaseId: purchase.id,
         purchaseItemId: item.id,
         type: 'PURCHASE',
@@ -231,20 +246,47 @@ export class PurchaseRepository {
     });
   }
 
-  private async findOrCreateInventoryItem(
+  private async findOrCreateInventoryBalance(
     tx: Prisma.TransactionClient,
     purchase: PurchaseWithDetails,
+    branchId: string,
     item: PurchaseWithDetails['items'][number],
     actorUserId: string,
   ) {
-    const existing = await tx.inventoryItem.findFirst({
+    const product = item.productId
+      ? await tx.product.findFirst({
+          where: { id: item.productId, tenantId: purchase.tenantId, deletedAt: null },
+          select: { id: true, sku: true, name: true },
+        })
+      : null;
+    const sku = normalizeSku(product?.sku ?? `PUR-${item.id.slice(0, 8)}`);
+    const name = product?.name ?? item.nameSnapshot;
+    const ingredient =
+      (await tx.inventoryIngredient.findFirst({
+        where: {
+          tenantId: purchase.tenantId,
+          deletedAt: null,
+          ...(item.productId ? { productId: item.productId } : { sku }),
+        },
+        orderBy: { createdAt: 'asc' },
+      })) ??
+      (await tx.inventoryIngredient.create({
+        data: {
+          tenantId: purchase.tenantId,
+          productId: item.productId,
+          baseUnitId: await this.findOrCreateDefaultUnitId(tx, purchase.tenantId, actorUserId),
+          sku,
+          name,
+          createdById: actorUserId,
+        },
+      }));
+
+    const existing = await tx.inventoryBalance.findFirst({
       where: {
         tenantId: purchase.tenantId,
-        branchId: purchase.branchId,
+        branchId,
+        ingredientId: ingredient.id,
         deletedAt: null,
-        ...(item.productId
-          ? { productId: item.productId }
-          : { productId: null, name: item.nameSnapshot }),
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -253,18 +295,35 @@ export class PurchaseRepository {
       return existing;
     }
 
-    return tx.inventoryItem.create({
+    return tx.inventoryBalance.create({
       data: {
         tenantId: purchase.tenantId,
-        branchId: purchase.branchId,
-        productId: item.productId,
-        name: item.nameSnapshot,
+        branchId,
+        ingredientId: ingredient.id,
         stockOnHand: 0,
         averageCost: item.unitCost,
         createdById: actorUserId,
       },
     });
   }
+
+  private async findOrCreateDefaultUnitId(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorUserId: string,
+  ): Promise<string> {
+    const unit = await tx.unitOfMeasure.upsert({
+      where: { tenantId_code: { tenantId, code: 'UND' } },
+      update: { name: 'Unidad', isActive: true, deletedAt: null, updatedById: actorUserId },
+      create: { tenantId, code: 'UND', name: 'Unidad', createdById: actorUserId },
+      select: { id: true },
+    });
+    return unit.id;
+  }
+}
+
+function normalizeSku(value: string): string {
+  return value.trim().toUpperCase().replace(/\s+/g, '-');
 }
 
 function weightedAverageCost(

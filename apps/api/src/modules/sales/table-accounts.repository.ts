@@ -74,7 +74,8 @@ export interface ChargeAccountData {
 export type ChargeAccountResult =
   | { status: 'CHARGED'; account: TableAccountSaleRecord; invoice: Invoice | null }
   | { status: 'NO_ACTIVE_CASH_SESSION' }
-  | { status: 'ACCOUNT_NOT_FOUND' };
+  | { status: 'ACCOUNT_NOT_FOUND' }
+  | { status: 'INSUFFICIENT_STOCK'; itemName: string };
 
 @Injectable()
 export class TableAccountsRepository {
@@ -313,6 +314,11 @@ export class TableAccountsRepository {
         return { status: 'NO_ACTIVE_CASH_SESSION' };
       }
 
+      const stockResult = await this.deductStockForSale(tx, data, sale);
+      if (stockResult.status === 'INSUFFICIENT_STOCK') {
+        return stockResult;
+      }
+
       await tx.payment.create({
         data: {
           tenantId: data.tenantId,
@@ -477,8 +483,6 @@ export class TableAccountsRepository {
         });
       }
 
-      await this.deductStockForSale(tx, data, sale);
-
       const account = await this.findByIdInTx(tx, data.tenantId, data.branchId, sale.id);
       if (!account) {
         return { status: 'ACCOUNT_NOT_FOUND' };
@@ -489,67 +493,99 @@ export class TableAccountsRepository {
   }
 
   /**
-   * Kardex-accurate stock deduction for a charged sale. For each line tied to a
-   * product, the matching inventory item (branch-specific, then global) is
-   * decremented and a SALE_CONSUMPTION movement is recorded. Untracked products
-   * are skipped; the charge never fails on stock so the sale stays atomic.
+   * Kardex-accurate stock deduction for a charged sale. For each inventoried product,
+   * the branch balance is decremented and a SALE_CONSUMPTION movement is recorded.
+   * Untracked non-inventoried products are skipped; inventoried products with no
+   * balance are treated as unavailable stock.
    */
   private async deductStockForSale(
     tx: Prisma.TransactionClient,
     data: ChargeAccountData,
     sale: TableAccountSaleRecord,
-  ): Promise<void> {
+  ): Promise<{ status: 'OK' } | { status: 'INSUFFICIENT_STOCK'; itemName: string }> {
+    const deductions: Array<{
+      balanceId: string;
+      ingredientId: string;
+      quantity: number;
+      stockBefore: number;
+      stockAfter: number;
+    }> = [];
+
     for (const item of sale.items) {
       if (!item.productId) {
         continue;
       }
 
-      const inventoryItem =
-        (await tx.inventoryItem.findFirst({
-          where: {
-            tenantId: data.tenantId,
+      const product = await tx.product.findFirst({
+        where: {
+          id: item.productId,
+          tenantId: data.tenantId,
+          deletedAt: null,
+          isActive: true,
+        },
+        select: { id: true, isInventoried: true },
+      });
+
+      if (!product?.isInventoried) {
+        continue;
+      }
+
+      const inventoryItem = await tx.inventoryBalance.findFirst({
+        where: {
+          tenantId: data.tenantId,
+          branchId: data.branchId,
+          deletedAt: null,
+          ingredient: {
             productId: item.productId,
             isActive: true,
             deletedAt: null,
-            branchId: data.branchId,
           },
-        })) ??
-        (await tx.inventoryItem.findFirst({
-          where: {
-            tenantId: data.tenantId,
-            productId: item.productId,
-            isActive: true,
-            deletedAt: null,
-            branchId: null,
-          },
-        }));
+        },
+        include: { ingredient: { select: { id: true, name: true } } },
+      });
 
       if (!inventoryItem) {
-        continue;
+        return { status: 'INSUFFICIENT_STOCK', itemName: item.nameSnapshot };
       }
 
       const stockBefore = inventoryItem.stockOnHand;
       const stockAfter = stockBefore - item.quantity;
+      if (stockAfter < 0 && !inventoryItem.allowNegativeStock) {
+        return { status: 'INSUFFICIENT_STOCK', itemName: inventoryItem.ingredient.name };
+      }
 
-      await tx.inventoryItem.update({
-        where: { id: inventoryItem.id },
-        data: { stockOnHand: stockAfter, updatedById: data.chargedById },
+      deductions.push({
+        balanceId: inventoryItem.id,
+        ingredientId: inventoryItem.ingredientId,
+        quantity: item.quantity,
+        stockBefore,
+        stockAfter,
+      });
+    }
+
+    for (const deduction of deductions) {
+      await tx.inventoryBalance.update({
+        where: { id: deduction.balanceId },
+        data: { stockOnHand: deduction.stockAfter, updatedById: data.chargedById },
       });
 
       await tx.stockMovement.create({
         data: {
           tenantId: data.tenantId,
-          branchId: inventoryItem.branchId ?? data.branchId,
-          inventoryItemId: inventoryItem.id,
+          branchId: data.branchId,
+          inventoryBalanceId: deduction.balanceId,
+          ingredientId: deduction.ingredientId,
           type: StockMovementType.SALE_CONSUMPTION,
-          quantity: item.quantity,
-          stockBefore,
-          stockAfter,
+          quantity: deduction.quantity,
+          stockBefore: deduction.stockBefore,
+          stockAfter: deduction.stockAfter,
           reason: `Venta mesa - ${sale.id}`,
           createdById: data.chargedById,
         },
       });
     }
+
+    return { status: 'OK' };
   }
 
   private async recalculateAndFind(

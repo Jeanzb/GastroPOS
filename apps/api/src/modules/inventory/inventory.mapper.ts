@@ -1,34 +1,49 @@
 import type { InventoryItemDto, StockMovementDto } from '@gastroai/contracts';
-import type { InventoryItem, StockMovement } from '../../../generated/prisma';
+import type {
+  InventoryBalance,
+  InventoryIngredient,
+  StockMovement,
+  UnitOfMeasure,
+} from '../../../generated/prisma';
 
-export type StockMovementWithItem = StockMovement & {
-  inventoryItem: Pick<InventoryItem, 'id' | 'name'>;
+export type InventoryBalanceWithIngredient = InventoryBalance & {
+  ingredient: InventoryIngredient & {
+    baseUnit: Pick<UnitOfMeasure, 'id' | 'code' | 'name'>;
+  };
 };
 
-export function toInventoryItemDto(item: InventoryItem): InventoryItemDto {
+export type StockMovementWithInventory = StockMovement & {
+  ingredient: Pick<InventoryIngredient, 'id' | 'name'>;
+};
+
+export function toInventoryItemDto(item: InventoryBalanceWithIngredient): InventoryItemDto {
   return {
     id: item.id,
+    ingredientId: item.ingredientId,
     branchId: item.branchId,
-    productId: item.productId,
-    unitId: item.unitId,
-    name: item.name,
-    sku: item.sku,
+    productId: item.ingredient.productId,
+    baseUnitId: item.ingredient.baseUnitId,
+    baseUnitCode: item.ingredient.baseUnit.code,
+    baseUnitName: item.ingredient.baseUnit.name,
+    name: item.ingredient.name,
+    sku: item.ingredient.sku,
     stockOnHand: item.stockOnHand,
     minimumStock: item.minimumStock,
     averageCost: item.averageCost,
-    isActive: item.isActive,
+    isActive: item.ingredient.isActive,
     allowNegativeStock: item.allowNegativeStock,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
   };
 }
 
-export function toStockMovementDto(movement: StockMovementWithItem): StockMovementDto {
+export function toStockMovementDto(movement: StockMovementWithInventory): StockMovementDto {
   return {
     id: movement.id,
     branchId: movement.branchId,
-    inventoryItemId: movement.inventoryItemId,
-    inventoryItemName: movement.inventoryItem.name,
+    inventoryItemId: movement.inventoryBalanceId,
+    ingredientId: movement.ingredientId,
+    inventoryItemName: movement.ingredient.name,
     purchaseId: movement.purchaseId,
     purchaseItemId: movement.purchaseItemId,
     type: movement.type,

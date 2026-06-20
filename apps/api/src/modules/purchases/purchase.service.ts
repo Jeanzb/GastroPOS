@@ -111,12 +111,19 @@ export class PurchaseService {
     const received = await this.repository.receive({
       id,
       tenantId: ctx.tenantId,
+      branchId: ctx.branchId,
       actorUserId: ctx.actorUserId,
     });
     if (!received) {
       throw notFound();
     }
     if (!received.received) {
+      if (received.missingBranch) {
+        throw new ApplicationException(400, {
+          code: ApiErrorCode.BAD_REQUEST,
+          message: 'Purchase receiving requires a branch to create inventory movements.',
+        });
+      }
       throw invalidStatus(received.purchase.status, 'receive');
     }
 

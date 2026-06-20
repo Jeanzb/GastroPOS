@@ -1,5 +1,7 @@
 import { apiClient, type QueryParams } from '@/api';
 import type {
+  AdjustInventoryStockRequest,
+  CreateInventoryItemRequest,
   InventoryItemDto,
   InventoryItemListParams,
   PaginatedResult,
@@ -22,5 +24,13 @@ export class InventoryService {
       '/stock-movements',
       params as QueryParams,
     );
+  }
+
+  static createItem(payload: CreateInventoryItemRequest): Promise<InventoryItemDto> {
+    return apiClient.post<InventoryItemDto>('/inventory-items', payload);
+  }
+
+  static adjustStock(id: string, payload: AdjustInventoryStockRequest): Promise<InventoryItemDto> {
+    return apiClient.post<InventoryItemDto>(`/inventory-items/${id}/adjustments`, payload);
   }
 }

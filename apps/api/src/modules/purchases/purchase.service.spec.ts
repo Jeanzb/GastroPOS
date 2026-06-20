@@ -172,6 +172,7 @@ describe('PurchaseService', () => {
     expect(repo.receive).toHaveBeenCalledWith({
       id: 'purchase_1',
       tenantId: 'tenant_1',
+      branchId: 'branch_1',
       actorUserId: 'user_1',
     });
     expect(audit.tryRecord).toHaveBeenCalledWith(
