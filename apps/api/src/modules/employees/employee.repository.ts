@@ -91,6 +91,44 @@ export class EmployeeRepository {
     });
   }
 
+  /** Active employees in a branch that already have a PIN (for uniqueness checks). */
+  findPinnedInBranch(
+    tenantId: string,
+    branchId: string,
+    excludeUserId?: string,
+  ): Promise<Array<{ id: string; pinHash: string }>> {
+    return this.prisma.user.findMany({
+      where: {
+        tenantId,
+        branchId,
+        deletedAt: null,
+        isActive: true,
+        pinHash: { not: null },
+        ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      },
+      select: { id: true, pinHash: true },
+    }) as Promise<Array<{ id: string; pinHash: string }>>;
+  }
+
+  setPin(
+    tenantId: string,
+    id: string,
+    pinHash: string,
+    actorUserId: string,
+  ): Promise<EmployeeWithBranch> {
+    return this.prisma.user.update({
+      where: { id, tenantId },
+      data: {
+        pinHash,
+        pinUpdatedAt: new Date(),
+        failedPinAttempts: 0,
+        pinLockedUntil: null,
+        updatedById: actorUserId,
+      },
+      include: this.includeBranch(),
+    });
+  }
+
   softDelete(
     tenantId: string,
     id: string,

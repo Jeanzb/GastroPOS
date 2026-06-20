@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/presentation/guards/roles.guard';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { ListEmployeesQueryDto } from './dto/list-employees-query.dto';
+import { SetEmployeePinDto } from './dto/set-employee-pin.dto';
 import { UpdateEmployeeAccessDto } from './dto/update-employee-access.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeeService } from './employee.service';
@@ -63,6 +64,15 @@ export class EmployeeController {
     @Body() dto: UpdateEmployeeDto,
   ): Promise<EmployeeDto> {
     return this.service.update(ctx, id, dto);
+  }
+
+  @Patch(':id/pin')
+  setPin(
+    @CurrentTenantContext() ctx: TenantRequestContext,
+    @Param('id') id: string,
+    @Body() dto: SetEmployeePinDto,
+  ): Promise<EmployeeDto> {
+    return this.service.setPin(ctx, id, dto.pin);
   }
 
   @Patch(':id/access')

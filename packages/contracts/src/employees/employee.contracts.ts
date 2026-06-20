@@ -42,3 +42,9 @@ export interface UpdateEmployeePayload {
 export interface UpdateEmployeeAccessPayload {
   isActive: boolean;
 }
+
+/** Sets/replaces the numeric PIN used for fast POS terminal login. */
+export interface SetEmployeePinPayload {
+  /** 4–6 digit numeric PIN. Stored hashed; unique per branch. */
+  pin: string;
+}

@@ -148,6 +148,43 @@ export class EmployeeService {
     return this.update(ctx, id, { isActive: dto.isActive });
   }
 
+  async setPin(ctx: TenantRequestContext, id: string, pin: string): Promise<EmployeeDto> {
+    const employee = await this.repository.findById(ctx.tenantId, id);
+    if (!employee) {
+      throw notFound();
+    }
+    if (!employee.branchId) {
+      throw new ApplicationException(400, {
+        code: ApiErrorCode.BAD_REQUEST,
+        message: 'Assign a branch to the employee before setting a POS PIN.',
+      });
+    }
+
+    // PINs must be unique within a branch so the terminal login resolves a single user.
+    const pinned = await this.repository.findPinnedInBranch(ctx.tenantId, employee.branchId, id);
+    for (const candidate of pinned) {
+      if (await this.passwordHashing.verify(pin, candidate.pinHash)) {
+        throw new ApplicationException(409, {
+          code: ApiErrorCode.CONFLICT,
+          message: 'Another employee in this branch already uses that PIN.',
+        });
+      }
+    }
+
+    const pinHash = await this.passwordHashing.hash(pin);
+    const updated = await this.repository.setPin(ctx.tenantId, id, pinHash, ctx.actorUserId);
+
+    await this.auditService.tryRecord({
+      ...auditBase(ctx),
+      action: 'EMPLOYEE_PIN_SET',
+      entityType: 'User',
+      entityId: id,
+      metadata: { branchId: employee.branchId },
+    });
+
+    return toEmployeeDto(updated);
+  }
+
   async remove(ctx: TenantRequestContext, id: string): Promise<void> {
     if (id === ctx.actorUserId) {
       throw selfAccessChange();

@@ -71,8 +71,10 @@ describe('EmployeeService', () => {
     create: jest.Mock;
     update: jest.Mock;
     softDelete: jest.Mock;
+    findPinnedInBranch: jest.Mock;
+    setPin: jest.Mock;
   };
-  let passwordHashing: { hash: jest.Mock };
+  let passwordHashing: { hash: jest.Mock; verify: jest.Mock };
   let audit: { tryRecord: jest.Mock };
   let service: EmployeeService;
 
@@ -86,8 +88,10 @@ describe('EmployeeService', () => {
       create: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
+      findPinnedInBranch: jest.fn(),
+      setPin: jest.fn(),
     };
-    passwordHashing = { hash: jest.fn() };
+    passwordHashing = { hash: jest.fn(), verify: jest.fn() };
     audit = { tryRecord: jest.fn() };
     service = new EmployeeService(
       repo as unknown as EmployeeRepository,
@@ -140,6 +144,42 @@ describe('EmployeeService', () => {
 
     expect(passwordHashing.hash).not.toHaveBeenCalled();
     expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it('sets a hashed PIN when it is unique in the branch', async () => {
+    repo.findById.mockResolvedValue(employee());
+    repo.findPinnedInBranch.mockResolvedValue([{ id: 'other', pinHash: 'other_hash' }]);
+    passwordHashing.verify.mockResolvedValue(false);
+    passwordHashing.hash.mockResolvedValue('hashed_pin');
+    repo.setPin.mockResolvedValue(employee());
+
+    await service.setPin(ctx, 'employee_1', '4821');
+
+    expect(passwordHashing.hash).toHaveBeenCalledWith('4821');
+    expect(repo.setPin).toHaveBeenCalledWith('tenant_1', 'employee_1', 'hashed_pin', 'owner_1');
+    expect(audit.tryRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'EMPLOYEE_PIN_SET' }),
+    );
+  });
+
+  it('rejects a PIN already used by another employee in the branch', async () => {
+    repo.findById.mockResolvedValue(employee());
+    repo.findPinnedInBranch.mockResolvedValue([{ id: 'other', pinHash: 'other_hash' }]);
+    passwordHashing.verify.mockResolvedValue(true);
+
+    await expect(service.setPin(ctx, 'employee_1', '4821')).rejects.toBeInstanceOf(
+      ApplicationException,
+    );
+    expect(repo.setPin).not.toHaveBeenCalled();
+  });
+
+  it('rejects setting a PIN for an employee without a branch', async () => {
+    repo.findById.mockResolvedValue(employee({ branchId: null, branch: null }));
+
+    await expect(service.setPin(ctx, 'employee_1', '4821')).rejects.toBeInstanceOf(
+      ApplicationException,
+    );
+    expect(repo.setPin).not.toHaveBeenCalled();
   });
 
   it('does not allow the actor to disable their own account', async () => {
