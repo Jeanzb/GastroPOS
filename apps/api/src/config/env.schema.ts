@@ -16,6 +16,9 @@ export const envSchema = z.object({
   JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_SECRET: z.string().min(1),
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(1_209_600),
+  // Token issuer/audience — rejects tokens minted for another app/environment.
+  JWT_ISSUER: z.string().min(1).default('gastroai-api'),
+  JWT_AUDIENCE: z.string().min(1).default('gastroai-app'),
 
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
 

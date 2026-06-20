@@ -55,6 +55,8 @@ export class JwtAuthGuard implements CanActivate {
         token,
         {
           secret: this.config.get('JWT_ACCESS_SECRET', { infer: true }),
+          issuer: this.config.get('JWT_ISSUER', { infer: true }),
+          audience: this.config.get('JWT_AUDIENCE', { infer: true }),
         },
       );
 
