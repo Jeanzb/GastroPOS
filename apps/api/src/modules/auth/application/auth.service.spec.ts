@@ -64,3 +64,73 @@ describe('AuthService refresh-token reuse detection', () => {
     );
   });
 });
+
+describe('AuthService PIN login', () => {
+  function buildService(overrides: {
+    candidates?: unknown[];
+    verifyResult?: boolean;
+  }) {
+    const authRepository = {
+      findActivePinCandidatesByBranch: jest.fn().mockResolvedValue(overrides.candidates ?? []),
+      resetPinAttempts: jest.fn().mockResolvedValue(undefined),
+      createSessionWithRefreshToken: jest
+        .fn()
+        .mockResolvedValue({ sessionId: 'session_1', refreshTokenId: 'rt_1' }),
+    };
+    const passwordHashing = {
+      verify: jest.fn().mockResolvedValue(overrides.verifyResult ?? false),
+      verifyAgainstDummy: jest.fn().mockResolvedValue(undefined),
+      hash: jest.fn().mockResolvedValue('refresh_hash'),
+    };
+    const jwtService = { signAsync: jest.fn().mockResolvedValue('access_token') };
+    const config = { get: jest.fn().mockReturnValue(900) };
+    const auditService = { tryRecord: jest.fn().mockResolvedValue(undefined) };
+
+    const service = new AuthService(
+      {} as unknown as UsersRepository,
+      authRepository as unknown as AuthRepository,
+      passwordHashing as unknown as PasswordHashingService,
+      jwtService as unknown as JwtService,
+      config as unknown as ConfigService<Env, true>,
+      auditService as unknown as AuditService,
+    );
+
+    return { service, authRepository, passwordHashing, auditService };
+  }
+
+  const candidate = {
+    id: 'user_1',
+    tenantId: 'tenant_1',
+    branchId: 'branch_1',
+    email: 'mesero@gastroai.local',
+    fullName: 'Diego Granados',
+    role: 'WAITER' as const,
+    pinHash: 'pin_hash',
+    pinLockedUntil: null,
+  };
+
+  it('issues a session when the PIN matches an active employee of the branch', async () => {
+    const { service, authRepository, auditService } = buildService({
+      candidates: [candidate],
+      verifyResult: true,
+    });
+
+    const result = await service.pinLogin({ branchId: 'branch_1', pin: '4821', metadata: {} });
+
+    expect(result.user.id).toBe('user_1');
+    expect(result.tokens.accessToken).toBe('access_token');
+    expect(authRepository.resetPinAttempts).toHaveBeenCalledWith('user_1');
+    expect(auditService.tryRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'PIN_LOGIN' }),
+    );
+  });
+
+  it('rejects when no employee in the branch matches the PIN', async () => {
+    const { service, authRepository } = buildService({ candidates: [], verifyResult: false });
+
+    await expect(
+      service.pinLogin({ branchId: 'other_branch', pin: '0000', metadata: {} }),
+    ).rejects.toBeInstanceOf(ApplicationException);
+    expect(authRepository.createSessionWithRefreshToken).not.toHaveBeenCalled();
+  });
+});

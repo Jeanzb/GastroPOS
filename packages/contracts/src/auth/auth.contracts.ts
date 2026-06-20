@@ -15,6 +15,12 @@ export interface RefreshTokenRequest {
   refreshToken: string;
 }
 
+/** Fast POS terminal login: the terminal supplies its branch and the employee a PIN. */
+export interface PinLoginRequest {
+  branchId: string;
+  pin: string;
+}
+
 /** The authenticated user as exposed to the client (never includes secrets). */
 export interface CurrentUser {
   id: string;

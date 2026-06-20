@@ -24,6 +24,11 @@ import {
 
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password.';
 
+type SessionUserRecord = Pick<
+  LoginUserRecord,
+  'id' | 'tenantId' | 'branchId' | 'email' | 'fullName' | 'role'
+>;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -180,8 +185,47 @@ export class AuthService {
     });
   }
 
+  async pinLogin(input: {
+    branchId: string;
+    pin: string;
+    metadata: AuthRequestMetadata;
+  }): Promise<AuthResponse> {
+    const candidates = await this.authRepository.findActivePinCandidatesByBranch(input.branchId);
+    if (candidates.length === 0) {
+      await this.passwordHashing.verifyAgainstDummy(input.pin);
+      await this.auditFailedPinLogin(input.branchId, input.metadata);
+      throw invalidPin();
+    }
+
+    const now = Date.now();
+    for (const candidate of candidates) {
+      if (candidate.pinLockedUntil && candidate.pinLockedUntil.getTime() > now) {
+        continue;
+      }
+      if (await this.passwordHashing.verify(input.pin, candidate.pinHash)) {
+        await this.authRepository.resetPinAttempts(candidate.id);
+        const authResponse = await this.issueSession(candidate, input.metadata);
+        await this.auditService.tryRecord({
+          tenantId: candidate.tenantId,
+          branchId: candidate.branchId,
+          actorUserId: candidate.id,
+          action: 'PIN_LOGIN',
+          entityType: 'User',
+          entityId: candidate.id,
+          metadata: { result: 'success' },
+          ...input.metadata,
+        });
+        return authResponse;
+      }
+    }
+
+    await this.passwordHashing.verifyAgainstDummy(input.pin);
+    await this.auditFailedPinLogin(input.branchId, input.metadata);
+    throw invalidPin();
+  }
+
   private async issueSession(
-    user: LoginUserRecord,
+    user: SessionUserRecord,
     metadata: AuthRequestMetadata,
   ): Promise<AuthResponse> {
     const refreshSecret = createRefreshTokenSecret();
@@ -258,12 +302,32 @@ export class AuthService {
       ...metadata,
     });
   }
+
+  private async auditFailedPinLogin(
+    branchId: string,
+    metadata: AuthRequestMetadata,
+  ): Promise<void> {
+    await this.auditService.tryRecord({
+      branchId,
+      action: 'FAILED_PIN_LOGIN',
+      entityType: 'User',
+      metadata: { branchId, result: 'invalid_pin' },
+      ...metadata,
+    });
+  }
 }
 
 function invalidCredentials(): ApplicationException {
   return new ApplicationException(401, {
     code: 'INVALID_CREDENTIALS',
     message: INVALID_CREDENTIALS_MESSAGE,
+  });
+}
+
+function invalidPin(): ApplicationException {
+  return new ApplicationException(401, {
+    code: 'INVALID_PIN',
+    message: 'Invalid PIN for this branch.',
   });
 }
 

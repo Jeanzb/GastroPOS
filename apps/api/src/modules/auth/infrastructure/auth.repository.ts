@@ -227,4 +227,45 @@ export class AuthRepository {
       sessionId: session.id,
     };
   }
+
+  /** Active employees of a branch that have a PIN set — candidates for PIN login. */
+  findActivePinCandidatesByBranch(branchId: string): Promise<PinLoginCandidate[]> {
+    return this.prisma.user.findMany({
+      where: {
+        branchId,
+        isActive: true,
+        deletedAt: null,
+        pinHash: { not: null },
+        tenant: { isActive: true, deletedAt: null },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        branchId: true,
+        email: true,
+        fullName: true,
+        role: true,
+        pinHash: true,
+        pinLockedUntil: true,
+      },
+    }) as Promise<PinLoginCandidate[]>;
+  }
+
+  async resetPinAttempts(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { failedPinAttempts: 0, pinLockedUntil: null },
+    });
+  }
+}
+
+export interface PinLoginCandidate {
+  id: string;
+  tenantId: string;
+  branchId: string | null;
+  email: string;
+  fullName: string;
+  role: AuthenticatedUser['role'];
+  pinHash: string;
+  pinLockedUntil: Date | null;
 }
