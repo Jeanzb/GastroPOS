@@ -45,7 +45,6 @@ export function ComandaPanel({
   const reduceMotion = useReducedMotion();
   // Visual-only overrides — they tune the on-screen comanda, not the persisted sale.
   const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});
-  const [discountOverride, setDiscountOverride] = useState<number | null>(null);
 
   const items = account?.items ?? [];
   const priceFor = (item: TableAccountItemDto) => priceOverrides[item.id] ?? item.unitPriceAmount;
@@ -53,18 +52,15 @@ export function ComandaPanel({
 
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + priceFor(item) * item.quantity, 0);
-    const discount = discountOverride ?? account?.discountTotal ?? 0;
-    const taxable = Math.max(0, subtotal - discount);
-    const tax = Math.round(taxable * TAX_RATE);
+    const tax = Math.round(subtotal * TAX_RATE);
     return {
       subtotal,
-      discount,
       tax,
-      total: taxable + tax,
+      total: subtotal + tax,
       units: items.reduce((sum, item) => sum + item.quantity, 0),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, priceOverrides, discountOverride, account?.discountTotal]);
+  }, [items, priceOverrides]);
 
   const currency = account?.currency ?? 'COP';
   const transition = reduceMotion
@@ -154,17 +150,17 @@ export function ComandaPanel({
                           <p className="truncate text-[13.5px] font-semibold leading-tight">
                             {item.name}
                           </p>
-                          <div className="mt-1 flex items-center gap-1">
-                            <span className="text-[11px] text-muted-foreground">$</span>
+                          <div className="mt-1 inline-flex w-fit items-center gap-1 rounded-lg border border-[#E7DECF] bg-surface-quiet px-2 py-[3px] transition-colors focus-within:border-orange/50 focus-within:bg-orange/5">
+                            <span className="nums text-[11px] font-semibold text-[#8A8173]">$</span>
                             <MoneyInput
                               value={priceFor(item)}
                               onChange={(value) =>
                                 setPriceOverrides((prev) => ({ ...prev, [item.id]: value }))
                               }
                               aria-label={`Precio unitario de ${item.name}`}
-                              className="h-6 w-[78px] rounded-md border-transparent bg-surface-quiet px-1.5 text-left text-[11px] focus-visible:border-orange/40"
+                              className="h-5 w-[58px] border-transparent bg-transparent px-0 text-left text-[12px] font-semibold text-foreground shadow-none focus-visible:ring-0"
                             />
-                            <span className="text-[11px] text-muted-foreground">c/u</span>
+                            <span className="text-[10.5px] text-muted-foreground">c/u</span>
                           </div>
                         </div>
                         <div className="flex flex-col items-end">
@@ -200,18 +196,6 @@ export function ComandaPanel({
                 reduceMotion={reduceMotion}
                 className="nums font-semibold text-foreground"
               />
-            </div>
-            <div className="mb-1.5 flex items-center justify-between text-[13px] text-[#6B6359]">
-              <span>Descuento</span>
-              <div className="flex items-center gap-1">
-                <span className="text-[12px]">-$</span>
-                <MoneyInput
-                  value={totals.discount}
-                  onChange={(value) => setDiscountOverride(value)}
-                  aria-label="Descuento"
-                  className="h-6 w-[88px] rounded-md border-transparent bg-card px-1.5 text-right text-[12px] focus-visible:border-orange/40"
-                />
-              </div>
             </div>
             <div className="mb-3 flex items-center justify-between text-[13px] text-[#6B6359]">
               <span>Impuesto al consumo (8%)</span>
