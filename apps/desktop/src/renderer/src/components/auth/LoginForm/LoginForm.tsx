@@ -169,7 +169,11 @@ export function LoginForm() {
                         placeholder="Número de cédula"
                         className="h-13 text-center font-display text-2xl tracking-[0.18em]"
                         onChange={(event) =>
-                          field.onChange(event.target.value.replace(/\D/g, '').slice(0, 15))
+                          staffForm.setValue(
+                            'documentNumber',
+                            event.target.value.replace(/\D/g, '').slice(0, 15),
+                            { shouldValidate: false, shouldDirty: true },
+                          )
                         }
                       />
                     </FormControl>
