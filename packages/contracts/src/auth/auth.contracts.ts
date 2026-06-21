@@ -16,9 +16,9 @@ export interface RefreshTokenRequest {
   refreshToken: string;
 }
 
-/** Fast POS terminal login: the terminal supplies its branch and the employee their cédula. */
+/** Fast POS staff login: the employee supplies their commerce (name or slug) and their cédula. */
 export interface StaffLoginRequest {
-  branchId: string;
+  commerce: string;
   documentNumber: string;
 }
 

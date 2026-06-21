@@ -61,7 +61,7 @@ export class AuthController {
     @Headers('x-forwarded-for') forwardedFor?: string,
   ): Promise<AuthResponse> {
     return this.authService.staffLogin({
-      branchId: dto.branchId,
+      commerce: dto.commerce,
       documentNumber: dto.documentNumber,
       metadata: requestMetadata(request, userAgent, forwardedFor),
     });

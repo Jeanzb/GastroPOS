@@ -188,22 +188,22 @@ export class AuthService {
   }
 
   async staffLogin(input: {
-    branchId: string;
+    commerce: string;
     documentNumber: string;
     metadata: AuthRequestMetadata;
   }): Promise<AuthResponse> {
-    const candidate = await this.authRepository.findActiveStaffByBranchAndDocument(
-      input.branchId,
+    const candidate = await this.authRepository.findActiveStaffByCommerceAndDocument(
+      input.commerce,
       input.documentNumber,
     );
 
     if (!candidate) {
-      await this.auditFailedStaffLogin(input.branchId, input.metadata);
+      await this.auditFailedStaffLogin(input.commerce, input.metadata);
       throw invalidStaffLogin();
     }
 
     if (candidate.pinLockedUntil && candidate.pinLockedUntil.getTime() > Date.now()) {
-      await this.auditFailedStaffLogin(input.branchId, input.metadata);
+      await this.auditFailedStaffLogin(input.commerce, input.metadata);
       throw invalidStaffLogin();
     }
 
@@ -306,14 +306,13 @@ export class AuthService {
   }
 
   private async auditFailedStaffLogin(
-    branchId: string,
+    commerce: string,
     metadata: AuthRequestMetadata,
   ): Promise<void> {
     await this.auditService.tryRecord({
-      branchId,
       action: 'FAILED_STAFF_LOGIN',
       entityType: 'User',
-      metadata: { branchId, result: 'invalid_document' },
+      metadata: { commerce, result: 'invalid_document' },
       ...metadata,
     });
   }

@@ -2,10 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, Matches, MinLength } from 'class-validator';
 
 export class StaffLoginDto {
-  @ApiProperty({ description: 'Branch the POS terminal belongs to.' })
+  @ApiProperty({ description: 'Commerce name or slug the employee belongs to.' })
   @IsString()
   @MinLength(1)
-  branchId!: string;
+  commerce!: string;
 
   @ApiProperty({ description: 'Staff national ID (cédula).', example: '1098765432' })
   @IsString()

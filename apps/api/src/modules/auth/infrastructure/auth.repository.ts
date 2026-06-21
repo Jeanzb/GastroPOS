@@ -234,18 +234,34 @@ export class AuthRepository {
     };
   }
 
-  /** Resolve the single active employee of a branch by national ID (cédula) for staff POS login. */
-  findActiveStaffByBranchAndDocument(
-    branchId: string,
+  /**
+   * Resolve the single active employee for staff POS login by commerce (tenant name or slug)
+   * + national ID (cédula). The cédula is unique per tenant, so this is unambiguous.
+   */
+  async findActiveStaffByCommerceAndDocument(
+    commerce: string,
     documentNumber: string,
   ): Promise<StaffLoginCandidate | null> {
+    const value = commerce.trim();
+    const tenant = await this.prisma.tenant.findFirst({
+      where: {
+        isActive: true,
+        deletedAt: null,
+        OR: [{ slug: value.toLowerCase() }, { name: { equals: value, mode: 'insensitive' } }],
+      },
+      select: { id: true },
+    });
+
+    if (!tenant) {
+      return null;
+    }
+
     return this.prisma.user.findFirst({
       where: {
-        branchId,
+        tenantId: tenant.id,
         documentNumber,
         isActive: true,
         deletedAt: null,
-        tenant: { isActive: true, deletedAt: null },
       },
       select: {
         id: true,

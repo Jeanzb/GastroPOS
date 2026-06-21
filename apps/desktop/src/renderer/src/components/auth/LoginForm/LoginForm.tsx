@@ -18,7 +18,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth';
-import { getTerminalBranch, type TerminalBranch } from '@/lib/terminal-branch';
 
 const loginSchema = z.object({
   email: z.string().email('Ingresa un usuario valido'),
@@ -28,6 +27,7 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 const staffLoginSchema = z.object({
+  commerce: z.string().min(1, 'Ingresa el nombre del comercio'),
   documentNumber: z.string().regex(/^\d{4,15}$/, 'Ingresa una cédula válida'),
 });
 
@@ -37,14 +37,13 @@ export function LoginForm() {
   const navigate = useNavigate();
   const { loginMutation, staffLoginMutation } = useAuth();
   const [mode, setMode] = useState<'password' | 'pin'>('password');
-  const [terminalBranch] = useState<TerminalBranch | null>(() => getTerminalBranch());
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
   const staffForm = useForm<StaffLoginValues>({
     resolver: zodResolver(staffLoginSchema),
-    defaultValues: { documentNumber: '' },
+    defaultValues: { commerce: '', documentNumber: '' },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -56,11 +55,8 @@ export function LoginForm() {
   });
 
   const onStaffSubmit = staffForm.handleSubmit(async (values) => {
-    if (!terminalBranch) {
-      return;
-    }
     await staffLoginMutation.mutateAsync({
-      branchId: terminalBranch.id,
+      commerce: values.commerce,
       documentNumber: values.documentNumber,
     });
     await navigate({ to: '/' });
@@ -83,9 +79,7 @@ export function LoginForm() {
           </CardTitle>
           <CardDescription className="mt-2">
             {isPinMode
-              ? terminalBranch
-                ? `Terminal configurada para ${terminalBranch.name}.`
-                : 'Primero selecciona una sede con usuario administrador para configurar esta terminal.'
+              ? 'Ingresa el nombre de tu comercio y tu cédula para entrar.'
               : 'Entra con tu usuario. La empresa, tenant y sede se cargan desde tu cuenta.'}
           </CardDescription>
         </div>
@@ -142,14 +136,34 @@ export function LoginForm() {
         ) : (
           <Form {...staffForm}>
             <form onSubmit={onStaffSubmit} className="space-y-4">
-              <div className="rounded-xl border border-orange/20 bg-orange/5 px-4 py-3">
-                <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#B5491F]">
-                  Comercio · Sede
-                </p>
-                <p className="mt-1 text-sm font-semibold">
-                  {terminalBranch?.name ?? 'Sin sede configurada'}
-                </p>
-              </div>
+              <FormField
+                control={staffForm.control}
+                name="commerce"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Comercio</FormLabel>
+                    <FormControl>
+                      <Input
+                        autoFocus
+                        type="text"
+                        data-cy="staff-login-commerce"
+                        placeholder="Nombre del comercio"
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                        onChange={(event) =>
+                          staffForm.setValue('commerce', event.target.value, {
+                            shouldValidate: false,
+                            shouldDirty: true,
+                          })
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={staffForm.control}
@@ -160,7 +174,6 @@ export function LoginForm() {
                     <FormControl>
                       <Input
                         {...field}
-                        autoFocus
                         inputMode="numeric"
                         maxLength={15}
                         pattern="[0-9]*"
@@ -184,14 +197,14 @@ export function LoginForm() {
 
               {staffLoginMutation.isError ? (
                 <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  Cédula no válida para esta sede.
+                  Comercio o cédula no válidos.
                 </p>
               ) : null}
 
               <Button
                 type="submit"
                 className="h-11 w-full"
-                disabled={!terminalBranch || staffLoginMutation.isPending}
+                disabled={staffLoginMutation.isPending}
                 data-cy="pin-login-submit"
               >
                 {staffLoginMutation.isPending ? (

@@ -68,7 +68,7 @@ describe('AuthService refresh-token reuse detection', () => {
 describe('AuthService staff login', () => {
   function buildService(overrides: { candidate?: unknown }) {
     const authRepository = {
-      findActiveStaffByBranchAndDocument: jest.fn().mockResolvedValue(overrides.candidate ?? null),
+      findActiveStaffByCommerceAndDocument: jest.fn().mockResolvedValue(overrides.candidate ?? null),
       resetPinAttempts: jest.fn().mockResolvedValue(undefined),
       createSessionWithRefreshToken: jest
         .fn()
@@ -105,11 +105,11 @@ describe('AuthService staff login', () => {
     pinLockedUntil: null,
   };
 
-  it('issues a session when the cédula matches an active employee of the branch', async () => {
+  it('issues a session when the cédula matches an active employee of the commerce', async () => {
     const { service, authRepository, auditService } = buildService({ candidate });
 
     const result = await service.staffLogin({
-      branchId: 'branch_1',
+      commerce: 'GastroAI Demo',
       documentNumber: '1098765432',
       metadata: {},
     });
@@ -122,11 +122,11 @@ describe('AuthService staff login', () => {
     );
   });
 
-  it('rejects when no employee in the branch matches the cédula', async () => {
+  it('rejects when no employee in the commerce matches the cédula', async () => {
     const { service, authRepository } = buildService({ candidate: null });
 
     await expect(
-      service.staffLogin({ branchId: 'other_branch', documentNumber: '0000', metadata: {} }),
+      service.staffLogin({ commerce: 'Unknown', documentNumber: '0000', metadata: {} }),
     ).rejects.toBeInstanceOf(ApplicationException);
     expect(authRepository.createSessionWithRefreshToken).not.toHaveBeenCalled();
   });
