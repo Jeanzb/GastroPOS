@@ -234,14 +234,17 @@ export class AuthRepository {
     };
   }
 
-  /** Active employees of a branch that have a PIN set — candidates for PIN login. */
-  findActivePinCandidatesByBranch(branchId: string): Promise<PinLoginCandidate[]> {
-    return this.prisma.user.findMany({
+  /** Resolve the single active employee of a branch by national ID (cédula) for staff POS login. */
+  findActiveStaffByBranchAndDocument(
+    branchId: string,
+    documentNumber: string,
+  ): Promise<StaffLoginCandidate | null> {
+    return this.prisma.user.findFirst({
       where: {
         branchId,
+        documentNumber,
         isActive: true,
         deletedAt: null,
-        pinHash: { not: null },
         tenant: { isActive: true, deletedAt: null },
       },
       select: {
@@ -251,10 +254,9 @@ export class AuthRepository {
         email: true,
         fullName: true,
         role: true,
-        pinHash: true,
         pinLockedUntil: true,
       },
-    }) as Promise<PinLoginCandidate[]>;
+    }) as Promise<StaffLoginCandidate | null>;
   }
 
   async resetPinAttempts(userId: string): Promise<void> {
@@ -265,13 +267,12 @@ export class AuthRepository {
   }
 }
 
-export interface PinLoginCandidate {
+export interface StaffLoginCandidate {
   id: string;
   tenantId: string;
   branchId: string | null;
   email: string;
   fullName: string;
   role: AuthenticatedUser['role'];
-  pinHash: string;
   pinLockedUntil: Date | null;
 }

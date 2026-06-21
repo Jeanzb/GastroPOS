@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { AuthService } from '@/services/auth';
 import { useAuthStore } from '@/stores';
-import type { LoginRequest, PinLoginRequest } from '@/types/auth';
+import type { LoginRequest, StaffLoginRequest } from '@/types/auth';
 
 export function useAuth() {
   const router = useRouter();
@@ -17,8 +17,8 @@ export function useAuth() {
     onSuccess: (data) => setSession(data),
   });
 
-  const pinLoginMutation = useMutation({
-    mutationFn: (payload: PinLoginRequest) => AuthService.pinLogin(payload),
+  const staffLoginMutation = useMutation({
+    mutationFn: (payload: StaffLoginRequest) => AuthService.staffLogin(payload),
     onSuccess: (data) => setSession(data),
   });
 
@@ -43,7 +43,7 @@ export function useAuth() {
     user,
     isAuthenticated: Boolean(user),
     loginMutation,
-    pinLoginMutation,
+    staffLoginMutation,
     logout,
     isLoggingOut: logoutMutation.isPending,
   };

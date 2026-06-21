@@ -16,10 +16,10 @@ export interface RefreshTokenRequest {
   refreshToken: string;
 }
 
-/** Fast POS terminal login: the terminal supplies its branch and the employee a PIN. */
-export interface PinLoginRequest {
+/** Fast POS terminal login: the terminal supplies its branch and the employee their cédula. */
+export interface StaffLoginRequest {
   branchId: string;
-  pin: string;
+  documentNumber: string;
 }
 
 /** The authenticated user as exposed to the client (never includes secrets). */

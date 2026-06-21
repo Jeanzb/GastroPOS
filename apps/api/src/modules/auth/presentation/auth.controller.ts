@@ -16,7 +16,7 @@ import { AuthService } from '../application/auth.service';
 import type { AuthenticatedUser, AuthRequestMetadata, AuthResponse } from '../auth.types';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
-import { PinLoginDto } from './dto/pin-login.dto';
+import { StaffLoginDto } from './dto/staff-login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -49,20 +49,20 @@ export class AuthController {
     });
   }
 
-  @Post('pin-login')
+  @Post('staff-login')
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ description: 'Authenticated employee and token pair from a POS PIN.' })
-  @ApiUnauthorizedResponse({ description: 'Invalid PIN for this branch.' })
-  pinLogin(
-    @Body() dto: PinLoginDto,
+  @ApiOkResponse({ description: 'Authenticated employee and token pair from a POS staff cédula.' })
+  @ApiUnauthorizedResponse({ description: 'Invalid ID number for this branch.' })
+  staffLogin(
+    @Body() dto: StaffLoginDto,
     @Req() request: RequestMetadataSource,
     @Headers('user-agent') userAgent?: string,
     @Headers('x-forwarded-for') forwardedFor?: string,
   ): Promise<AuthResponse> {
-    return this.authService.pinLogin({
+    return this.authService.staffLogin({
       branchId: dto.branchId,
-      pin: dto.pin,
+      documentNumber: dto.documentNumber,
       metadata: requestMetadata(request, userAgent, forwardedFor),
     });
   }

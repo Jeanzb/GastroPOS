@@ -187,43 +187,39 @@ export class AuthService {
     });
   }
 
-  async pinLogin(input: {
+  async staffLogin(input: {
     branchId: string;
-    pin: string;
+    documentNumber: string;
     metadata: AuthRequestMetadata;
   }): Promise<AuthResponse> {
-    const candidates = await this.authRepository.findActivePinCandidatesByBranch(input.branchId);
-    if (candidates.length === 0) {
-      await this.passwordHashing.verifyAgainstDummy(input.pin);
-      await this.auditFailedPinLogin(input.branchId, input.metadata);
-      throw invalidPin();
+    const candidate = await this.authRepository.findActiveStaffByBranchAndDocument(
+      input.branchId,
+      input.documentNumber,
+    );
+
+    if (!candidate) {
+      await this.auditFailedStaffLogin(input.branchId, input.metadata);
+      throw invalidStaffLogin();
     }
 
-    const now = Date.now();
-    for (const candidate of candidates) {
-      if (candidate.pinLockedUntil && candidate.pinLockedUntil.getTime() > now) {
-        continue;
-      }
-      if (await this.passwordHashing.verify(input.pin, candidate.pinHash)) {
-        await this.authRepository.resetPinAttempts(candidate.id);
-        const authResponse = await this.issueSession(candidate, input.metadata, 'POS');
-        await this.auditService.tryRecord({
-          tenantId: candidate.tenantId,
-          branchId: candidate.branchId,
-          actorUserId: candidate.id,
-          action: 'PIN_LOGIN',
-          entityType: 'User',
-          entityId: candidate.id,
-          metadata: { result: 'success' },
-          ...input.metadata,
-        });
-        return authResponse;
-      }
+    if (candidate.pinLockedUntil && candidate.pinLockedUntil.getTime() > Date.now()) {
+      await this.auditFailedStaffLogin(input.branchId, input.metadata);
+      throw invalidStaffLogin();
     }
 
-    await this.passwordHashing.verifyAgainstDummy(input.pin);
-    await this.auditFailedPinLogin(input.branchId, input.metadata);
-    throw invalidPin();
+    await this.authRepository.resetPinAttempts(candidate.id);
+    const authResponse = await this.issueSession(candidate, input.metadata, 'POS');
+    await this.auditService.tryRecord({
+      tenantId: candidate.tenantId,
+      branchId: candidate.branchId,
+      actorUserId: candidate.id,
+      action: 'STAFF_LOGIN',
+      entityType: 'User',
+      entityId: candidate.id,
+      metadata: { result: 'success' },
+      ...input.metadata,
+    });
+    return authResponse;
   }
 
   private async issueSession(
@@ -309,15 +305,15 @@ export class AuthService {
     });
   }
 
-  private async auditFailedPinLogin(
+  private async auditFailedStaffLogin(
     branchId: string,
     metadata: AuthRequestMetadata,
   ): Promise<void> {
     await this.auditService.tryRecord({
       branchId,
-      action: 'FAILED_PIN_LOGIN',
+      action: 'FAILED_STAFF_LOGIN',
       entityType: 'User',
-      metadata: { branchId, result: 'invalid_pin' },
+      metadata: { branchId, result: 'invalid_document' },
       ...metadata,
     });
   }
@@ -330,10 +326,10 @@ function invalidCredentials(): ApplicationException {
   });
 }
 
-function invalidPin(): ApplicationException {
+function invalidStaffLogin(): ApplicationException {
   return new ApplicationException(401, {
-    code: 'INVALID_PIN',
-    message: 'Invalid PIN for this branch.',
+    code: 'INVALID_STAFF_LOGIN',
+    message: 'Invalid ID number for this branch.',
   });
 }
 

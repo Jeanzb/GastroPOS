@@ -27,24 +27,24 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-const pinLoginSchema = z.object({
-  pin: z.string().regex(/^\d{4,6}$/, 'El PIN debe tener entre 4 y 6 digitos'),
+const staffLoginSchema = z.object({
+  documentNumber: z.string().regex(/^\d{4,15}$/, 'Ingresa una cédula válida'),
 });
 
-type PinLoginValues = z.infer<typeof pinLoginSchema>;
+type StaffLoginValues = z.infer<typeof staffLoginSchema>;
 
 export function LoginForm() {
   const navigate = useNavigate();
-  const { loginMutation, pinLoginMutation } = useAuth();
+  const { loginMutation, staffLoginMutation } = useAuth();
   const [mode, setMode] = useState<'password' | 'pin'>('password');
   const [terminalBranch] = useState<TerminalBranch | null>(() => getTerminalBranch());
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
-  const pinForm = useForm<PinLoginValues>({
-    resolver: zodResolver(pinLoginSchema),
-    defaultValues: { pin: '' },
+  const staffForm = useForm<StaffLoginValues>({
+    resolver: zodResolver(staffLoginSchema),
+    defaultValues: { documentNumber: '' },
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -55,13 +55,13 @@ export function LoginForm() {
     await navigate({ to: '/sede' });
   });
 
-  const onPinSubmit = pinForm.handleSubmit(async (values) => {
+  const onStaffSubmit = staffForm.handleSubmit(async (values) => {
     if (!terminalBranch) {
       return;
     }
-    await pinLoginMutation.mutateAsync({
+    await staffLoginMutation.mutateAsync({
       branchId: terminalBranch.id,
-      pin: values.pin,
+      documentNumber: values.documentNumber,
     });
     await navigate({ to: '/' });
   });
@@ -140,11 +140,11 @@ export function LoginForm() {
             </form>
           </Form>
         ) : (
-          <Form {...pinForm}>
-            <form onSubmit={onPinSubmit} className="space-y-4">
+          <Form {...staffForm}>
+            <form onSubmit={onStaffSubmit} className="space-y-4">
               <div className="rounded-xl border border-orange/20 bg-orange/5 px-4 py-3">
                 <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#B5491F]">
-                  Terminal POS
+                  Comercio · Sede
                 </p>
                 <p className="mt-1 text-sm font-semibold">
                   {terminalBranch?.name ?? 'Sin sede configurada'}
@@ -152,24 +152,24 @@ export function LoginForm() {
               </div>
 
               <FormField
-                control={pinForm.control}
-                name="pin"
+                control={staffForm.control}
+                name="documentNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>PIN</FormLabel>
+                    <FormLabel>Cédula</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
                         autoFocus
                         inputMode="numeric"
-                        maxLength={6}
+                        maxLength={15}
                         pattern="[0-9]*"
-                        type="password"
+                        type="text"
                         data-cy="pin-login-input"
-                        placeholder="Ingresa tu PIN"
-                        className="h-13 text-center font-display text-2xl tracking-[0.35em]"
+                        placeholder="Número de cédula"
+                        className="h-13 text-center font-display text-2xl tracking-[0.18em]"
                         onChange={(event) =>
-                          field.onChange(event.target.value.replace(/\D/g, '').slice(0, 6))
+                          field.onChange(event.target.value.replace(/\D/g, '').slice(0, 15))
                         }
                       />
                     </FormControl>
@@ -178,19 +178,19 @@ export function LoginForm() {
                 )}
               />
 
-              {pinLoginMutation.isError ? (
+              {staffLoginMutation.isError ? (
                 <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  PIN invalido para esta sede.
+                  Cédula no válida para esta sede.
                 </p>
               ) : null}
 
               <Button
                 type="submit"
                 className="h-11 w-full"
-                disabled={!terminalBranch || pinLoginMutation.isPending}
+                disabled={!terminalBranch || staffLoginMutation.isPending}
                 data-cy="pin-login-submit"
               >
-                {pinLoginMutation.isPending ? (
+                {staffLoginMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <KeyRound className="h-4 w-4" />
@@ -210,7 +210,7 @@ export function LoginForm() {
           onClick={() => setMode(isPinMode ? 'password' : 'pin')}
         >
           {isPinMode ? <UserRound className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
-          {isPinMode ? 'Usar usuario y contrasena' : 'Acceso rapido por PIN'}
+          {isPinMode ? 'Usar usuario y contraseña' : 'Acceso rápido por cédula'}
         </Button>
       </CardContent>
     </Card>

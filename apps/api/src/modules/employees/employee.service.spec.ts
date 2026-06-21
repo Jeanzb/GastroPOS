@@ -45,6 +45,7 @@ function employee(overrides: Partial<EmployeeWithBranch> = {}): EmployeeWithBran
     email: 'mesero@gastroia.test',
     passwordHash: 'hashed',
     fullName: 'Diego Granados',
+    documentNumber: null,
     role: UserRole.WAITER,
     isActive: true,
     lastLoginAt: null,
