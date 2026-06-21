@@ -265,6 +265,44 @@ export class AuthRepository {
       data: { failedPinAttempts: 0, pinLockedUntil: null },
     });
   }
+
+  /** Business-day config of every active tenant, used by the forced shift-close job. */
+  findActiveTenantsBusinessDayConfig(): Promise<TenantBusinessDayConfig[]> {
+    return this.prisma.tenantSettings.findMany({
+      where: { tenant: { isActive: true, deletedAt: null } },
+      select: { tenantId: true, timezone: true, businessDayStartsAtHour: true },
+    });
+  }
+
+  /** Revoke every active operational (POS) session of a tenant. Returns how many were closed. */
+  async revokeActivePosSessionsForTenant(tenantId: string): Promise<number> {
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      const sessions = await tx.session.findMany({
+        where: { tenantId, authScope: 'POS', isActive: true },
+        select: { id: true },
+      });
+      if (sessions.length === 0) {
+        return 0;
+      }
+      const sessionIds = sessions.map((session) => session.id);
+      await tx.session.updateMany({
+        where: { id: { in: sessionIds } },
+        data: { isActive: false, revokedAt: now },
+      });
+      await tx.refreshToken.updateMany({
+        where: { sessionId: { in: sessionIds }, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      return sessionIds.length;
+    });
+  }
+}
+
+export interface TenantBusinessDayConfig {
+  tenantId: string;
+  timezone: string;
+  businessDayStartsAtHour: number;
 }
 
 export interface StaffLoginCandidate {

@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, RequestMethod, type NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
 import { RequestIdMiddleware } from './common/request-context/request-id.middleware';
@@ -29,6 +30,7 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
     TenantContextModule,
     AccessModule,
     PrismaModule,
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: 100 }],
     }),

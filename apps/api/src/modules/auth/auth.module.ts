@@ -4,6 +4,7 @@ import { AuditModule } from '../audit/audit.module';
 import { UsersModule } from '../users/users.module';
 import { AuthService } from './application/auth.service';
 import { PasswordHashingService } from './application/password-hashing.service';
+import { SessionCleanupService } from './application/session-cleanup.service';
 import { AuthRepository } from './infrastructure/auth.repository';
 import { AuthController } from './presentation/auth.controller';
 import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
@@ -19,6 +20,7 @@ import { FeatureGuard } from './presentation/guards/feature.guard';
   providers: [
     AuthRepository,
     AuthService,
+    SessionCleanupService,
     JwtAuthGuard,
     TenantJwtAuthGuard,
     PosJwtAuthGuard,
