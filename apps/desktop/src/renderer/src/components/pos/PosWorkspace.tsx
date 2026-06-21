@@ -2,18 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ChefHat,
-  CreditCard,
-  Loader2,
-  Minus,
-  Plus,
-  ReceiptText,
-  Search,
-  UtensilsCrossed,
-} from 'lucide-react';
+import { Loader2, Plus, Search, UtensilsCrossed } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { ChargeDialog, CommandDialog, ReceiptDialog } from '@/components/dining/AccountDialogs';
+import { ComandaPanel } from './ComandaPanel';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -483,134 +475,27 @@ export function PosWorkspace() {
         </section>
 
         <aside className="flex w-[380px] shrink-0 flex-col">
-          <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="h-2.5 bg-[repeating-linear-gradient(90deg,#1C1A17_0_7px,transparent_7px_14px)] opacity-90" />
-            <div className="px-5 pt-[18px]">
-              <div className="flex items-center justify-between">
-                <span className="font-display text-[18px] font-bold">Comanda</span>
-                <span className="nums text-xs text-muted-foreground">
-                  {currentAccount ? `#${currentAccount.id.slice(-4).toUpperCase()}` : '—'}
-                </span>
-              </div>
-              <p className="nums mt-1 text-[11px] text-muted-foreground">
-                MESA {table.number} - {waiterLabel}
-              </p>
-              <div className="mt-3.5 border-b border-dashed border-[#D8D0C5]" />
-            </div>
-
-            {!currentAccount ? (
-              <div className="flex-1 overflow-y-auto px-5 py-5">
-                {account.accountQuery.isLoading ? (
-                  <Skeleton className="h-44 rounded-xl" />
-                ) : (
-                  <OpenAccountForm
-                    table={table}
-                    defaultWaiterName={defaultWaiterName}
-                    waiterOptions={waiterOptions}
-                    autoAssignWaiter={isPosWaiter}
-                    isSubmitting={isMutating}
-                    isLoadingWaiters={waitersQuery.isLoading}
-                    onSubmit={handleOpenAccount}
-                  />
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="flex-1 overflow-y-auto px-5">
-                  {currentAccount.items.length === 0 ? (
-                    <div className="py-12 text-center text-muted-foreground">
-                      <ReceiptText className="mx-auto size-7" />
-                      <p className="mt-2 text-[13.5px] font-semibold text-[#6B6359]">Comanda vacía</p>
-                      <p className="mt-1 text-[12.5px]">Toca un producto para empezar</p>
-                    </div>
-                  ) : (
-                    currentAccount.items.map((item) => (
-                      <div
-                        key={item.id}
-                        data-cy="pos-order-item"
-                        className="flex items-center gap-3 border-b border-dashed border-[#ECE6DD] py-3"
-                      >
-                        <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-border">
-                          <button
-                            type="button"
-                            disabled={isMutating}
-                            aria-label={`Restar ${item.name}`}
-                            onClick={() => void handleQuantityChange(item.id, Math.max(0, item.quantity - 1))}
-                            className="h-[30px] w-7 bg-surface-quiet text-lg leading-none text-[#6B6359] disabled:opacity-50"
-                          >
-                            <Minus className="mx-auto size-3.5" />
-                          </button>
-                          <span className="nums w-7 text-center text-sm font-bold">{item.quantity}</span>
-                          <button
-                            type="button"
-                            disabled={isMutating}
-                            aria-label={`Sumar ${item.name}`}
-                            onClick={() => void handleQuantityChange(item.id, item.quantity + 1)}
-                            className="h-[30px] w-7 bg-surface-quiet text-base leading-none text-[#6B6359] disabled:opacity-50"
-                          >
-                            <Plus className="mx-auto size-3.5" />
-                          </button>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13.5px] font-semibold leading-tight">{item.name}</p>
-                          <p className="nums mt-0.5 text-[11px] text-muted-foreground">
-                            {formatMoney(item.unitPriceAmount, currency)} c/u
-                          </p>
-                        </div>
-                        <span className="nums text-sm font-bold">
-                          {formatMoney(item.lineTotal, currency)}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="border-t border-dashed border-[#D8D0C5] bg-surface-raised px-5 pb-5 pt-4">
-                  <div className="mb-1.5 flex justify-between text-[13px] text-[#6B6359]">
-                    <span>Subtotal</span>
-                    <span className="nums font-semibold text-foreground">
-                      {formatMoney(currentAccount.subtotal, currency)}
-                    </span>
-                  </div>
-                  <div className="mb-3 flex justify-between text-[13px] text-[#6B6359]">
-                    <span>Impuestos</span>
-                    <span className="nums font-semibold text-foreground">
-                      {formatMoney(currentAccount.taxTotal, currency)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between border-t border-dashed border-[#D8D0C5] pt-3">
-                    <span className="font-display text-[17px] font-bold">Total</span>
-                    <span className="nums text-2xl font-bold">
-                      {formatMoney(currentAccount.grandTotal, currency)}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex gap-2.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="flex-1"
-                      disabled={isMutating || currentAccount.items.length === 0}
-                      onClick={() => void handleCommand()}
-                      data-cy="pos-command"
-                    >
-                      <ChefHat className="size-4" />
-                      Imprimir comanda
-                    </Button>
-                    <Button
-                      type="button"
-                      className="flex-[1.4]"
-                      disabled={isMutating || currentAccount.items.length === 0}
-                      onClick={() => setChargeOpen(true)}
-                      data-cy="pos-charge-open"
-                    >
-                      <CreditCard className="size-4" />
-                      Cobrar
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          <ComandaPanel
+            account={currentAccount ?? null}
+            tableNumber={table.number}
+            waiterLabel={waiterLabel}
+            isMutating={isMutating}
+            isLoadingAccount={account.accountQuery.isLoading}
+            onQuantityChange={(itemId, quantity) => void handleQuantityChange(itemId, quantity)}
+            onCommand={() => void handleCommand()}
+            onCharge={() => setChargeOpen(true)}
+            emptyState={
+              <OpenAccountForm
+                table={table}
+                defaultWaiterName={defaultWaiterName}
+                waiterOptions={waiterOptions}
+                autoAssignWaiter={isPosWaiter}
+                isSubmitting={isMutating}
+                isLoadingWaiters={waitersQuery.isLoading}
+                onSubmit={handleOpenAccount}
+              />
+            }
+          />
         </aside>
       </div>
 
