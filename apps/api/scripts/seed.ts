@@ -153,6 +153,7 @@ async function main(): Promise<void> {
         fullName: 'Maria Restrepo',
         role: UserRole.OWNER,
         branchId: branch.id,
+        documentNumber: '79123456',
         isActive: true,
         deletedAt: null,
       },
@@ -162,9 +163,37 @@ async function main(): Promise<void> {
         email: ownerEmail,
         fullName: 'Maria Restrepo',
         role: UserRole.OWNER,
+        documentNumber: '79123456',
         passwordHash,
       },
     });
+
+    const waiter = await tx.user.upsert({
+      where: {
+        tenantId_email: {
+          tenantId: tenant.id,
+          email: 'mesero@gastroai.local',
+        },
+      },
+      update: {
+        fullName: 'Diego Gomez',
+        role: UserRole.WAITER,
+        branchId: branch.id,
+        documentNumber: '1098765432',
+        isActive: true,
+        deletedAt: null,
+      },
+      create: {
+        tenantId: tenant.id,
+        branchId: branch.id,
+        email: 'mesero@gastroai.local',
+        fullName: 'Diego Gomez',
+        role: UserRole.WAITER,
+        documentNumber: '1098765432',
+        passwordHash,
+      },
+    });
+    void waiter;
 
     const zoneDefinitions = [
       {

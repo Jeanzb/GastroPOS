@@ -281,6 +281,8 @@ model TenantSettings {
   currency           String  @default("COP")
   timezone           String  @default("America/Bogota")
   allowNegativeStock Boolean @default(false)
+  // Local hour (0-23) when the business day rolls over; operational POS sessions are force-closed at this hour.
+  businessDayStartsAtHour Int @default(4)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -402,6 +404,8 @@ model User {
   email        String
   passwordHash String
   fullName     String
+  // National ID (cédula). Unique per tenant; used as the staff POS login identifier.
+  documentNumber String?
   role         UserRole  @default(CASHIER)
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
@@ -423,9 +427,11 @@ model User {
   sessions Session[]
 
   @@unique([tenantId, email])
+  @@unique([tenantId, documentNumber])
   @@index([tenantId])
   @@index([branchId])
   @@index([branchId, isActive])
+  @@index([branchId, documentNumber])
   @@map("users")
 }
 
