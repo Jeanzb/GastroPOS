@@ -87,7 +87,7 @@ export function LoginForm() {
 
       <CardContent className="p-6 pt-0">
         {!isPinMode ? (
-          <Form {...form}>
+          <Form key="login-password" {...form}>
             <form onSubmit={onSubmit} className="space-y-4">
               <FormField
                 control={form.control}
@@ -134,7 +134,7 @@ export function LoginForm() {
             </form>
           </Form>
         ) : (
-          <Form {...staffForm}>
+          <Form key="login-staff" {...staffForm}>
             <form onSubmit={onStaffSubmit} className="space-y-4">
               <FormField
                 control={staffForm.control}
@@ -148,16 +148,7 @@ export function LoginForm() {
                         type="text"
                         data-cy="staff-login-commerce"
                         placeholder="Nombre del comercio"
-                        value={field.value}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                        onChange={(event) =>
-                          staffForm.setValue('commerce', event.target.value, {
-                            shouldValidate: false,
-                            shouldDirty: true,
-                          })
-                        }
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage />
@@ -182,11 +173,7 @@ export function LoginForm() {
                         placeholder="Número de cédula"
                         className="h-13 text-center font-display text-2xl tracking-[0.18em]"
                         onChange={(event) =>
-                          staffForm.setValue(
-                            'documentNumber',
-                            event.target.value.replace(/\D/g, '').slice(0, 15),
-                            { shouldValidate: false, shouldDirty: true },
-                          )
+                          field.onChange(event.target.value.replace(/\D/g, '').slice(0, 15))
                         }
                       />
                     </FormControl>
