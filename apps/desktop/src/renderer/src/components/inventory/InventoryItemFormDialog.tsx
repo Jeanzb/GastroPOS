@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { MoneyInput } from '@/components/ui/money-input';
 import {
   Select,
   SelectContent,
@@ -228,16 +229,13 @@ export function InventoryItemFormDialog({
                   <FormItem>
                     <FormLabel>Costo inicial</FormLabel>
                     <FormControl>
-                      <Input
+                      <MoneyInput
                         data-cy="inventory-item-initial-cost"
-                        type="number"
-                        min={0}
-                        step={1}
                         value={field.value}
                         onBlur={field.onBlur}
                         name={field.name}
                         ref={field.ref}
-                        onChange={(event) => field.onChange(Number(event.target.value))}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                     <FormMessage />
