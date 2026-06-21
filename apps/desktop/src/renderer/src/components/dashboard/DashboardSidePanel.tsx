@@ -1,109 +1,156 @@
+import type { ColumnDef } from '@tanstack/react-table';
+import { Boxes, CircleDollarSign } from 'lucide-react';
+import type { SalesSummaryTopProduct } from '@gastroai/contracts';
 import { StatusPill } from '@/components/operations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DataTable } from '@/components/ui/data-table';
 import { Separator } from '@/components/ui/separator';
-import { CASH_REGISTER_SUMMARY, FISCAL_SUMMARY, TOP_PRODUCTS } from '@/constants';
-import type { TopProduct } from '@/types/operations';
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatDateTime, formatMoney } from '@/lib/format';
+import type { CashSessionDto } from '@/types/cash';
+import type { InventoryItemDto } from '@/types/inventory';
 
-function FiscalStat({
-  value,
-  label,
-  tone,
+const topProductColumns: ColumnDef<SalesSummaryTopProduct>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Producto',
+    cell: ({ row }) => <span className="text-sm font-semibold">{row.original.name}</span>,
+  },
+  {
+    accessorKey: 'quantity',
+    header: 'Cant.',
+    meta: { headClassName: 'text-right', cellClassName: 'text-right' },
+    cell: ({ row }) => <span className="nums font-bold">{row.original.quantity}</span>,
+  },
+  {
+    accessorKey: 'total',
+    header: 'Total',
+    meta: { headClassName: 'text-right', cellClassName: 'text-right' },
+    cell: ({ row }) => <span className="nums">{formatMoney(row.original.total, 'COP')}</span>,
+  },
+];
+
+const lowStockColumns: ColumnDef<InventoryItemDto>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Insumo',
+    cell: ({ row }) => (
+      <div>
+        <p className="text-sm font-semibold">{row.original.name}</p>
+        <p className="nums text-[11px] text-muted-foreground">{row.original.sku}</p>
+      </div>
+    ),
+  },
+  {
+    accessorKey: 'stockOnHand',
+    header: 'Stock',
+    meta: { headClassName: 'text-right', cellClassName: 'text-right' },
+    cell: ({ row }) => (
+      <span className="nums font-bold">
+        {row.original.stockOnHand} {row.original.baseUnitCode}
+      </span>
+    ),
+  },
+];
+
+export function DashboardSidePanel({
+  cashSession,
+  cashLoading,
+  topProducts,
+  topProductsLoading,
+  lowStockItems,
+  lowStockLoading,
 }: {
-  value: number;
-  label: string;
-  tone?: 'success' | 'warning';
+  cashSession: CashSessionDto | null | undefined;
+  cashLoading: boolean;
+  topProducts: SalesSummaryTopProduct[];
+  topProductsLoading: boolean;
+  lowStockItems: InventoryItemDto[];
+  lowStockLoading: boolean;
 }) {
-  return (
-    <div className="rounded-xl bg-surface-quiet px-3 py-3">
-      <p
-        className={
-          tone === 'success'
-            ? 'nums text-[24px] font-bold leading-none text-success'
-            : tone === 'warning'
-              ? 'nums text-[24px] font-bold leading-none text-[#9A6A1C]'
-              : 'nums text-[24px] font-bold leading-none'
-        }
-      >
-        {value}
-      </p>
-      <p className="mt-1.5 text-[12px] text-[#6B6359]">{label}</p>
-    </div>
-  );
-}
-
-function TopProductRow({ product, index }: { product: TopProduct; index: number }) {
-  return (
-    <div className="grid grid-cols-[18px_1fr_auto] items-center gap-2 py-1.5">
-      <span className="nums text-[12px] text-[#B08D78]">{index + 1}</span>
-      <span className="truncate text-[14px] font-semibold">{product.name}</span>
-      <span className="nums text-[13px] font-bold">{product.quantity}</span>
-    </div>
-  );
-}
-
-export function DashboardSidePanel() {
   return (
     <div className="space-y-4">
       <Card className="gap-4 rounded-2xl border-transparent bg-carbon py-5 text-white shadow-lg shadow-carbon/10">
         <CardHeader className="px-5 pb-0">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <CardDescription className="font-semibold text-white/62">
-                Caja · Sede Centro
-              </CardDescription>
+              <CardDescription className="font-semibold text-white/62">Caja activa</CardDescription>
               <CardTitle className="nums mt-2 font-display text-[28px] font-bold text-white">
-                {CASH_REGISTER_SUMMARY.amount}
+                {cashLoading ? (
+                  <Skeleton className="h-8 w-36 bg-white/10" />
+                ) : cashSession ? (
+                  formatMoney(cashSession.expectedAmount ?? cashSession.openingBalance, cashSession.currency)
+                ) : (
+                  'Cerrada'
+                )}
               </CardTitle>
             </div>
             <StatusPill
-              tone="green"
-              className="h-6 border-success/20 bg-success/20 px-2 text-[10px] font-bold uppercase text-success-soft"
+              tone={cashSession ? 'green' : 'neutral'}
+              className={
+                cashSession
+                  ? 'h-6 border-success/20 bg-success/20 px-2 text-[10px] font-bold uppercase text-success-soft'
+                  : 'h-6 px-2 text-[10px] font-bold uppercase'
+              }
             >
-              {CASH_REGISTER_SUMMARY.status}
+              {cashSession ? 'Abierta' : 'Cerrada'}
             </StatusPill>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 px-5">
           <Separator className="bg-white/10" />
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            <div>
-              <p className="text-[12px] text-white/45">Base</p>
-              <p className="nums mt-1 font-bold">{CASH_REGISTER_SUMMARY.base}</p>
+          {cashSession ? (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-[12px] text-white/45">Base</p>
+                <p className="nums mt-1 font-bold">{formatMoney(cashSession.openingBalance, cashSession.currency)}</p>
+              </div>
+              <div>
+                <p className="text-[12px] text-white/45">Apertura</p>
+                <p className="nums mt-1 font-bold">{formatDateTime(cashSession.openedAt)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[12px] text-white/45">Apertura</p>
-              <p className="nums mt-1 font-bold">{CASH_REGISTER_SUMMARY.openedAt}</p>
+          ) : (
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.06] p-3 text-sm text-white/62">
+              <CircleDollarSign className="size-4 text-orange" />
+              Abre caja para registrar cobros en efectivo.
             </div>
-            <div>
-              <p className="text-[12px] text-white/45">Cajero</p>
-              <p className="mt-1 text-sm font-bold">{CASH_REGISTER_SUMMARY.cashier}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="gap-4 rounded-2xl border-border/80 bg-card py-5 shadow-sm">
-        <CardHeader className="px-5 pb-0">
-          <div className="flex items-center justify-between">
-            <CardTitle>Facturación electrónica</CardTitle>
-            <span className="size-2.5 rounded-full bg-success shadow-[0_0_0_4px_rgba(20,134,90,0.12)]" />
-          </div>
-        </CardHeader>
-        <CardContent className="grid grid-cols-3 gap-3 px-5">
-          <FiscalStat value={FISCAL_SUMMARY.emitted} label="Emitidas" />
-          <FiscalStat value={FISCAL_SUMMARY.queued} label="En cola" tone="warning" />
-          <FiscalStat value={FISCAL_SUMMARY.rejected} label="Rechazos" tone="success" />
+          )}
         </CardContent>
       </Card>
 
       <Card className="gap-4 rounded-2xl border-border/80 bg-card py-5 shadow-sm">
         <CardHeader className="px-5 pb-0">
           <CardTitle>Top del dia</CardTitle>
+          <CardDescription>Productos vendidos segun reportes reales</CardDescription>
         </CardHeader>
         <CardContent className="px-5">
-          {TOP_PRODUCTS.map((product, index) => (
-            <TopProductRow key={product.name} product={product} index={index} />
-          ))}
+          <DataTable
+            columns={topProductColumns}
+            data={topProducts}
+            isLoading={topProductsLoading}
+            emptyMessage="Sin productos vendidos hoy."
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="gap-4 rounded-2xl border-border/80 bg-card py-5 shadow-sm">
+        <CardHeader className="px-5 pb-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Bajo stock</CardTitle>
+              <CardDescription>Insumos bajo minimo</CardDescription>
+            </div>
+            <Boxes className="size-5 text-orange" />
+          </div>
+        </CardHeader>
+        <CardContent className="px-5">
+          <DataTable
+            columns={lowStockColumns}
+            data={lowStockItems}
+            isLoading={lowStockLoading}
+            emptyMessage="Sin alertas de inventario."
+          />
         </CardContent>
       </Card>
     </div>

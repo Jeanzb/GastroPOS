@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { InventoryItemDto, PaginatedResult, StockMovementDto } from '@gastroai/contracts';
+import type {
+  InventoryCategoryDto,
+  InventoryItemDto,
+  PaginatedResult,
+  StockMovementDto,
+} from '@gastroai/contracts';
 import type { Prisma } from '../../../generated/prisma';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
@@ -12,7 +17,7 @@ import type { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import type { ListInventoryItemsQueryDto } from './dto/list-inventory-items-query.dto';
 import type { ListStockMovementsQueryDto } from './dto/list-stock-movements-query.dto';
 import type { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
-import { toInventoryItemDto, toStockMovementDto } from './inventory.mapper';
+import { toInventoryCategoryDto, toInventoryItemDto, toStockMovementDto } from './inventory.mapper';
 import { InventoryRepository } from './inventory.repository';
 
 @Injectable()
@@ -21,6 +26,11 @@ export class InventoryService {
     private readonly repository: InventoryRepository,
     private readonly auditService: AuditService,
   ) {}
+
+  async listCategories(ctx: TenantRequestContext): Promise<InventoryCategoryDto[]> {
+    const categories = await this.repository.listCategories(ctx.tenantId);
+    return categories.map(toInventoryCategoryDto);
+  }
 
   async listItems(
     ctx: TenantRequestContext,
@@ -77,7 +87,7 @@ export class InventoryService {
       tenantId: ctx.tenantId,
       branchId,
       productId: dto.productId?.trim() || null,
-      sku: normalizeSku(dto.sku),
+      categoryId: dto.categoryId.trim(),
       name: dto.name.trim(),
       baseUnitCode: normalizeUnitCode(dto.baseUnitCode),
       baseUnitName: normalizeUnitName(dto.baseUnitName, dto.baseUnitCode),
@@ -90,6 +100,9 @@ export class InventoryService {
 
     if (result.status === 'INVALID_BRANCH') {
       throw invalidBranch();
+    }
+    if (result.status === 'INVALID_CATEGORY') {
+      throw invalidCategory();
     }
     if (result.status === 'INVALID_PRODUCT') {
       throw invalidProduct();
@@ -124,7 +137,6 @@ export class InventoryService {
     const result = await this.repository.updateItem({
       tenantId: ctx.tenantId,
       id,
-      sku: dto.sku === undefined ? undefined : normalizeSku(dto.sku),
       name: dto.name?.trim(),
       baseUnitCode:
         dto.baseUnitCode === undefined ? undefined : normalizeUnitCode(dto.baseUnitCode),
@@ -140,9 +152,6 @@ export class InventoryService {
 
     if (result.status === 'NOT_FOUND') {
       throw notFound();
-    }
-    if (result.status === 'DUPLICATE_SKU') {
-      throw duplicateSku();
     }
 
     const before = toInventoryItemDto(existing);
@@ -210,10 +219,6 @@ export class InventoryService {
   }
 }
 
-function normalizeSku(value: string): string {
-  return value.trim().toUpperCase();
-}
-
 function normalizeUnitCode(value: string): string {
   return value.trim().toUpperCase();
 }
@@ -233,6 +238,13 @@ function invalidProduct(): ApplicationException {
   return new ApplicationException(400, {
     code: ApiErrorCode.BAD_REQUEST,
     message: 'The referenced product does not exist.',
+  });
+}
+
+function invalidCategory(): ApplicationException {
+  return new ApplicationException(404, {
+    code: ApiErrorCode.NOT_FOUND,
+    message: 'Inventory category was not found.',
   });
 }
 

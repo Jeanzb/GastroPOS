@@ -9,6 +9,10 @@ export function useInventory() {
     queryKey: [QUERY_KEYS.inventoryItems, { page: 1, pageSize: 100 }],
     queryFn: () => InventoryService.getItems({ page: 1, pageSize: 100 }),
   });
+  const categoriesQuery = useQuery({
+    queryKey: [QUERY_KEYS.inventoryCategories],
+    queryFn: () => InventoryService.getCategories(),
+  });
 
   const onMutationSuccess = () => {
     void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.inventoryItems] });
@@ -26,5 +30,5 @@ export function useInventory() {
     onSuccess: onMutationSuccess,
   });
 
-  return { itemsQuery, createMutation, adjustMutation };
+  return { itemsQuery, categoriesQuery, createMutation, adjustMutation };
 }

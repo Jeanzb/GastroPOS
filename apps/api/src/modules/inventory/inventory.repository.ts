@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type StockMovementType } from '../../../generated/prisma';
+import { Prisma, type InventoryCategory, type StockMovementType } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
 import type { InventoryBalanceWithIngredient, StockMovementWithInventory } from './inventory.mapper';
 import type { SortDirection, StockMovementSortField } from './dto/list-stock-movements-query.dto';
@@ -25,7 +25,7 @@ export interface CreateInventoryItemData {
   tenantId: string;
   branchId: string;
   productId: string | null;
-  sku: string;
+  categoryId: string;
   name: string;
   baseUnitCode: string;
   baseUnitName: string;
@@ -39,7 +39,6 @@ export interface CreateInventoryItemData {
 export interface UpdateInventoryItemData {
   tenantId: string;
   id: string;
-  sku?: string;
   name?: string;
   baseUnitCode?: string;
   baseUnitName?: string;
@@ -62,13 +61,13 @@ export interface AdjustInventoryStockData {
 export type CreateInventoryItemResult =
   | { status: 'CREATED'; item: InventoryBalanceWithIngredient }
   | { status: 'INVALID_BRANCH' }
+  | { status: 'INVALID_CATEGORY' }
   | { status: 'INVALID_PRODUCT' }
   | { status: 'DUPLICATE_SKU' };
 
 export type UpdateInventoryItemResult =
   | { status: 'UPDATED'; item: InventoryBalanceWithIngredient }
-  | { status: 'NOT_FOUND' }
-  | { status: 'DUPLICATE_SKU' };
+  | { status: 'NOT_FOUND' };
 
 export type AdjustInventoryStockResult =
   | { status: 'ADJUSTED'; item: InventoryBalanceWithIngredient }
@@ -78,6 +77,13 @@ export type AdjustInventoryStockResult =
 @Injectable()
 export class InventoryRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  listCategories(tenantId: string): Promise<InventoryCategory[]> {
+    return this.prisma.inventoryCategory.findMany({
+      where: { tenantId, isActive: true, deletedAt: null },
+      orderBy: [{ name: 'asc' }],
+    });
+  }
 
   findItems(
     filters: InventoryItemFilters,
@@ -145,12 +151,17 @@ export class InventoryRepository {
         }
       }
 
-      const existingSku = await tx.inventoryIngredient.findUnique({
-        where: { tenantId_sku: { tenantId: data.tenantId, sku: data.sku } },
-        select: { id: true },
+      const category = await tx.inventoryCategory.findFirst({
+        where: {
+          id: data.categoryId,
+          tenantId: data.tenantId,
+          isActive: true,
+          deletedAt: null,
+        },
+        select: { id: true, skuPrefix: true },
       });
-      if (existingSku) {
-        return { status: 'DUPLICATE_SKU' };
+      if (!category) {
+        return { status: 'INVALID_CATEGORY' };
       }
 
       const unit = await this.findOrCreateUnit(tx, {
@@ -159,17 +170,28 @@ export class InventoryRepository {
         name: data.baseUnitName,
         actorUserId: data.createdById,
       });
+      const skuNumber = await this.reserveSkuNumber(tx, data.tenantId, category.skuPrefix);
+      const sku = `${category.skuPrefix}-${skuNumber.toString().padStart(4, '0')}`;
 
-      const ingredient = await tx.inventoryIngredient.create({
-        data: {
-          tenantId: data.tenantId,
-          productId: data.productId,
-          baseUnitId: unit.id,
-          sku: data.sku,
-          name: data.name,
-          createdById: data.createdById,
-        },
-      });
+      let ingredient;
+      try {
+        ingredient = await tx.inventoryIngredient.create({
+          data: {
+            tenantId: data.tenantId,
+            productId: data.productId,
+            baseUnitId: unit.id,
+            categoryId: category.id,
+            sku,
+            name: data.name,
+            createdById: data.createdById,
+          },
+        });
+      } catch (error) {
+        if (isUniqueConstraint(error)) {
+          return { status: 'DUPLICATE_SKU' };
+        }
+        throw error;
+      }
 
       const balance = await tx.inventoryBalance.create({
         data: {
@@ -219,16 +241,6 @@ export class InventoryRepository {
         return { status: 'NOT_FOUND' };
       }
 
-      if (data.sku && data.sku !== current.ingredient.sku) {
-        const existingSku = await tx.inventoryIngredient.findUnique({
-          where: { tenantId_sku: { tenantId: data.tenantId, sku: data.sku } },
-          select: { id: true },
-        });
-        if (existingSku && existingSku.id !== current.ingredientId) {
-          return { status: 'DUPLICATE_SKU' };
-        }
-      }
-
       const unit =
         data.baseUnitCode === undefined
           ? null
@@ -242,7 +254,6 @@ export class InventoryRepository {
       await tx.inventoryIngredient.update({
         where: { id: current.ingredientId },
         data: {
-          sku: data.sku,
           name: data.name,
           baseUnitId: unit?.id,
           isActive: data.isActive,
@@ -357,6 +368,28 @@ export class InventoryRepository {
     });
   }
 
+  private async reserveSkuNumber(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    prefix: string,
+  ): Promise<number> {
+    const rows = await tx.$queryRaw<Array<{ number: number }>>`
+      INSERT INTO "inventory_sku_sequences" ("id", "tenantId", "prefix", "nextNumber", "createdAt", "updatedAt")
+      VALUES (${`invseq_${tenantId}_${prefix}`}, ${tenantId}, ${prefix}, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT ("tenantId", "prefix")
+      DO UPDATE SET
+        "nextNumber" = "inventory_sku_sequences"."nextNumber" + 1,
+        "updatedAt" = CURRENT_TIMESTAMP
+      RETURNING "nextNumber" - 1 AS "number"
+    `;
+
+    const number = rows[0]?.number;
+    if (!number) {
+      throw new Error('Inventory SKU sequence did not return a number.');
+    }
+    return number;
+  }
+
   private itemScope(filters: InventoryItemFilters): Prisma.InventoryBalanceWhereInput {
     return {
       deletedAt: null,
@@ -403,10 +436,15 @@ export class InventoryRepository {
       ingredient: {
         include: {
           baseUnit: { select: { id: true, code: true, name: true } },
+          category: { select: { id: true, name: true, skuPrefix: true } },
         },
       },
     } satisfies Prisma.InventoryBalanceInclude;
   }
+}
+
+function isUniqueConstraint(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }
 
 function weightedAverageCost(

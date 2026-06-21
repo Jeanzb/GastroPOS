@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, RotateCcw, ShieldAlert } from 'lucide-react';
-import { PlatformShell } from '@/components/platform';
+import { Loader2, RotateCcw, ShieldAlert, SlidersHorizontal } from 'lucide-react';
+import { PlatformShell, PlatformState, PlatformStatusBadge } from '@/components/platform';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,10 +103,17 @@ export function PlatformFeaturesPage() {
       description="Controla emergencias por tenant sin cambiar el plan BASIC."
     >
       <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
-        <Card>
+        <Card className="platform-card rounded-xl bg-white/88">
           <CardHeader>
-            <CardTitle>Cliente</CardTitle>
-            <CardDescription>Selecciona el tenant que vas a administrar.</CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-xl bg-orange/10 text-orange">
+                <SlidersHorizontal className="size-5" />
+              </div>
+              <div>
+                <CardTitle>Cliente</CardTitle>
+                <CardDescription>Selecciona el tenant que vas a administrar.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <Select value={selectedTenantId ?? undefined} onValueChange={setSelectedTenantId}>
@@ -122,20 +129,20 @@ export function PlatformFeaturesPage() {
               </SelectContent>
             </Select>
             {selectedTenant ? (
-              <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+              <div className="platform-motion-in rounded-xl border bg-muted/30 p-4 text-sm">
                 <p className="font-semibold">{selectedTenant.name}</p>
                 <p className="text-muted-foreground">{selectedTenant.slug}</p>
-                <Badge className="mt-3 bg-carbon text-white">{selectedTenant.status}</Badge>
+                <PlatformStatusBadge status={selectedTenant.status} className="mt-3" />
               </div>
             ) : null}
-            <div className="rounded-lg border border-orange/20 bg-orange/8 p-4 text-sm text-carbon">
+            <div className="rounded-xl border border-orange/20 bg-orange/8 p-4 text-sm text-carbon">
               <ShieldAlert className="mb-2 size-4 text-orange" />
               Los overrides son para incidentes o soporte. El plan comercial sigue siendo BASIC.
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-xl bg-white/88">
           <CardHeader>
             <CardTitle>Feature flags</CardTitle>
             <CardDescription>
@@ -144,24 +151,42 @@ export function PlatformFeaturesPage() {
           </CardHeader>
           <CardContent>
             {tenantFeaturesQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Cargando modulos...</p>
+              <div className="space-y-3">
+                <div className="h-20 rounded-xl bg-carbon/5" />
+                <div className="h-20 rounded-xl bg-carbon/5" />
+                <div className="h-20 rounded-xl bg-carbon/5" />
+              </div>
             ) : tenantFeaturesQuery.isError ? (
-              <p className="text-sm text-destructive">No se pudieron cargar los modulos.</p>
+              <PlatformState
+                title="No se pudieron cargar"
+                description="Revisa el tenant seleccionado y la sesion platform."
+                tone="danger"
+              />
             ) : tenantFeaturesQuery.data?.length ? (
-              <div className="space-y-3" data-cy="platform-feature-list">
+              <div className="platform-stagger space-y-3" data-cy="platform-feature-list">
                 {tenantFeaturesQuery.data.map((feature) => (
                   <div
                     key={feature.code}
-                    className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-[1fr_auto]"
+                    className="platform-row grid gap-4 rounded-xl border bg-card p-4 shadow-sm sm:grid-cols-[1fr_auto]"
                     data-cy="platform-feature-row"
                   >
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold">{feature.name}</p>
-                        <Badge variant={feature.source === 'OVERRIDE' ? 'destructive' : 'secondary'}>
+                        <Badge
+                          variant={feature.source === 'OVERRIDE' ? 'destructive' : 'secondary'}
+                          className="rounded-full"
+                        >
                           {feature.source}
                         </Badge>
-                        <Badge variant={feature.enabled ? 'default' : 'outline'}>
+                        <Badge
+                          variant={feature.enabled ? 'default' : 'outline'}
+                          className={
+                            feature.enabled
+                              ? 'rounded-full bg-emerald-700 text-white'
+                              : 'rounded-full border-destructive/25 bg-danger-soft text-destructive'
+                          }
+                        >
                           {feature.enabled ? 'Activo' : 'Bloqueado'}
                         </Badge>
                       </div>
@@ -187,6 +212,7 @@ export function PlatformFeaturesPage() {
                           onClick={() => handleReset(feature)}
                           disabled={deleteOverride.isPending}
                           title="Heredar BASIC"
+                          aria-label={`Remover override de ${feature.code}`}
                         >
                           <RotateCcw className="size-4" />
                         </Button>
@@ -196,7 +222,10 @@ export function PlatformFeaturesPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Selecciona un tenant para ver sus modulos.</p>
+              <PlatformState
+                title="Selecciona un tenant"
+                description="El listado mostrara features heredadas del plan y overrides de emergencia."
+              />
             )}
           </CardContent>
         </Card>

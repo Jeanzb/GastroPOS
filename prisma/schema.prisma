@@ -123,10 +123,12 @@ model Tenant {
   suppliers         Supplier[]
   purchases         Purchase[]
   purchaseItems     PurchaseItem[]
-  unitsOfMeasure    UnitOfMeasure[]
-  inventoryIngredients InventoryIngredient[]
-  inventoryBalances    InventoryBalance[]
-  stockMovements    StockMovement[]
+  unitsOfMeasure        UnitOfMeasure[]
+  inventoryCategories   InventoryCategory[]
+  inventoryIngredients  InventoryIngredient[]
+  inventorySkuSequences InventorySkuSequence[]
+  inventoryBalances     InventoryBalance[]
+  stockMovements        StockMovement[]
   diningZones       DiningZone[]
   diningTables      DiningTable[]
 
@@ -1116,12 +1118,55 @@ model UnitOfMeasure {
   @@map("unit_of_measures")
 }
 
+model InventoryCategory {
+  id        String @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  skuPrefix String
+
+  isActive Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant      Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ingredients InventoryIngredient[]
+
+  @@unique([tenantId, code])
+  @@unique([tenantId, skuPrefix])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@index([tenantId, deletedAt])
+  @@map("inventory_categories")
+}
+
+model InventorySkuSequence {
+  id         String @id @default(cuid())
+  tenantId   String
+  prefix     String
+  nextNumber Int    @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, prefix])
+  @@index([tenantId])
+  @@map("inventory_sku_sequences")
+}
+
 /// Tenant-level ingredient catalog entry. Branch-specific stock lives in InventoryBalance.
 model InventoryIngredient {
   id        String  @id @default(cuid())
   tenantId  String
   productId String?
   baseUnitId String
+  categoryId String
 
   name               String
   sku                String
@@ -1136,12 +1181,14 @@ model InventoryIngredient {
   tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   baseUnit  UnitOfMeasure   @relation(fields: [baseUnitId], references: [id], onDelete: Restrict)
+  category  InventoryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   balances  InventoryBalance[]
   movements StockMovement[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, productId])
+  @@index([tenantId, categoryId])
   @@index([tenantId, isActive])
   @@map("inventory_ingredients")
 }

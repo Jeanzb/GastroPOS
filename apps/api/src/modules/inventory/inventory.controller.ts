@@ -1,6 +1,11 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import type { InventoryItemDto, PaginatedResult, StockMovementDto } from '@gastroai/contracts';
+import type {
+  InventoryCategoryDto,
+  InventoryItemDto,
+  PaginatedResult,
+  StockMovementDto,
+} from '@gastroai/contracts';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { CurrentTenantContext } from '../auth/presentation/decorators/current-tenant-context.decorator';
 import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
@@ -23,6 +28,14 @@ import { InventoryService } from './inventory.service';
 @Controller()
 export class InventoryController {
   constructor(private readonly service: InventoryService) {}
+
+  @Get('inventory-categories')
+  @RequireRoles('OWNER', 'ADMIN', 'INVENTORY_MANAGER', 'ACCOUNTANT')
+  listCategories(
+    @CurrentTenantContext() ctx: TenantRequestContext,
+  ): Promise<InventoryCategoryDto[]> {
+    return this.service.listCategories(ctx);
+  }
 
   @Get('inventory-items')
   @RequireRoles('OWNER', 'ADMIN', 'INVENTORY_MANAGER', 'ACCOUNTANT')

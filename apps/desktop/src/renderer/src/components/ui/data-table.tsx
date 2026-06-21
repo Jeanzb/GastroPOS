@@ -178,7 +178,7 @@ export function DataTable<TData, TValue>({
           <p className="nums text-xs text-muted-foreground">
             {pagination.total === 0
               ? 'Sin registros'
-              : `Página ${pagination.pageIndex + 1} de ${Math.max(1, pagination.pageCount)} · ${pagination.total} registros`}
+              : `Pagina ${pagination.pageIndex + 1} de ${Math.max(1, pagination.pageCount)} - ${pagination.total} registros`}
           </p>
           <div className="flex items-center gap-2">
             <Button

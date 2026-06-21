@@ -3,6 +3,7 @@ import type { PlatformRole, TenantStatus } from '@gastroai/contracts';
 import { UserRole } from '../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedPlatformUser } from './platform.types';
+import { DEFAULT_INVENTORY_CATEGORIES } from '../inventory/inventory-categories.constants';
 
 export interface PlatformTenantCreateData {
   name: string;
@@ -261,6 +262,23 @@ export class PlatformRepository {
           role: UserRole.OWNER,
         },
       });
+      for (const category of DEFAULT_INVENTORY_CATEGORIES) {
+        await tx.inventoryCategory.create({
+          data: {
+            tenantId: tenant.id,
+            code: category.code,
+            name: category.name,
+            skuPrefix: category.skuPrefix,
+          },
+        });
+        await tx.inventorySkuSequence.create({
+          data: {
+            tenantId: tenant.id,
+            prefix: category.skuPrefix,
+            nextNumber: 1,
+          },
+        });
+      }
       return tx.tenant.findUniqueOrThrow({
         where: { id: tenant.id },
         include: this.tenantDetailInclude(),

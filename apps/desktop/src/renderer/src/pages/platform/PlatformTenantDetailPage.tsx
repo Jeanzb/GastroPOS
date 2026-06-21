@@ -1,6 +1,6 @@
 import { useParams } from '@tanstack/react-router';
-import { Loader2 } from 'lucide-react';
-import { PlatformShell } from '@/components/platform';
+import { Building2, Loader2, ShieldCheck, Users } from 'lucide-react';
+import { PlatformShell, PlatformState, PlatformStatusBadge } from '@/components/platform';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,15 +55,27 @@ export function PlatformTenantDetailPage() {
       description="Lifecycle, plan, features, sedes y usuarios del restaurante."
     >
       {tenantQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Cargando tenant...</p>
-      ) : tenantQuery.isError || !tenant ? (
-        <p className="text-sm text-destructive">No se pudo cargar el tenant.</p>
-      ) : (
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card>
+          <div className="h-80 rounded-xl bg-carbon/5" />
+          <div className="h-80 rounded-xl bg-carbon/5" />
+        </div>
+      ) : tenantQuery.isError || !tenant ? (
+        <PlatformState
+          title="No se pudo cargar"
+          description="El tenant no existe o la sesion platform no tiene acceso."
+          tone="danger"
+        />
+      ) : (
+        <div className="platform-stagger grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <Card className="platform-card rounded-xl bg-white/88">
             <CardHeader>
-              <CardTitle>Control SaaS</CardTitle>
-              <CardDescription>{tenant.slug}</CardDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle>Control SaaS</CardTitle>
+                  <CardDescription>{tenant.slug}</CardDescription>
+                </div>
+                <PlatformStatusBadge status={tenant.status} />
+              </div>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -104,9 +116,9 @@ export function PlatformTenantDetailPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
-                <Summary label="Sedes" value={tenant.branchCount} />
-                <Summary label="Usuarios" value={tenant.userCount} />
-                <Summary label="Activo" value={tenant.isActive ? 'Si' : 'No'} />
+                <Summary icon={Building2} label="Sedes" value={tenant.branchCount} />
+                <Summary icon={Users} label="Usuarios" value={tenant.userCount} />
+                <Summary icon={ShieldCheck} label="Activo" value={tenant.isActive ? 'Si' : 'No'} />
               </div>
 
               <Button disabled={updateStatus.isPending || updatePlan.isPending} variant="outline">
@@ -118,7 +130,7 @@ export function PlatformTenantDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="platform-card rounded-xl bg-white/88">
             <CardHeader>
               <CardTitle>Features</CardTitle>
               <CardDescription>BASIC incluye todos los modulos. Overrides son de emergencia.</CardDescription>
@@ -136,13 +148,13 @@ export function PlatformTenantDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="platform-card rounded-xl bg-white/88">
             <CardHeader>
               <CardTitle>Sedes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {tenant.branches.map((branch) => (
-                <div key={branch.id} className="flex justify-between rounded-lg border p-3 text-sm">
+                <div key={branch.id} className="platform-row flex justify-between rounded-lg border p-3 text-sm">
                   <span className="font-semibold">{branch.name}</span>
                   <span className="text-muted-foreground">{branch.code}</span>
                 </div>
@@ -150,13 +162,13 @@ export function PlatformTenantDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="platform-card rounded-xl bg-white/88">
             <CardHeader>
               <CardTitle>Usuarios</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {tenant.users.map((user) => (
-                <div key={user.id} className="flex justify-between rounded-lg border p-3 text-sm">
+                <div key={user.id} className="platform-row flex justify-between rounded-lg border p-3 text-sm">
                   <div>
                     <p className="font-semibold">{user.fullName}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
@@ -172,11 +184,20 @@ export function PlatformTenantDetailPage() {
   );
 }
 
-function Summary({ label, value }: { label: string; value: number | string }) {
+function Summary({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Building2;
+  label: string;
+  value: number | string;
+}) {
   return (
-    <div className="rounded-lg border bg-muted/25 p-4">
+    <div className="rounded-xl border bg-muted/25 p-4">
+      <Icon className="mb-3 size-4 text-orange" />
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
+      <p className="nums mt-1 text-2xl font-semibold">{value}</p>
     </div>
   );
 }

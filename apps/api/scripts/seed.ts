@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { DiningTableStatus, PrismaClient, UserRole } from '../generated/prisma';
+import { DEFAULT_INVENTORY_CATEGORIES } from '../src/modules/inventory/inventory-categories.constants';
 
 const prisma = new PrismaClient();
 
@@ -141,6 +142,43 @@ async function main(): Promise<void> {
         code: branchCode,
       },
     });
+
+    for (const category of DEFAULT_INVENTORY_CATEGORIES) {
+      await tx.inventoryCategory.upsert({
+        where: {
+          tenantId_code: {
+            tenantId: tenant.id,
+            code: category.code,
+          },
+        },
+        update: {
+          name: category.name,
+          skuPrefix: category.skuPrefix,
+          isActive: true,
+          deletedAt: null,
+        },
+        create: {
+          tenantId: tenant.id,
+          code: category.code,
+          name: category.name,
+          skuPrefix: category.skuPrefix,
+        },
+      });
+      await tx.inventorySkuSequence.upsert({
+        where: {
+          tenantId_prefix: {
+            tenantId: tenant.id,
+            prefix: category.skuPrefix,
+          },
+        },
+        update: {},
+        create: {
+          tenantId: tenant.id,
+          prefix: category.skuPrefix,
+          nextNumber: 1,
+        },
+      });
+    }
 
     const owner = await tx.user.upsert({
       where: {

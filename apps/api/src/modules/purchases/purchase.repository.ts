@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type PurchaseStatus, type Supplier } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
+import { DEFAULT_INVENTORY_CATEGORIES } from '../inventory/inventory-categories.constants';
 import type { PurchaseWithDetails } from './purchase.mapper';
 
 export interface PurchaseFilters {
@@ -277,6 +278,11 @@ export class PurchaseRepository {
           tenantId: purchase.tenantId,
           productId: item.productId,
           baseUnitId: await this.findOrCreateDefaultUnitId(tx, purchase.tenantId, actorUserId),
+          categoryId: await this.findOrCreateGenericInventoryCategoryId(
+            tx,
+            purchase.tenantId,
+            actorUserId,
+          ),
           sku,
           name,
           createdById: actorUserId,
@@ -307,6 +313,44 @@ export class PurchaseRepository {
         createdById: actorUserId,
       },
     });
+  }
+
+  private async findOrCreateGenericInventoryCategoryId(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    actorUserId: string,
+  ): Promise<string> {
+    const category = DEFAULT_INVENTORY_CATEGORIES.find((item) => item.code === 'GENERICO');
+    if (!category) {
+      throw new Error('Generic inventory category is not configured.');
+    }
+
+    const result = await tx.inventoryCategory.upsert({
+      where: { tenantId_code: { tenantId, code: category.code } },
+      update: {
+        name: category.name,
+        skuPrefix: category.skuPrefix,
+        isActive: true,
+        deletedAt: null,
+        updatedById: actorUserId,
+      },
+      create: {
+        tenantId,
+        code: category.code,
+        name: category.name,
+        skuPrefix: category.skuPrefix,
+        createdById: actorUserId,
+      },
+      select: { id: true },
+    });
+
+    await tx.inventorySkuSequence.upsert({
+      where: { tenantId_prefix: { tenantId, prefix: category.skuPrefix } },
+      update: {},
+      create: { tenantId, prefix: category.skuPrefix, nextNumber: 1 },
+    });
+
+    return result.id;
   }
 
   private async findOrCreateDefaultUnitId(

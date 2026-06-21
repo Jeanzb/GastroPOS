@@ -169,7 +169,7 @@ export function InventoryWorkspace() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItemDto | null>(null);
-  const { itemsQuery, createMutation, adjustMutation } = useInventory();
+  const { itemsQuery, categoriesQuery, createMutation, adjustMutation } = useInventory();
   const stockMovements = useStockMovements();
   const items = itemsQuery.data?.data ?? [];
   const movementsPage = stockMovements.query.data;
@@ -190,7 +190,7 @@ export function InventoryWorkspace() {
     try {
       await createMutation.mutateAsync({
         branchId: values.branchId,
-        sku: values.sku,
+        categoryId: values.categoryId,
         name: values.name,
         baseUnitCode: values.baseUnitCode,
         baseUnitName: values.baseUnitName,
@@ -425,6 +425,8 @@ export function InventoryWorkspace() {
 
       <InventoryItemFormDialog
         branchId={activeBranchId}
+        categories={categoriesQuery.data ?? []}
+        categoriesLoading={categoriesQuery.isLoading}
         isSubmitting={createMutation.isPending}
         open={itemDialogOpen}
         onOpenChange={setItemDialogOpen}

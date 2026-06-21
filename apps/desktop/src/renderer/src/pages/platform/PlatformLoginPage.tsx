@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { Loader2, ShieldCheck } from 'lucide-react';
+import { DarkLogoLockup } from '@/components/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ export function PlatformLoginPage() {
   const setSession = usePlatformAuthStore((state) => state.setSession);
   const { loginMutation } = usePlatformAuth();
   const [email, setEmail] = useState('platform@gastroai.local');
-  const [password, setPassword] = useState('PlatformDemo123!');
+  const [password, setPassword] = useState('ChangeMePlatform123!');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -32,9 +33,11 @@ export function PlatformLoginPage() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#171410] p-6 text-white">
-      <Card className="w-full max-w-md border-white/10 bg-[#201c17] text-white shadow-2xl shadow-black/30">
+    <main className="grid min-h-screen place-items-center overflow-hidden bg-[#171410] p-6 text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,90,44,0.22),transparent_28rem),radial-gradient(circle_at_80%_90%,rgba(20,134,90,0.12),transparent_24rem)]" />
+      <Card className="platform-motion-in relative w-full max-w-md border-white/10 bg-[#201c17]/95 text-white shadow-2xl shadow-black/30 backdrop-blur">
         <CardHeader>
+          <DarkLogoLockup className="mb-5 h-12 w-auto" />
           <div className="mb-3 grid size-12 place-items-center rounded-xl bg-orange/16 text-orange">
             <ShieldCheck className="size-6" />
           </div>
@@ -55,7 +58,7 @@ export function PlatformLoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="username"
-                className="border-white/12 bg-white/7 text-white"
+                className="border-white/12 bg-white/7 text-white transition focus-visible:border-orange/50"
                 data-cy="platform-email"
                 required
               />
@@ -70,7 +73,7 @@ export function PlatformLoginPage() {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
-                className="border-white/12 bg-white/7 text-white"
+                className="border-white/12 bg-white/7 text-white transition focus-visible:border-orange/50"
                 data-cy="platform-password"
                 required
               />

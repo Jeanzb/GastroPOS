@@ -21,17 +21,27 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
   inventoryItemFormSchema,
   type InventoryItemFormInput,
   type InventoryItemFormValues,
 } from '@/schemas/inventory';
+import type { InventoryCategoryDto } from '@/types/inventory';
 
 interface InventoryItemFormDialogProps {
   branchId: string | null | undefined;
   isSubmitting: boolean;
   open: boolean;
+  categories: InventoryCategoryDto[];
+  categoriesLoading?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: InventoryItemFormValues) => Promise<void>;
 }
@@ -39,7 +49,7 @@ interface InventoryItemFormDialogProps {
 function defaultValues(branchId?: string | null): InventoryItemFormInput {
   return {
     branchId: branchId ?? '',
-    sku: '',
+    categoryId: '',
     name: '',
     baseUnitCode: 'UND',
     baseUnitName: 'Unidad',
@@ -54,6 +64,8 @@ export function InventoryItemFormDialog({
   branchId,
   isSubmitting,
   open,
+  categories,
+  categoriesLoading = false,
   onOpenChange,
   onSubmit,
 }: InventoryItemFormDialogProps) {
@@ -89,22 +101,43 @@ export function InventoryItemFormDialog({
             <div className="grid gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
-                name="sku"
+                name="categoryId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>SKU</FormLabel>
-                    <FormControl>
-                      <Input
-                        data-cy="inventory-item-sku"
-                        placeholder="INS-CARNE-MOLIDA"
-                        autoComplete="off"
-                        {...field}
-                      />
-                    </FormControl>
+                    <FormLabel>Categoria</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={categoriesLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-cy="inventory-item-category">
+                          <SelectValue placeholder="Selecciona categoria" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name} ({category.skuPrefix})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <FormItem>
+                <FormLabel>SKU</FormLabel>
+                <FormControl>
+                  <Input
+                    data-cy="inventory-item-sku-auto"
+                    value="Generacion automatica"
+                    disabled
+                  />
+                </FormControl>
+                <FormDescription>Se asigna al guardar, por ejemplo CAR-0001.</FormDescription>
+              </FormItem>
 
               <FormField
                 control={form.control}
@@ -257,7 +290,11 @@ export function InventoryItemFormDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting || !branchId} data-cy="inventory-item-submit">
+              <Button
+                type="submit"
+                disabled={isSubmitting || !branchId || categoriesLoading || categories.length === 0}
+                data-cy="inventory-item-submit"
+              >
                 {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
                 Crear insumo
               </Button>

@@ -23,6 +23,9 @@ export interface InventoryItemDto {
   ingredientId: string;
   branchId: string;
   productId: string | null;
+  categoryId: string;
+  categoryName: string;
+  categoryPrefix: string;
   baseUnitId: string;
   baseUnitCode: string;
   baseUnitName: string;
@@ -35,6 +38,14 @@ export interface InventoryItemDto {
   allowNegativeStock: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InventoryCategoryDto {
+  id: string;
+  code: string;
+  name: string;
+  skuPrefix: string;
+  isActive: boolean;
 }
 
 export interface StockMovementDto {
@@ -58,7 +69,7 @@ export interface StockMovementDto {
 
 export interface CreateInventoryItemRequest {
   branchId: string;
-  sku: string;
+  categoryId: string;
   name: string;
   baseUnitCode: string;
   baseUnitName?: string;
@@ -70,7 +81,6 @@ export interface CreateInventoryItemRequest {
 }
 
 export interface UpdateInventoryItemRequest {
-  sku?: string;
   name?: string;
   baseUnitCode?: string;
   baseUnitName?: string;

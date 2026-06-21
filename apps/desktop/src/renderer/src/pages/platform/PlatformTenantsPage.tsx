@@ -1,8 +1,8 @@
 import type { ChangeEventHandler, FormEvent } from 'react';
 import { useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { Loader2, Plus, Search } from 'lucide-react';
-import { PlatformShell } from '@/components/platform';
+import { Building2, Loader2, Plus, Search, Users } from 'lucide-react';
+import { PlatformShell, PlatformState, PlatformStatusBadge } from '@/components/platform';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -101,7 +102,7 @@ export function PlatformTenantsPage() {
       title="Restaurantes"
       description="Gestiona tenants, estado operativo, sedes y propietarios."
     >
-      <Card>
+      <Card className="platform-card rounded-xl bg-white/88">
         <CardHeader className="flex-row items-center justify-between">
           <div>
             <CardTitle>Tenants</CardTitle>
@@ -169,7 +170,7 @@ export function PlatformTenantsPage() {
           </Dialog>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex items-center gap-2 rounded-lg border bg-background px-3 py-2">
+          <div className="mb-4 flex items-center gap-2 rounded-xl border bg-background/80 px-3 py-2 shadow-sm transition focus-within:border-orange/40 focus-within:bg-white">
             <Search className="size-4 text-muted-foreground" />
             <Input
               value={search}
@@ -180,9 +181,17 @@ export function PlatformTenantsPage() {
             />
           </div>
           {tenantsQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando restaurantes...</p>
+            <div className="space-y-3">
+              <Skeleton className="h-12 rounded-lg" />
+              <Skeleton className="h-12 rounded-lg" />
+              <Skeleton className="h-12 rounded-lg" />
+            </div>
           ) : tenantsQuery.isError ? (
-            <p className="text-sm text-destructive">No se pudieron cargar los tenants.</p>
+            <PlatformState
+              title="No se pudieron cargar"
+              description="La sesion platform no pudo consultar los tenants."
+              tone="danger"
+            />
           ) : tenants.length ? (
             <Table>
               <TableHeader>
@@ -197,17 +206,31 @@ export function PlatformTenantsPage() {
               </TableHeader>
               <TableBody>
                 {tenants.map((tenant) => (
-                  <TableRow key={tenant.id} data-cy="platform-tenant-row">
+                  <TableRow key={tenant.id} className="platform-row" data-cy="platform-tenant-row">
                     <TableCell>
-                      <p className="font-semibold">{tenant.name}</p>
-                      <p className="text-xs text-muted-foreground">{tenant.slug}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="grid size-9 place-items-center rounded-lg bg-orange/10 text-orange">
+                          <Building2 className="size-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{tenant.name}</p>
+                          <p className="text-xs text-muted-foreground">{tenant.slug}</p>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge status={tenant.status} />
+                      <PlatformStatusBadge status={tenant.status} />
                     </TableCell>
                     <TableCell>{tenant.planCode ?? 'Sin plan'}</TableCell>
-                    <TableCell>{tenant.branchCount}</TableCell>
-                    <TableCell>{tenant.userCount}</TableCell>
+                    <TableCell>
+                      <span className="nums font-semibold">{tenant.branchCount}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Users className="size-3.5 text-muted-foreground" />
+                        <span className="nums font-semibold">{tenant.userCount}</span>
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button asChild variant="outline" size="sm">
@@ -236,12 +259,14 @@ export function PlatformTenantsPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <p className="font-semibold">Aun no hay restaurantes</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Crea el primer tenant para activar el panel SaaS.
-              </p>
-            </div>
+            <PlatformState
+              title={search.trim() ? 'Sin resultados' : 'Aun no hay restaurantes'}
+              description={
+                search.trim()
+                  ? 'Ajusta la busqueda para encontrar otro tenant.'
+                  : 'Crea el primer tenant para activar el panel SaaS.'
+              }
+            />
           )}
         </CardContent>
       </Card>
@@ -253,7 +278,7 @@ export function PlatformTenantsPage() {
               Esta accion actualiza el cache de acceso y afecta las operaciones del restaurante.
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm">
+          <p className="rounded-xl border bg-muted/35 p-4 text-sm">
             {selectedTenantAction?.tenant.name} pasara a estado{' '}
             <strong>{selectedTenantAction?.status}</strong>.
           </p>
@@ -272,16 +297,6 @@ export function PlatformTenantsPage() {
       </Dialog>
     </PlatformShell>
   );
-}
-
-function StatusBadge({ status }: { status: TenantStatus }) {
-  const className =
-    status === 'ACTIVE'
-      ? 'bg-emerald-700 text-white'
-      : status === 'SUSPENDED' || status === 'CANCELLED'
-        ? 'bg-destructive text-white'
-        : 'bg-carbon text-white';
-  return <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>{status}</span>;
 }
 
 function Field({

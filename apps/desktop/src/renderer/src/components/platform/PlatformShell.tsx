@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { Building2, LayoutDashboard, LogOut, ShieldCheck, SlidersHorizontal, Tags } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LogoMark } from '@/components/brand';
 import { usePlatformAuth } from '@/hooks/platform';
 import { usePlatformAuthStore } from '@/stores';
 import { cn } from '@/lib/utils';
@@ -37,11 +38,11 @@ export function PlatformShell({ title, description, children }: PlatformShellPro
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f0e8] text-carbon">
+    <div className="platform-shell-bg min-h-screen text-carbon">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-carbon/10 bg-[#171410] p-5 text-white lg:flex lg:flex-col">
-        <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-lg bg-white text-sm font-bold text-orange">
-            G
+        <div className="platform-motion-in flex items-center gap-3">
+          <div className="grid size-10 place-items-center rounded-lg bg-white">
+            <LogoMark className="h-7 w-7" />
           </div>
           <div>
             <p className="font-display text-lg font-semibold">GastroAI</p>
@@ -49,14 +50,14 @@ export function PlatformShell({ title, description, children }: PlatformShellPro
           </div>
         </div>
 
-        <nav className="mt-10 space-y-2">
+        <nav className="platform-stagger mt-10 space-y-2">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/72 transition hover:bg-white/8 hover:text-white',
-                '[&.active]:bg-orange/18 [&.active]:text-white',
+                'motion-press flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/72 transition hover:bg-white/8 hover:text-white',
+                '[&.active]:bg-orange/18 [&.active]:text-white [&.active]:shadow-[inset_3px_0_0_#ff5a2c]',
               )}
             >
               <item.icon className="size-4" />
@@ -65,7 +66,7 @@ export function PlatformShell({ title, description, children }: PlatformShellPro
           ))}
         </nav>
 
-        <div className="mt-auto border-t border-white/10 pt-4">
+        <div className="platform-motion-in mt-auto border-t border-white/10 pt-4">
           <div className="mb-3 flex items-center gap-3">
             <div className="grid size-9 place-items-center rounded-lg bg-white/10 text-xs font-bold">
               {user?.fullName
@@ -92,9 +93,9 @@ export function PlatformShell({ title, description, children }: PlatformShellPro
       </aside>
 
       <main className="lg:pl-64">
-        <header className="sticky top-0 z-10 border-b border-carbon/10 bg-[#f5f0e8]/92 px-6 py-5 backdrop-blur">
+        <header className="sticky top-0 z-10 border-b border-carbon/10 bg-[#f8f3eb]/88 px-6 py-5 backdrop-blur-xl">
           <div className="flex items-center justify-between gap-4">
-            <div>
+            <div className="platform-motion-in">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-carbon/45">
                 <ShieldCheck className="size-4 text-orange" />
                 Administracion SaaS
@@ -104,7 +105,7 @@ export function PlatformShell({ title, description, children }: PlatformShellPro
             </div>
           </div>
         </header>
-        <section className="p-6">{children}</section>
+        <section className="platform-motion-in p-6">{children}</section>
       </main>
     </div>
   );

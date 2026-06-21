@@ -17,7 +17,7 @@ export default defineConfig({
       ownerPassword: process.env.CYPRESS_OWNER_PASSWORD ?? 'ChangeMe123!',
       tenantSlug: process.env.CYPRESS_TENANT_SLUG ?? 'gastroai-demo',
       platformEmail: process.env.CYPRESS_PLATFORM_EMAIL ?? 'platform@gastroai.local',
-      platformPassword: process.env.CYPRESS_PLATFORM_PASSWORD ?? 'PlatformDemo123!',
+      platformPassword: process.env.CYPRESS_PLATFORM_PASSWORD ?? 'ChangeMePlatform123!',
     },
   },
 });

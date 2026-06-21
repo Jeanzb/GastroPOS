@@ -38,8 +38,9 @@ function inventoryBalance(
       tenantId: 'tenant_1',
       productId: 'product_1',
       baseUnitId: 'unit_1',
+      categoryId: 'inventory_category_1',
       name: 'Carne molida',
-      sku: 'INS-CARNE',
+      sku: 'CAR-0001',
       isActive: true,
       createdAt: now,
       updatedAt: now,
@@ -47,6 +48,7 @@ function inventoryBalance(
       createdById: 'user_1',
       updatedById: null,
       baseUnit: { id: 'unit_1', code: 'KG', name: 'Kilogramo' },
+      category: { id: 'inventory_category_1', name: 'Carnes', skuPrefix: 'CAR' },
     },
     ...overrides,
   };
@@ -87,6 +89,7 @@ describe('InventoryService', () => {
     createItem: jest.Mock;
     updateItem: jest.Mock;
     adjustStock: jest.Mock;
+    listCategories: jest.Mock;
   };
   let audit: { tryRecord: jest.Mock };
   let service: InventoryService;
@@ -101,6 +104,7 @@ describe('InventoryService', () => {
       createItem: jest.fn(),
       updateItem: jest.fn(),
       adjustStock: jest.fn(),
+      listCategories: jest.fn(),
     };
     audit = { tryRecord: jest.fn() };
     service = new InventoryService(
@@ -124,7 +128,10 @@ describe('InventoryService', () => {
         id: 'inventory_1',
         ingredientId: 'ingredient_1',
         name: 'Carne molida',
-        sku: 'INS-CARNE',
+        sku: 'CAR-0001',
+        categoryId: 'inventory_category_1',
+        categoryName: 'Carnes',
+        categoryPrefix: 'CAR',
         baseUnitCode: 'KG',
         stockOnHand: 4,
       }),
@@ -161,12 +168,37 @@ describe('InventoryService', () => {
     );
   });
 
-  it('creates an inventory item with normalized SKU and writes audit', async () => {
+  it('lists inventory categories', async () => {
+    repo.listCategories.mockResolvedValue([
+      {
+        id: 'inventory_category_1',
+        tenantId: 'tenant_1',
+        code: 'CARNES',
+        name: 'Carnes',
+        skuPrefix: 'CAR',
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        createdById: null,
+        updatedById: null,
+      },
+    ]);
+
+    const result = await service.listCategories(ctx);
+
+    expect(repo.listCategories).toHaveBeenCalledWith('tenant_1');
+    expect(result[0]).toEqual(
+      expect.objectContaining({ code: 'CARNES', name: 'Carnes', skuPrefix: 'CAR' }),
+    );
+  });
+
+  it('creates an inventory item with generated SKU and writes audit', async () => {
     repo.createItem.mockResolvedValue({ status: 'CREATED', item: inventoryBalance() });
 
     const result = await service.createItem(ctx, {
       branchId: 'branch_1',
-      sku: ' ins-carne ',
+      categoryId: 'inventory_category_1',
       name: ' Carne molida ',
       baseUnitCode: ' kg ',
       baseUnitName: 'Kilogramo',
@@ -179,7 +211,7 @@ describe('InventoryService', () => {
       expect.objectContaining({
         tenantId: 'tenant_1',
         branchId: 'branch_1',
-        sku: 'INS-CARNE',
+        categoryId: 'inventory_category_1',
         baseUnitCode: 'KG',
       }),
     );
@@ -189,17 +221,30 @@ describe('InventoryService', () => {
     );
   });
 
-  it('rejects duplicate SKU on create', async () => {
+  it('rejects duplicate generated SKU on create', async () => {
     repo.createItem.mockResolvedValue({ status: 'DUPLICATE_SKU' });
 
     await expect(
       service.createItem(ctx, {
         branchId: 'branch_1',
-        sku: 'INS-CARNE',
+        categoryId: 'inventory_category_1',
         name: 'Carne molida',
         baseUnitCode: 'KG',
       }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('rejects category from another tenant on create', async () => {
+    repo.createItem.mockResolvedValue({ status: 'INVALID_CATEGORY' });
+
+    await expect(
+      service.createItem(ctx, {
+        branchId: 'branch_1',
+        categoryId: 'inventory_category_other',
+        name: 'Carne molida',
+        baseUnitCode: 'KG',
+      }),
+    ).rejects.toMatchObject({ status: 404 });
   });
 
   it('adjusts stock and audits the movement', async () => {

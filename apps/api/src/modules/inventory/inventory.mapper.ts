@@ -1,6 +1,7 @@
-import type { InventoryItemDto, StockMovementDto } from '@gastroai/contracts';
+import type { InventoryCategoryDto, InventoryItemDto, StockMovementDto } from '@gastroai/contracts';
 import type {
   InventoryBalance,
+  InventoryCategory,
   InventoryIngredient,
   StockMovement,
   UnitOfMeasure,
@@ -9,6 +10,7 @@ import type {
 export type InventoryBalanceWithIngredient = InventoryBalance & {
   ingredient: InventoryIngredient & {
     baseUnit: Pick<UnitOfMeasure, 'id' | 'code' | 'name'>;
+    category: Pick<InventoryCategory, 'id' | 'name' | 'skuPrefix'>;
   };
 };
 
@@ -22,6 +24,9 @@ export function toInventoryItemDto(item: InventoryBalanceWithIngredient): Invent
     ingredientId: item.ingredientId,
     branchId: item.branchId,
     productId: item.ingredient.productId,
+    categoryId: item.ingredient.category.id,
+    categoryName: item.ingredient.category.name,
+    categoryPrefix: item.ingredient.category.skuPrefix,
     baseUnitId: item.ingredient.baseUnitId,
     baseUnitCode: item.ingredient.baseUnit.code,
     baseUnitName: item.ingredient.baseUnit.name,
@@ -34,6 +39,16 @@ export function toInventoryItemDto(item: InventoryBalanceWithIngredient): Invent
     allowNegativeStock: item.allowNegativeStock,
     createdAt: item.createdAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),
+  };
+}
+
+export function toInventoryCategoryDto(category: InventoryCategory): InventoryCategoryDto {
+  return {
+    id: category.id,
+    code: category.code,
+    name: category.name,
+    skuPrefix: category.skuPrefix,
+    isActive: category.isActive,
   };
 }
 

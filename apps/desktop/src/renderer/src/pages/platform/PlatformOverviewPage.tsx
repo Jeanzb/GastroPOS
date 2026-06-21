@@ -1,6 +1,11 @@
-import type { ElementType } from 'react';
-import { AlertCircle, Building2, Clock3, ShieldAlert, ShieldCheck } from 'lucide-react';
-import { PlatformShell } from '@/components/platform';
+import { AlertTriangle, Building2, Clock3, DatabaseZap, ShieldAlert, ShieldCheck } from 'lucide-react';
+import {
+  PlatformCardSkeleton,
+  PlatformMetricCard,
+  PlatformShell,
+  PlatformState,
+  PlatformStatusBadge,
+} from '@/components/platform';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlatformOverview, usePlatformTenants } from '@/hooks/platform';
@@ -19,111 +24,121 @@ export function PlatformOverviewPage() {
       description="Estado comercial y operativo de restaurantes conectados."
     >
       {overviewQuery.isLoading ? (
-        <div className="grid gap-4 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-32 rounded-xl" />
-          ))}
-        </div>
+        <PlatformCardSkeleton count={4} />
       ) : overviewQuery.isError ? (
-        <StatusCard title="No se pudo cargar" description="Revisa la sesion platform o el API." />
+        <PlatformState
+          title="No se pudo cargar"
+          description="Revisa la sesion platform o el API."
+          tone="danger"
+        />
       ) : (
-        <div className="grid gap-4 md:grid-cols-4">
-          <MetricCard icon={Building2} label="Tenants" value={overview?.totalTenants ?? 0} />
-          <MetricCard icon={ShieldCheck} label="Activos" value={overview?.activeTenants ?? 0} />
-          <MetricCard icon={Clock3} label="Trial" value={overview?.trialTenants ?? 0} />
-          <MetricCard icon={ShieldAlert} label="Suspendidos" value={overview?.suspendedTenants ?? 0} />
+        <div className="platform-stagger grid gap-4 md:grid-cols-4">
+          <PlatformMetricCard
+            icon={Building2}
+            label="Tenants"
+            value={overview?.totalTenants ?? 0}
+            hint="Clientes creados"
+          />
+          <PlatformMetricCard
+            icon={ShieldCheck}
+            label="Activos"
+            value={overview?.activeTenants ?? 0}
+            tone="success"
+            hint="Acceso normal"
+          />
+          <PlatformMetricCard
+            icon={Clock3}
+            label="Trial"
+            value={overview?.trialTenants ?? 0}
+            hint="En evaluacion"
+          />
+          <PlatformMetricCard
+            icon={ShieldAlert}
+            label="Suspendidos"
+            value={overview?.suspendedTenants ?? 0}
+            tone="danger"
+            hint="Operaciones bloqueadas"
+          />
         </div>
       )}
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Actividad reciente</CardTitle>
-          <CardDescription>Ultimos restaurantes creados o modificados.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {tenantsQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 rounded-lg" />
-              <Skeleton className="h-12 rounded-lg" />
-              <Skeleton className="h-12 rounded-lg" />
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <Card className="platform-card rounded-xl bg-white/88">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-xl bg-orange/10 text-orange">
+                <DatabaseZap className="size-5" />
+              </div>
+              <div>
+                <CardTitle>Actividad reciente</CardTitle>
+                <CardDescription>Ultimos restaurantes creados o modificados.</CardDescription>
+              </div>
             </div>
-          ) : tenantsQuery.data?.length ? (
-            <div className="divide-y divide-border">
-              {tenantsQuery.data.slice(0, 6).map((tenant) => (
-                <div key={tenant.id} className="flex items-center justify-between py-3 text-sm">
-                  <div>
-                    <p className="font-semibold">{tenant.name}</p>
-                    <p className="text-muted-foreground">{tenant.slug}</p>
+          </CardHeader>
+          <CardContent>
+            {tenantsQuery.isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 rounded-lg" />
+                <Skeleton className="h-12 rounded-lg" />
+                <Skeleton className="h-12 rounded-lg" />
+              </div>
+            ) : tenantsQuery.data?.length ? (
+              <div className="divide-y divide-border">
+                {tenantsQuery.data.slice(0, 6).map((tenant) => (
+                  <div
+                    key={tenant.id}
+                    className="platform-row flex items-center justify-between rounded-lg px-2 py-3 text-sm"
+                  >
+                    <div>
+                      <p className="font-semibold">{tenant.name}</p>
+                      <p className="text-muted-foreground">
+                        {tenant.slug} - {tenant.branchCount} sedes - {tenant.userCount} usuarios
+                      </p>
+                    </div>
+                    <PlatformStatusBadge status={tenant.status} />
                   </div>
-                  <span className="rounded-full bg-carbon px-2.5 py-1 text-xs font-semibold text-white">
-                    {tenant.status}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
+            ) : (
+              <PlatformState title="Sin tenants" description="Crea el primer restaurante desde Restaurantes." />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="platform-card rounded-xl border-orange/25 bg-white/88">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="grid size-10 place-items-center rounded-xl bg-warning-soft text-warning">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <CardTitle>Alertas de acceso</CardTitle>
+                <CardDescription>Clientes que requieren accion de soporte o cobranza.</CardDescription>
+              </div>
             </div>
-          ) : (
-            <StatusCard title="Sin tenants" description="Crea el primer restaurante desde Restaurantes." />
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="mt-6 border-orange/25">
-        <CardHeader>
-          <CardTitle>Alertas de acceso</CardTitle>
-          <CardDescription>Clientes que requieren accion de soporte o cobranza.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {tenantsQuery.isLoading ? (
-            <Skeleton className="h-16 rounded-lg" />
-          ) : alertTenants.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {alertTenants.map((tenant) => (
-                <div key={tenant.id} className="rounded-lg border border-orange/25 bg-orange/8 p-4">
-                  <p className="font-semibold">{tenant.name}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{tenant.slug}</p>
-                  <span className="mt-3 inline-flex rounded-full bg-carbon px-2.5 py-1 text-xs font-semibold text-white">
-                    {tenant.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <StatusCard title="Sin alertas" description="No hay tenants suspendidos, cancelados o en mora." />
-          )}
-        </CardContent>
-      </Card>
-    </PlatformShell>
-  );
-}
-
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: ElementType;
-  label: string;
-  value: number;
-}) {
-  return (
-    <Card className="rounded-xl">
-      <CardContent className="pt-6">
-        <Icon className="mb-4 size-5 text-orange" />
-        <p className="font-display text-3xl font-semibold">{value}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StatusCard({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-sm">
-      <AlertCircle className="mt-0.5 size-4 text-orange" />
-      <div>
-        <p className="font-semibold">{title}</p>
-        <p className="text-muted-foreground">{description}</p>
+          </CardHeader>
+          <CardContent>
+            {tenantsQuery.isLoading ? (
+              <Skeleton className="h-16 rounded-lg" />
+            ) : alertTenants.length ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {alertTenants.map((tenant) => (
+                  <div
+                    key={tenant.id}
+                    className="platform-row rounded-lg border border-orange/25 bg-orange/8 p-4"
+                  >
+                    <p className="font-semibold">{tenant.name}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{tenant.slug}</p>
+                    <PlatformStatusBadge status={tenant.status} className="mt-3" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <PlatformState title="Sin alertas" description="No hay tenants suspendidos, cancelados o en mora." />
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </PlatformShell>
   );
 }

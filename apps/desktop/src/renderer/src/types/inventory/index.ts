@@ -1,6 +1,7 @@
 export type {
   AdjustInventoryStockRequest,
   CreateInventoryItemRequest,
+  InventoryCategoryDto,
   InventoryItemDto,
   InventoryItemListParams,
   InventoryAdjustmentType,

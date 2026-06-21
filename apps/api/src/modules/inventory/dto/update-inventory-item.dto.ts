@@ -11,14 +11,6 @@ import {
 } from 'class-validator';
 
 export class UpdateInventoryItemDto {
-  @ApiPropertyOptional({ example: 'INS-CARNE-MOLIDA' })
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(64)
-  @Matches(/^[a-zA-Z0-9._-]+$/)
-  sku?: string;
-
   @ApiPropertyOptional({ example: 'Carne molida' })
   @IsOptional()
   @IsString()

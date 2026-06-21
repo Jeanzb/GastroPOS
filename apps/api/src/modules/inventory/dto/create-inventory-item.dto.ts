@@ -17,12 +17,11 @@ export class CreateInventoryItemDto {
   @MaxLength(64)
   branchId!: string;
 
-  @ApiProperty({ example: 'INS-CARNE-MOLIDA' })
+  @ApiProperty()
   @IsString()
   @MinLength(1)
   @MaxLength(64)
-  @Matches(/^[a-zA-Z0-9._-]+$/)
-  sku!: string;
+  categoryId!: string;
 
   @ApiProperty({ example: 'Carne molida' })
   @IsString()

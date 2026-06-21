@@ -2,6 +2,7 @@ import { apiClient, type QueryParams } from '@/api';
 import type {
   AdjustInventoryStockRequest,
   CreateInventoryItemRequest,
+  InventoryCategoryDto,
   InventoryItemDto,
   InventoryItemListParams,
   PaginatedResult,
@@ -10,6 +11,10 @@ import type {
 } from '@/types/inventory';
 
 export class InventoryService {
+  static getCategories(): Promise<InventoryCategoryDto[]> {
+    return apiClient.get<InventoryCategoryDto[]>('/inventory-categories');
+  }
+
   static getItems(params: InventoryItemListParams): Promise<PaginatedResult<InventoryItemDto>> {
     return apiClient.get<PaginatedResult<InventoryItemDto>>(
       '/inventory-items',

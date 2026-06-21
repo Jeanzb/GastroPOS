@@ -10,7 +10,7 @@ const codeSchema = z
 export const inventoryItemFormSchema = z
   .object({
     branchId: z.string().trim().min(1, 'Selecciona una sede'),
-    sku: codeSchema,
+    categoryId: z.string().trim().min(1, 'Selecciona una categoria'),
     name: z.string().trim().min(1, 'Requerido').max(160, 'Maximo 160 caracteres'),
     baseUnitCode: codeSchema.max(16, 'Maximo 16 caracteres'),
     baseUnitName: z.string().trim().max(80, 'Maximo 80 caracteres').optional(),

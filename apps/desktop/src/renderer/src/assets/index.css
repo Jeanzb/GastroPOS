@@ -321,6 +321,78 @@
   .dc-view-in {
     animation: dc-view-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
+
+  .platform-shell-bg {
+    background:
+      radial-gradient(circle at 12% 8%, rgba(255, 90, 44, 0.1), transparent 28rem),
+      radial-gradient(circle at 86% 4%, rgba(20, 134, 90, 0.08), transparent 24rem),
+      linear-gradient(180deg, #f8f3eb 0%, #f1ebe1 100%);
+  }
+
+  .platform-motion-in {
+    animation: platform-motion-in 420ms var(--motion-enter) both;
+  }
+
+  .platform-stagger > * {
+    animation: platform-motion-in 420ms var(--motion-enter) both;
+  }
+
+  .platform-stagger > *:nth-child(1) {
+    animation-delay: 20ms;
+  }
+
+  .platform-stagger > *:nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  .platform-stagger > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .platform-stagger > *:nth-child(4) {
+    animation-delay: 170ms;
+  }
+
+  .platform-card {
+    position: relative;
+    overflow: hidden;
+    transition:
+      transform 220ms var(--motion-snappy),
+      box-shadow 220ms var(--motion-snappy),
+      border-color 220ms var(--motion-snappy),
+      background-color 220ms var(--motion-snappy);
+  }
+
+  .platform-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(255, 90, 44, 0.1), transparent 34%);
+    opacity: 0;
+    transition: opacity 220ms var(--motion-snappy);
+  }
+
+  .platform-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 90, 44, 0.28);
+    box-shadow: 0 18px 36px -18px rgba(28, 26, 23, 0.28);
+  }
+
+  .platform-card:hover::after {
+    opacity: 1;
+  }
+
+  .platform-row {
+    transition:
+      background-color 180ms var(--motion-snappy),
+      transform 180ms var(--motion-snappy);
+  }
+
+  .platform-row:hover {
+    background-color: rgba(255, 90, 44, 0.045);
+    transform: translateX(2px);
+  }
 }
 
 @keyframes dc-view-in {
@@ -359,6 +431,20 @@
   100% {
     opacity: 1;
     transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes platform-motion-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
   }
 }
 

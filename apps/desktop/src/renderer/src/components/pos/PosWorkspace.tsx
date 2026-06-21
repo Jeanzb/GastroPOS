@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import {
   ChefHat,
   CreditCard,
@@ -31,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QUERY_KEYS } from '@/constants';
 import { useCategories } from '@/hooks/catalog';
 import { useDiningRoom, useSellableProducts, useTableAccount } from '@/hooks/operations';
 import { useAppToast } from '@/hooks/ui';
@@ -41,12 +43,12 @@ import {
   type ChargeTableAccountValues,
   type OpenTableAccountValues,
 } from '@/schemas/dining';
+import { EmployeeService } from '@/services/employees';
 import { useAuthStore, useOrderStore } from '@/stores';
 import type { ProductDto } from '@/types/catalog';
 import type { DiningTableDto, KitchenCommandDto, ReceiptDto } from '@/types/dining';
 
 const ALL = 'all';
-const REGISTERED_WAITERS = ['Diego Granados', 'Laura Mejia', 'Maria Restrepo'];
 
 function initials(name: string): string {
   return (
@@ -64,13 +66,17 @@ function OpenAccountForm({
   table,
   defaultWaiterName,
   waiterOptions,
+  autoAssignWaiter,
   isSubmitting,
+  isLoadingWaiters,
   onSubmit,
 }: {
   table: DiningTableDto;
   defaultWaiterName: string;
   waiterOptions: string[];
+  autoAssignWaiter: boolean;
   isSubmitting: boolean;
+  isLoadingWaiters: boolean;
   onSubmit: (values: OpenTableAccountValues) => Promise<void>;
 }) {
   const form = useForm<OpenTableAccountValues>({
@@ -88,32 +94,61 @@ function OpenAccountForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form
+        onSubmit={form.handleSubmit(async (values) => {
+          if (!autoAssignWaiter && !values.waiterName?.trim()) {
+            form.setError('waiterName', { message: 'Selecciona un mesero activo' });
+            return;
+          }
+          await onSubmit(values);
+        })}
+        className="space-y-4"
+      >
         <div className="grid grid-cols-2 gap-3">
-          <FormField
-            control={form.control}
-            name="waiterName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Mesero</FormLabel>
-                <Select value={field.value ?? ''} onValueChange={field.onChange}>
+          {autoAssignWaiter ? (
+            <FormField
+              control={form.control}
+              name="waiterName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mesero</FormLabel>
                   <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecciona mesero" />
-                    </SelectTrigger>
+                    <Input value={field.value ?? ''} disabled />
                   </FormControl>
-                  <SelectContent>
-                    {waiterOptions.map((waiter) => (
-                      <SelectItem key={waiter} value={waiter}>
-                        {waiter}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <FormField
+              control={form.control}
+              name="waiterName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Mesero</FormLabel>
+                  <Select
+                    value={field.value ?? ''}
+                    onValueChange={field.onChange}
+                    disabled={isLoadingWaiters || waiterOptions.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecciona mesero" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {waiterOptions.map((waiter) => (
+                        <SelectItem key={waiter} value={waiter}>
+                          {waiter}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
           <FormField
             control={form.control}
             name="guestCount"
@@ -149,7 +184,17 @@ function OpenAccountForm({
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isSubmitting} data-cy="pos-open-account">
+        {!autoAssignWaiter && !isLoadingWaiters && waiterOptions.length === 0 ? (
+          <p className="rounded-lg border border-orange/20 bg-orange/8 px-3 py-2 text-xs text-[#9A4A22]">
+            Crea o activa un mesero para esta sede antes de abrir la cuenta.
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isSubmitting || isLoadingWaiters || (!autoAssignWaiter && waiterOptions.length === 0)}
+          data-cy="pos-open-account"
+        >
           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Abrir cuenta
         </Button>
@@ -172,6 +217,18 @@ export function PosWorkspace() {
   const productsQuery = useSellableProducts();
   const categoriesQuery = useCategories();
   const account = useTableAccount(activeTableId);
+  const waitersQuery = useQuery({
+    queryKey: [QUERY_KEYS.employees, { role: 'WAITER', isActive: true, branchId: user?.branchId }],
+    queryFn: () =>
+      EmployeeService.getEmployees({
+        page: 1,
+        pageSize: 100,
+        role: 'WAITER',
+        isActive: true,
+        branchId: user?.branchId ?? undefined,
+      }),
+    enabled: Boolean(user?.branchId),
+  });
 
   const zones = diningRoom.zonesQuery.data ?? [];
   const table = useMemo(
@@ -181,16 +238,17 @@ export function PosWorkspace() {
   const currentAccount = account.accountQuery.data;
   const products = productsQuery.data ?? [];
   const categories = (categoriesQuery.listQuery.data?.data ?? []).filter((c) => c.isActive);
-  const mesero = currentAccount?.waiterName ?? user?.fullName ?? 'Mesero';
+  const displayWaiterName = currentAccount?.waiterName ?? table?.waiterName ?? null;
+  const waiterLabel = displayWaiterName ?? 'Sin mesero asignado';
   const currency = currentAccount?.currency ?? products[0]?.currency ?? 'COP';
   const waiterOptions = useMemo(() => {
-    const names = [user?.fullName, ...REGISTERED_WAITERS].filter(
-      (name): name is string => Boolean(name?.trim()),
-    );
-
-    return Array.from(new Set(names));
-  }, [user?.fullName]);
-  const defaultWaiterName = table?.waiterName ?? waiterOptions[0] ?? 'Mesero';
+    const names = (waitersQuery.data?.data ?? []).map((employee) => employee.fullName);
+    return Array.from(new Set(names.filter((name) => Boolean(name.trim()))));
+  }, [waitersQuery.data?.data]);
+  const isPosWaiter = user?.authScope === 'POS' && user.role === 'WAITER';
+  const defaultWaiterName = isPosWaiter
+    ? user.fullName
+    : table?.waiterName ?? '';
 
   const isMutating =
     account.openAccountMutation.isPending ||
@@ -347,9 +405,11 @@ export function PosWorkspace() {
             </Link>
             <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-orange/15 text-[11px] font-bold text-[#B5491F]">
-                {initials(mesero)}
+                {displayWaiterName ? initials(displayWaiterName) : '--'}
               </span>
-              <span className="whitespace-nowrap text-[13px] font-semibold">{mesero} · Mesero</span>
+              <span className="whitespace-nowrap text-[13px] font-semibold">
+                {waiterLabel}
+              </span>
             </div>
             <div className="relative ml-auto w-[280px] shrink-0">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -433,7 +493,7 @@ export function PosWorkspace() {
                 </span>
               </div>
               <p className="nums mt-1 text-[11px] text-muted-foreground">
-                MESA {table.number} · {mesero}
+                MESA {table.number} - {waiterLabel}
               </p>
               <div className="mt-3.5 border-b border-dashed border-[#D8D0C5]" />
             </div>
@@ -447,7 +507,9 @@ export function PosWorkspace() {
                     table={table}
                     defaultWaiterName={defaultWaiterName}
                     waiterOptions={waiterOptions}
+                    autoAssignWaiter={isPosWaiter}
                     isSubmitting={isMutating}
+                    isLoadingWaiters={waitersQuery.isLoading}
                     onSubmit={handleOpenAccount}
                   />
                 )}
