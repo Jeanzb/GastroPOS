@@ -37,10 +37,13 @@ import type { SupplierDto } from '@/types/suppliers';
 interface PurchaseFormDialogProps {
   open: boolean;
   suppliers: SupplierDto[];
+  insumoNames?: string[];
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: PurchaseFormValues) => Promise<void>;
 }
+
+const INSUMO_LIST_ID = 'purchase-insumo-options';
 
 const EMPTY_ITEM = { name: '', quantity: 1, unitCost: 0 };
 
@@ -55,6 +58,7 @@ const DEFAULT_VALUES: PurchaseFormValues = {
 export function PurchaseFormDialog({
   open,
   suppliers,
+  insumoNames = [],
   isSubmitting,
   onOpenChange,
   onSubmit,
@@ -96,6 +100,12 @@ export function PurchaseFormDialog({
             Registra la factura del proveedor con todos sus insumos.
           </DialogDescription>
         </DialogHeader>
+
+        <datalist id={INSUMO_LIST_ID}>
+          {insumoNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
 
         <Form {...form}>
           <form onSubmit={onFormSubmit} className="space-y-5">
@@ -213,6 +223,8 @@ export function PurchaseFormDialog({
                                 data-cy="purchase-item-name"
                                 placeholder="Carne molida"
                                 className="h-9"
+                                list={INSUMO_LIST_ID}
+                                autoComplete="off"
                                 {...field}
                               />
                             </FormControl>

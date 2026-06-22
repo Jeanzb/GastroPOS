@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useInventory } from '@/hooks/inventory';
 import { usePurchases, useSuppliers } from '@/hooks/purchases';
 import { useAppToast } from '@/hooks/ui';
 import { formatDocument } from '@/lib/co-document';
@@ -178,6 +179,11 @@ export function PurchasesWorkspace() {
   const appToast = useAppToast();
   const purchases = usePurchases();
   const suppliers = useSuppliers({ isActive: true, pageSize: 50 });
+  const inventory = useInventory();
+  const insumoNames = useMemo(
+    () => (inventory.itemsQuery.data?.data ?? []).map((item) => item.name),
+    [inventory.itemsQuery.data],
+  );
   const [isPurchaseFormOpen, setIsPurchaseFormOpen] = useState(false);
   const [isSupplierFormOpen, setIsSupplierFormOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<PurchaseAction>();
@@ -425,6 +431,7 @@ export function PurchasesWorkspace() {
       <PurchaseFormDialog
         open={isPurchaseFormOpen}
         suppliers={supplierList}
+        insumoNames={insumoNames}
         isSubmitting={isSavingPurchase}
         onOpenChange={setIsPurchaseFormOpen}
         onSubmit={onSubmitPurchase}
