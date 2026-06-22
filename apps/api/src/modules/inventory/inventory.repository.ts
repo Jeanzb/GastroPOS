@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type InventoryCategory, type StockMovementType } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
+import { getUnit } from '../../common/units/unit-conversion';
 import type { InventoryBalanceWithIngredient, StockMovementWithInventory } from './inventory.mapper';
 import type { SortDirection, StockMovementSortField } from './dto/list-stock-movements-query.dto';
 
@@ -389,18 +390,27 @@ export class InventoryRepository {
     tx: Prisma.TransactionClient,
     data: { tenantId: string; code: string; name: string; actorUserId: string },
   ) {
+    // Tag the unit with its SI dimension + conversion factor so recipes/purchases
+    // can convert between compatible units (g↔kg, ml↔L). Unknown codes stay COUNT/1.
+    const si = getUnit(data.code);
+    const dimension = si?.dimension ?? 'COUNT';
+    const factor = si?.factor ?? 1;
     return tx.unitOfMeasure.upsert({
       where: { tenantId_code: { tenantId: data.tenantId, code: data.code } },
       update: {
         name: data.name,
         isActive: true,
         deletedAt: null,
+        dimension,
+        factor,
         updatedById: data.actorUserId,
       },
       create: {
         tenantId: data.tenantId,
         code: data.code,
         name: data.name,
+        dimension,
+        factor,
         createdById: data.actorUserId,
       },
     });

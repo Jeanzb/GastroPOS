@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
+import { SI_UNITS, getUnit, type UnitDimension } from '@/lib/units';
 import {
   Select,
   SelectContent,
@@ -40,6 +41,12 @@ import type { ProductDto } from '@/types/catalog';
 
 const NO_PRODUCT_LINK = 'NO_PRODUCT_LINK';
 
+const DIMENSION_LABEL: Record<UnitDimension, string> = {
+  MASS: 'peso',
+  VOLUME: 'volumen',
+  COUNT: 'conteo',
+};
+
 interface InventoryItemFormDialogProps {
   branchId: string | null | undefined;
   isSubmitting: boolean;
@@ -57,7 +64,7 @@ function defaultValues(branchId?: string | null): InventoryItemFormInput {
     branchId: branchId ?? '',
     categoryId: '',
     name: '',
-    baseUnitCode: 'UND',
+    baseUnitCode: 'und',
     baseUnitName: 'Unidad',
     productId: null,
     initialStock: 0,
@@ -211,36 +218,32 @@ export function InventoryItemFormDialog({
                 control={form.control}
                 name="baseUnitCode"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="md:col-span-2">
                     <FormLabel>Unidad base</FormLabel>
-                    <FormControl>
-                      <Input
-                        data-cy="inventory-item-unit-code"
-                        placeholder="KG"
-                        autoComplete="off"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>Todo el stock se mueve en esta unidad.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="baseUnitName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre unidad</FormLabel>
-                    <FormControl>
-                      <Input
-                        data-cy="inventory-item-unit-name"
-                        placeholder="Kilogramo"
-                        autoComplete="off"
-                        {...field}
-                      />
-                    </FormControl>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue('baseUnitName', getUnit(value)?.name ?? value);
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-cy="inventory-item-unit-code">
+                          <SelectValue placeholder="Selecciona unidad" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SI_UNITS.map((unit) => (
+                          <SelectItem key={unit.code} value={unit.code}>
+                            {unit.name} ({unit.code}) · {DIMENSION_LABEL[unit.dimension]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Todo el stock se mueve en esta unidad: peso (g, kg, lb), volumen (ml, L) o
+                      conteo (und).
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
