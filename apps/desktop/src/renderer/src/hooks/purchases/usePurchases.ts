@@ -16,8 +16,18 @@ export function usePurchases() {
     queryFn: () => PurchaseService.getPurchases(params),
   });
 
-  const onMutationSuccess = () =>
-    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.purchases] });
+  const periodsQuery = useQuery({
+    queryKey: [QUERY_KEYS.purchasePeriods],
+    queryFn: () => PurchaseService.getPeriods(),
+  });
+
+  const setPeriod = (period: string) =>
+    setParams((prev) => ({ ...prev, period, page: 1 }));
+
+  const onMutationSuccess = () => {
+    void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.purchases] });
+    void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.purchasePeriods] });
+  };
 
   const createMutation = useMutation({
     mutationFn: (payload: CreatePurchasePayload) => PurchaseService.createPurchase(payload),
@@ -37,7 +47,9 @@ export function usePurchases() {
   return {
     params,
     setParams,
+    setPeriod,
     listQuery,
+    periodsQuery,
     createMutation,
     receiveMutation,
     cancelMutation,

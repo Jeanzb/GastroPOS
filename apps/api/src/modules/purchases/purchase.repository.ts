@@ -9,6 +9,16 @@ export interface PurchaseFilters {
   status?: PurchaseStatus;
   supplierId?: string;
   search?: string;
+  /** Inclusive lower bound on createdAt (month start, tenant tz, as UTC instant). */
+  from?: Date;
+  /** Exclusive upper bound on createdAt (next month start). */
+  to?: Date;
+}
+
+export interface PurchasePeriodRow {
+  createdAt: Date;
+  total: number;
+  status: PurchaseStatus;
 }
 
 export interface CreatePurchaseItemData {
@@ -67,6 +77,25 @@ export class PurchaseRepository {
 
   count(filters: PurchaseFilters): Promise<number> {
     return this.prisma.tenantScoped.purchase.count({ where: this.scope(filters) });
+  }
+
+  async findTenantTimezone(tenantId: string): Promise<string | null> {
+    const settings = await this.prisma.tenantSettings.findUnique({
+      where: { tenantId },
+      select: { timezone: true },
+    });
+    return settings?.timezone ?? null;
+  }
+
+  /** Lightweight rows used to roll purchases up by month for the history selector. */
+  findRowsForPeriods(filters: Pick<PurchaseFilters, 'branchId'>): Promise<PurchasePeriodRow[]> {
+    return this.prisma.tenantScoped.purchase.findMany({
+      where: {
+        deletedAt: null,
+        ...(filters.branchId ? { branchId: filters.branchId } : {}),
+      },
+      select: { createdAt: true, total: true, status: true },
+    });
   }
 
   findById(id: string): Promise<PurchaseWithDetails | null> {
@@ -181,6 +210,9 @@ export class PurchaseRepository {
       ...(filters.branchId ? { branchId: filters.branchId } : {}),
       ...(filters.status ? { status: filters.status } : {}),
       ...(filters.supplierId ? { supplierId: filters.supplierId } : {}),
+      ...(filters.from && filters.to
+        ? { createdAt: { gte: filters.from, lt: filters.to } }
+        : {}),
       ...(filters.search
         ? {
             OR: [
@@ -259,35 +291,56 @@ export class PurchaseRepository {
     const product = item.productId
       ? await tx.product.findFirst({
           where: { id: item.productId, tenantId: purchase.tenantId, deletedAt: null },
-          select: { id: true, sku: true, name: true },
+          select: { id: true, name: true },
         })
       : null;
-    const sku = normalizeSku(product?.sku ?? `PUR-${item.id.slice(0, 8)}`);
+    const linkedIngredient = product
+      ? await tx.inventoryIngredient.findFirst({
+          where: {
+            tenantId: purchase.tenantId,
+            productId: product.id,
+            deletedAt: null,
+          },
+          orderBy: { createdAt: 'asc' },
+        })
+      : null;
+
+    const category = linkedIngredient
+      ? null
+      : await this.findOrCreateGenericInventoryCategory(tx, purchase.tenantId, actorUserId);
+    const sku = linkedIngredient
+      ? linkedIngredient.sku
+      : product
+        ? await this.createInventorySku(tx, purchase.tenantId, category!.skuPrefix)
+        : normalizeSku(`PUR-${item.id.slice(0, 8)}`);
     const name = product?.name ?? item.nameSnapshot;
-    const ingredient =
+    const ingredient = linkedIngredient ??
       (await tx.inventoryIngredient.findFirst({
         where: {
           tenantId: purchase.tenantId,
           deletedAt: null,
-          ...(item.productId ? { productId: item.productId } : { sku }),
+          sku,
         },
         orderBy: { createdAt: 'asc' },
       })) ??
       (await tx.inventoryIngredient.create({
         data: {
           tenantId: purchase.tenantId,
-          productId: item.productId,
+          productId: product?.id ?? null,
           baseUnitId: await this.findOrCreateDefaultUnitId(tx, purchase.tenantId, actorUserId),
-          categoryId: await this.findOrCreateGenericInventoryCategoryId(
-            tx,
-            purchase.tenantId,
-            actorUserId,
-          ),
+          categoryId: category!.id,
           sku,
           name,
           createdById: actorUserId,
         },
       }));
+
+    if (product) {
+      await tx.product.updateMany({
+        where: { id: product.id, tenantId: purchase.tenantId, deletedAt: null },
+        data: { isInventoried: true, updatedById: actorUserId },
+      });
+    }
 
     const existing = await tx.inventoryBalance.findFirst({
       where: {
@@ -315,11 +368,11 @@ export class PurchaseRepository {
     });
   }
 
-  private async findOrCreateGenericInventoryCategoryId(
+  private async findOrCreateGenericInventoryCategory(
     tx: Prisma.TransactionClient,
     tenantId: string,
     actorUserId: string,
-  ): Promise<string> {
+  ): Promise<{ id: string; skuPrefix: string }> {
     const category = DEFAULT_INVENTORY_CATEGORIES.find((item) => item.code === 'GENERICO');
     if (!category) {
       throw new Error('Generic inventory category is not configured.');
@@ -341,16 +394,32 @@ export class PurchaseRepository {
         skuPrefix: category.skuPrefix,
         createdById: actorUserId,
       },
-      select: { id: true },
+      select: { id: true, skuPrefix: true },
     });
 
-    await tx.inventorySkuSequence.upsert({
-      where: { tenantId_prefix: { tenantId, prefix: category.skuPrefix } },
-      update: {},
-      create: { tenantId, prefix: category.skuPrefix, nextNumber: 1 },
-    });
+    return result;
+  }
 
-    return result.id;
+  private async createInventorySku(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    prefix: string,
+  ): Promise<string> {
+    const rows = await tx.$queryRaw<Array<{ number: number }>>`
+      INSERT INTO "inventory_sku_sequences" ("id", "tenantId", "prefix", "nextNumber", "createdAt", "updatedAt")
+      VALUES (${`invseq_${tenantId}_${prefix}`}, ${tenantId}, ${prefix}, 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT ("tenantId", "prefix")
+      DO UPDATE SET
+        "nextNumber" = "inventory_sku_sequences"."nextNumber" + 1,
+        "updatedAt" = CURRENT_TIMESTAMP
+      RETURNING "nextNumber" - 1 AS "number"
+    `;
+
+    const number = rows[0]?.number;
+    if (!number) {
+      throw new Error('Inventory SKU sequence did not return a number.');
+    }
+    return `${prefix}-${number.toString().padStart(4, '0')}`;
   }
 
   private async findOrCreateDefaultUnitId(

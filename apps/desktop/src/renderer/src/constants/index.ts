@@ -11,6 +11,7 @@ export const QUERY_KEYS = {
   customers: 'customers',
   suppliers: 'suppliers',
   purchases: 'purchases',
+  purchasePeriods: 'purchase-periods',
   employees: 'employees',
   inventoryItems: 'inventory-items',
   inventoryCategories: 'inventory-categories',

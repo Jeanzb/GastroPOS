@@ -22,6 +22,13 @@ import { DcChip, KpiCard, type DcChipTone } from '@/components/operations';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePurchases, useSuppliers } from '@/hooks/purchases';
 import { useAppToast } from '@/hooks/ui';
@@ -38,6 +45,18 @@ type PurchaseAction = { type: 'receive' | 'cancel'; purchase: PurchaseDto };
 const EMPTY_PURCHASES: PurchaseDto[] = [];
 const EMPTY_SUPPLIERS: SupplierDto[] = [];
 const SKELETON_ROWS = [0, 1, 2, 3, 4];
+
+function formatPeriodLabel(period?: string): string {
+  if (!period) {
+    return 'Mes actual';
+  }
+  const [year, month] = period.split('-').map(Number);
+  const label = new Date(year, (month ?? 1) - 1, 1).toLocaleDateString('es-CO', {
+    month: 'long',
+    year: 'numeric',
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 const STATUS_META: Record<PurchaseStatus, { label: string; tone: DcChipTone }> = {
   DRAFT: { label: 'Por recibir', tone: 'warning' },
@@ -175,6 +194,13 @@ export function PurchasesWorkspace() {
   const received = purchaseList.filter((purchase) => purchase.status === 'RECEIVED').length;
   const supplierCount = suppliers.listQuery.data?.meta.total ?? supplierList.length;
 
+  const periodsData = purchases.periodsQuery.data;
+  const selectedPeriod = purchases.params.period ?? periodsData?.currentPeriod;
+  const isCurrentPeriod = !selectedPeriod || selectedPeriod === periodsData?.currentPeriod;
+  const periodSummary = periodsData?.periods.find((entry) => entry.period === selectedPeriod);
+  const monthLabel = formatPeriodLabel(selectedPeriod);
+  const monthTotal = periodSummary?.total ?? total;
+
   const supplierSpend = useMemo(() => {
     const spend = new Map<string, number>();
     for (const purchase of purchaseList) {
@@ -257,7 +283,7 @@ export function PurchasesWorkspace() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]" data-cy="purchases-page">
         <section className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <KpiCard label="Compras registradas" value={formatMoney(total, 'COP')} hint="Documentos activos" />
+            <KpiCard label="Compras del mes" value={formatMoney(monthTotal, 'COP')} hint={monthLabel} />
             <KpiCard label="Por recibir" value={formatMoney(pending, 'COP')} hint="Compras en borrador" accent="warning" />
             <KpiCard label="Recibidas" value={received} hint="Confirmadas en operación" accent="success" />
             <KpiCard label="Proveedores" value={supplierCount} hint="Activos para compras" />
@@ -292,16 +318,54 @@ export function PurchasesWorkspace() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4 px-5">
-              <div className="relative max-w-sm">
-                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  data-cy="purchases-search"
-                  value={purchases.params.search ?? ''}
-                  onChange={onSearch}
-                  placeholder="Buscar proveedor, documento o notas"
-                  className="pl-9"
-                />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative max-w-sm flex-1">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    data-cy="purchases-search"
+                    value={purchases.params.search ?? ''}
+                    onChange={onSearch}
+                    placeholder="Buscar proveedor, documento o notas"
+                    className="pl-9"
+                  />
+                </div>
+                <Select
+                  value={selectedPeriod ?? ''}
+                  onValueChange={(value) => purchases.setPeriod(value)}
+                  disabled={purchases.periodsQuery.isLoading}
+                >
+                  <SelectTrigger className="w-[210px]" data-cy="purchases-period">
+                    <CalendarDays className="size-4 text-muted-foreground" />
+                    <SelectValue placeholder="Mes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(periodsData?.periods ?? []).map((entry) => (
+                      <SelectItem key={entry.period} value={entry.period}>
+                        {formatPeriodLabel(entry.period)}
+                        {entry.period === periodsData?.currentPeriod ? ' · actual' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {!isCurrentPeriod ? (
+                <div
+                  className="flex items-center justify-between rounded-xl border border-orange/25 bg-orange/[0.05] px-4 py-2.5 text-[12.5px] text-[#8A5326]"
+                  data-cy="purchases-history-banner"
+                >
+                  <span>
+                    Viendo el histórico de <strong>{monthLabel}</strong> (solo lectura).
+                  </span>
+                  <button
+                    type="button"
+                    className="font-semibold text-orange transition-colors hover:text-[#B5491F]"
+                    onClick={() => periodsData && purchases.setPeriod(periodsData.currentPeriod)}
+                  >
+                    Volver al mes actual
+                  </button>
+                </div>
+              ) : null}
 
               <div className="overflow-hidden rounded-2xl border border-border bg-surface-raised">
                 {purchases.listQuery.isLoading

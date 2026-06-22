@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { PaginatedResult, PurchaseDto } from '@gastroai/contracts';
+import type {
+  PaginatedResult,
+  PurchaseDto,
+  PurchasePeriodsResponse,
+} from '@gastroai/contracts';
 import type { Prisma, PurchaseStatus } from '../../../generated/prisma';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
@@ -14,6 +18,7 @@ import { toPurchaseDto } from './purchase.mapper';
 import { PurchaseRepository, type CreatePurchaseItemData } from './purchase.repository';
 import type { CreatePurchaseDto } from './dto/create-purchase.dto';
 import type { ListPurchasesQueryDto } from './dto/list-purchases-query.dto';
+import { currentPeriod, periodOf, periodRange } from './purchase-period';
 
 @Injectable()
 export class PurchaseService {
@@ -28,11 +33,16 @@ export class PurchaseService {
     query: ListPurchasesQueryDto,
   ): Promise<PaginatedResult<PurchaseDto>> {
     const pagination = normalizePagination(query);
+    const timezone = await this.repository.findTenantTimezone(ctx.tenantId);
+    const period = query.period ?? currentPeriod(timezone);
+    const { from, to } = periodRange(period, timezone);
     const filters = {
       branchId: await this.branchScope.resolve(ctx, query.branchId),
       status: query.status,
       supplierId: query.supplierId,
       search: query.search,
+      from,
+      to,
     };
 
     const [rows, total] = await Promise.all([
@@ -41,6 +51,38 @@ export class PurchaseService {
     ]);
 
     return createPaginatedResult(rows.map(toPurchaseDto), total, pagination);
+  }
+
+  /** Months that have purchases (totals exclude cancelled). The current month is always present. */
+  async listPeriods(
+    ctx: TenantRequestContext,
+    branchId?: string,
+  ): Promise<PurchasePeriodsResponse> {
+    const timezone = await this.repository.findTenantTimezone(ctx.tenantId);
+    const resolvedBranch = await this.branchScope.resolve(ctx, branchId);
+    const rows = await this.repository.findRowsForPeriods({ branchId: resolvedBranch });
+
+    const totals = new Map<string, { total: number; count: number }>();
+    for (const row of rows) {
+      const key = periodOf(row.createdAt, timezone);
+      const entry = totals.get(key) ?? { total: 0, count: 0 };
+      entry.count += 1;
+      if (row.status !== 'CANCELLED') {
+        entry.total += row.total;
+      }
+      totals.set(key, entry);
+    }
+
+    const current = currentPeriod(timezone);
+    if (!totals.has(current)) {
+      totals.set(current, { total: 0, count: 0 });
+    }
+
+    const periods = Array.from(totals.entries())
+      .map(([periodKey, value]) => ({ period: periodKey, total: value.total, count: value.count }))
+      .sort((a, b) => b.period.localeCompare(a.period));
+
+    return { currentPeriod: current, periods };
   }
 
   async getById(ctx: TenantRequestContext, id: string): Promise<PurchaseDto> {

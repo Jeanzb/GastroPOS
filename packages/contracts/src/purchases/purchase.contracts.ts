@@ -34,6 +34,20 @@ export interface PurchaseListParams {
   search?: string;
   status?: PurchaseStatus;
   supplierId?: string;
+  /** Month to show, "YYYY-MM". Defaults to the current month in the tenant timezone. */
+  period?: string;
+}
+
+/** Monthly rollup used by the Compras history selector. Records are never deleted. */
+export interface PurchasePeriodSummaryDto {
+  period: string;
+  total: number;
+  count: number;
+}
+
+export interface PurchasePeriodsResponse {
+  currentPeriod: string;
+  periods: PurchasePeriodSummaryDto[];
 }
 
 export interface CreatePurchaseItemPayload {

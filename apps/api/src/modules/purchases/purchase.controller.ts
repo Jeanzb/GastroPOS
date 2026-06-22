@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import type { PaginatedResult, PurchaseDto } from '@gastroai/contracts';
+import type { PaginatedResult, PurchaseDto, PurchasePeriodsResponse } from '@gastroai/contracts';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { CurrentTenantContext } from '../auth/presentation/decorators/current-tenant-context.decorator';
 import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
@@ -37,6 +37,15 @@ export class PurchaseController {
     @Query() query: ListPurchasesQueryDto,
   ): Promise<PaginatedResult<PurchaseDto>> {
     return this.service.list(ctx, query);
+  }
+
+  @Get('periods')
+  @RequireRoles('OWNER', 'ADMIN', 'INVENTORY_MANAGER', 'ACCOUNTANT')
+  listPeriods(
+    @CurrentTenantContext() ctx: TenantRequestContext,
+    @Query('branchId') branchId?: string,
+  ): Promise<PurchasePeriodsResponse> {
+    return this.service.listPeriods(ctx, branchId);
   }
 
   @Get(':id')
