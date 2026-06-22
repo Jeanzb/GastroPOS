@@ -579,19 +579,37 @@ export function ProductFormDialog({
                                       <label className="text-xs font-medium" htmlFor={inputId}>
                                         Cantidad
                                       </label>
-                                      <Input
-                                        id={inputId}
-                                        type="number"
-                                        min={1}
-                                        step={1}
-                                        value={quantityField.state.value}
-                                        onBlur={quantityField.handleBlur}
-                                        onChange={(event) =>
-                                          quantityField.handleChange(Number(event.target.value))
-                                        }
-                                        aria-invalid={Boolean(error)}
-                                        aria-describedby={error ? `${inputId}-error` : undefined}
-                                      />
+                                      <div className="flex items-center gap-2">
+                                        <Input
+                                          id={inputId}
+                                          type="number"
+                                          min={1}
+                                          step={1}
+                                          value={quantityField.state.value}
+                                          onBlur={quantityField.handleBlur}
+                                          onChange={(event) =>
+                                            quantityField.handleChange(Number(event.target.value))
+                                          }
+                                          aria-invalid={Boolean(error)}
+                                          aria-describedby={error ? `${inputId}-error` : undefined}
+                                        />
+                                        <form.Subscribe
+                                          selector={(state) =>
+                                            state.values.recipe.ingredients[index]?.ingredientId
+                                          }
+                                        >
+                                          {(ingredientId) => {
+                                            const unit = inventoryItems.find(
+                                              (item) => item.ingredientId === ingredientId,
+                                            )?.baseUnitCode;
+                                            return unit ? (
+                                              <span className="shrink-0 text-xs font-semibold text-muted-foreground">
+                                                {unit}
+                                              </span>
+                                            ) : null;
+                                          }}
+                                        </form.Subscribe>
+                                      </div>
                                       {error ? (
                                         <p
                                           id={`${inputId}-error`}
