@@ -14,6 +14,7 @@ export const inventoryItemFormSchema = z
     name: z.string().trim().min(1, 'Requerido').max(160, 'Maximo 160 caracteres'),
     baseUnitCode: codeSchema.max(16, 'Maximo 16 caracteres'),
     baseUnitName: z.string().trim().max(80, 'Maximo 80 caracteres').optional(),
+    productId: z.string().trim().optional().nullable(),
     initialStock: z.number().int().min(0, 'No puede ser negativo').default(0),
     initialUnitCost: z.number().int().min(0, 'No puede ser negativo').default(0),
     minimumStock: z.number().int().min(0, 'No puede ser negativo').default(0),

@@ -1,7 +1,31 @@
-import type { CashMovementDto, CashSessionDto } from '@gastroai/contracts';
+import type {
+  CashMovementDto,
+  CashSessionDto,
+  CashZReportPaymentMethodDto,
+} from '@gastroai/contracts';
 import type { CashMovement, CashSession } from '../../../generated/prisma';
 
-export function toCashSessionDto(session: CashSession): CashSessionDto {
+export interface CashSessionTotals {
+  cashExpectedAmount: number;
+  bankedExpectedAmount: number;
+  totalExpectedAmount: number;
+  paymentsByMethod: CashZReportPaymentMethodDto[];
+}
+
+const EMPTY_TOTALS: CashSessionTotals = {
+  cashExpectedAmount: 0,
+  bankedExpectedAmount: 0,
+  totalExpectedAmount: 0,
+  paymentsByMethod: [],
+};
+
+export function toCashSessionDto(
+  session: CashSession,
+  totals: CashSessionTotals = EMPTY_TOTALS,
+): CashSessionDto {
+  const cashExpectedAmount =
+    totals === EMPTY_TOTALS ? (session.expectedAmount ?? 0) : totals.cashExpectedAmount;
+
   return {
     id: session.id,
     branchId: session.branchId,
@@ -9,6 +33,10 @@ export function toCashSessionDto(session: CashSession): CashSessionDto {
     currency: session.currency,
     openingBalance: session.openingBalance,
     expectedAmount: session.expectedAmount,
+    cashExpectedAmount,
+    bankedExpectedAmount: totals.bankedExpectedAmount,
+    totalExpectedAmount: totals.totalExpectedAmount || cashExpectedAmount,
+    paymentsByMethod: totals.paymentsByMethod,
     countedAmount: session.countedAmount,
     difference: session.difference,
     notes: session.notes,

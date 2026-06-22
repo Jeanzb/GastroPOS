@@ -140,7 +140,10 @@ export function CashZReportDialog({
                 label="Base inicial"
                 value={formatMoney(report.openingBalance, report.currency)}
               />
-              <Stat label="Esperado" value={formatMoney(report.expectedAmount, report.currency)} />
+              <Stat
+                label="Efectivo esperado"
+                value={formatMoney(report.cashExpectedAmount, report.currency)}
+              />
               <Stat
                 label="Contado"
                 value={formatMoney(report.countedAmount ?? 0, report.currency)}
@@ -152,8 +155,16 @@ export function CashZReportDialog({
               />
             </section>
 
-            <section className="grid gap-3 md:grid-cols-4">
+            <section className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
               <Stat label="Ventas" value={formatMoney(report.totalSales, report.currency)} />
+              <Stat
+                label="Bancarizado / virtual"
+                value={formatMoney(report.bankedExpectedAmount, report.currency)}
+              />
+              <Stat
+                label="Total controlado"
+                value={formatMoney(report.totalExpectedAmount, report.currency)}
+              />
               <Stat label="Tickets" value={String(report.ticketCount)} />
               <Stat
                 label="Ticket promedio"
@@ -166,8 +177,8 @@ export function CashZReportDialog({
               <div className="rounded-xl border border-border bg-surface-raised p-4">
                 <h4 className="font-display text-base font-bold">Pagos por metodo</h4>
                 <div className="mt-3 space-y-2">
-                  {report.byMethod.length > 0 ? (
-                    report.byMethod.map((method) => (
+                  {report.paymentsByMethod.length > 0 ? (
+                    report.paymentsByMethod.map((method) => (
                       <div
                         key={method.method}
                         className="flex items-center justify-between text-sm"
@@ -238,7 +249,13 @@ export function CashZReportDialog({
               Reintentar
             </Button>
           ) : null}
-          <Button type="button" variant="outline" onClick={() => window.print()} disabled={!report}>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-orange/30 bg-orange/10 text-orange hover:bg-orange/15"
+            onClick={() => window.print()}
+            disabled={!report}
+          >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

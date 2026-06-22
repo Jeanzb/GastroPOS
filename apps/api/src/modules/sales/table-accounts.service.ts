@@ -228,7 +228,7 @@ export class TableAccountsService {
     if (charged.status === 'NO_ACTIVE_CASH_SESSION') {
       throw new ApplicationException(409, {
         code: ApiErrorCode.CONFLICT,
-        message: 'Cash payments require an open cash session for this branch.',
+        message: 'Debe abrir el turno de caja (base inicial) para poder registrar ventas',
       });
     }
     if (charged.status === 'ACCOUNT_NOT_FOUND') {
@@ -238,6 +238,12 @@ export class TableAccountsService {
       throw new ApplicationException(409, {
         code: ApiErrorCode.CONFLICT,
         message: `Insufficient stock for ${charged.itemName}.`,
+      });
+    }
+    if (charged.status === 'INVENTORY_NOT_CONFIGURED') {
+      throw new ApplicationException(409, {
+        code: ApiErrorCode.CONFLICT,
+        message: 'Este producto no tiene receta ni insumo de inventario configurado.',
       });
     }
 

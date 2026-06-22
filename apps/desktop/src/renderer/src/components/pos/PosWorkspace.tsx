@@ -1,12 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Plus, Search, UtensilsCrossed } from 'lucide-react';
+import {
+  AlertCircle,
+  Calculator,
+  Loader2,
+  Plus,
+  Search,
+  UtensilsCrossed,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { ChargeDialog, CommandDialog, ReceiptDialog } from '@/components/dining/AccountDialogs';
 import { ComandaPanel } from './ComandaPanel';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -26,6 +41,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { QUERY_KEYS } from '@/constants';
 import { useCategories } from '@/hooks/catalog';
+import { useCashSession } from '@/hooks/cash';
 import { useDiningRoom, useSellableProducts, useTableAccount } from '@/hooks/operations';
 import { useAppToast } from '@/hooks/ui';
 import { formatMoney } from '@/lib/format';
@@ -197,15 +213,20 @@ function OpenAccountForm({
 
 export function PosWorkspace() {
   const appToast = useAppToast();
+  const navigate = useNavigate();
   const activeTableId = useOrderStore((state) => state.activeTableId);
+  const setActiveTableId = useOrderStore((state) => state.setActiveTableId);
   const user = useAuthStore((state) => state.user);
   const [activeCategory, setActiveCategory] = useState<string>(ALL);
   const [search, setSearch] = useState('');
   const [command, setCommand] = useState<KitchenCommandDto | null>(null);
   const [receipt, setReceipt] = useState<ReceiptDto | null>(null);
   const [chargeOpen, setChargeOpen] = useState(false);
+  const [cashRequiredOpen, setCashRequiredOpen] = useState(false);
+  const [shouldReturnToTablesAfterReceipt, setShouldReturnToTablesAfterReceipt] = useState(false);
 
   const diningRoom = useDiningRoom();
+  const cash = useCashSession();
   const productsQuery = useSellableProducts();
   const categoriesQuery = useCategories();
   const account = useTableAccount(activeTableId);
@@ -249,7 +270,8 @@ export function PosWorkspace() {
     account.removeItemMutation.isPending ||
     account.commandMutation.isPending ||
     account.receiptMutation.isPending ||
-    account.chargeMutation.isPending;
+    account.chargeMutation.isPending ||
+    cash.activeSessionQuery.isFetching;
 
   const visibleProducts = products.filter((product) => {
     const matchesCategory = activeCategory === ALL || product.categoryId === activeCategory;
@@ -348,6 +370,7 @@ export function PosWorkspace() {
         },
       });
       setReceipt(result);
+      setShouldReturnToTablesAfterReceipt(true);
       setChargeOpen(false);
       appToast.success(
         'Cuenta cobrada',
@@ -361,6 +384,45 @@ export function PosWorkspace() {
         error instanceof Error ? error.message : 'Intenta nuevamente.',
       );
     }
+  };
+
+  const handleOpenChargeDialog = async () => {
+    if (!currentAccount) {
+      return;
+    }
+
+    try {
+      const activeSession =
+        cash.activeSessionQuery.data ?? (await cash.activeSessionQuery.refetch()).data;
+
+      if (!activeSession) {
+        setCashRequiredOpen(true);
+        return;
+      }
+
+      setChargeOpen(true);
+    } catch (error) {
+      appToast.error(
+        'No se pudo verificar la caja',
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
+    }
+  };
+
+  const handleReceiptOpenChange = (open: boolean) => {
+    if (open) {
+      return;
+    }
+
+    setReceipt(null);
+
+    if (!shouldReturnToTablesAfterReceipt) {
+      return;
+    }
+
+    setShouldReturnToTablesAfterReceipt(false);
+    setActiveTableId(null);
+    void navigate({ to: '/tables', replace: true });
   };
 
   if (!activeTableId || !table) {
@@ -483,7 +545,7 @@ export function PosWorkspace() {
             isLoadingAccount={account.accountQuery.isLoading}
             onQuantityChange={(itemId, quantity) => void handleQuantityChange(itemId, quantity)}
             onCommand={() => void handleCommand()}
-            onCharge={() => setChargeOpen(true)}
+            onCharge={() => void handleOpenChargeDialog()}
             emptyState={
               <OpenAccountForm
                 table={table}
@@ -500,7 +562,40 @@ export function PosWorkspace() {
       </div>
 
       <CommandDialog command={command} open={Boolean(command)} onOpenChange={(open) => !open && setCommand(null)} />
-      <ReceiptDialog receipt={receipt} open={Boolean(receipt)} onOpenChange={(open) => !open && setReceipt(null)} />
+      <ReceiptDialog
+        receipt={receipt}
+        open={Boolean(receipt)}
+        onOpenChange={handleReceiptOpenChange}
+      />
+      <Dialog open={cashRequiredOpen} onOpenChange={setCashRequiredOpen}>
+        <DialogContent className="sm:max-w-md" data-cy="pos-cash-required-dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange" />
+              Caja cerrada
+            </DialogTitle>
+            <DialogDescription>
+              Debe abrir el turno de caja (base inicial) para poder registrar ventas
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCashRequiredOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setCashRequiredOpen(false);
+                void navigate({ to: '/cash' });
+              }}
+              data-cy="pos-open-cash-from-blocker"
+            >
+              <Calculator className="h-4 w-4" />
+              Abrir caja
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ChargeDialog
         account={currentAccount}
         open={chargeOpen}

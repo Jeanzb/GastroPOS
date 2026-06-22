@@ -221,6 +221,36 @@ describe('TableAccountsService', () => {
     expect(result.balanceDue).toBe(0);
   });
 
+  it('blocks card payments when there is no open cash session', async () => {
+    repo.findById.mockResolvedValue(account());
+    repo.chargeAccount.mockResolvedValue({ status: 'NO_ACTIVE_CASH_SESSION' });
+
+    await expect(
+      service.chargeAccount(actor, 'sale_1', {
+        method: PaymentMethod.CARD,
+        amount: 32000,
+        requiresInvoice: false,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: 'Debe abrir el turno de caja (base inicial) para poder registrar ventas',
+      }),
+    });
+  });
+
+  it('blocks transfer payments when there is no open cash session', async () => {
+    repo.findById.mockResolvedValue(account());
+    repo.chargeAccount.mockResolvedValue({ status: 'NO_ACTIVE_CASH_SESSION' });
+
+    await expect(
+      service.chargeAccount(actor, 'sale_1', {
+        method: PaymentMethod.TRANSFER,
+        amount: 32000,
+        requiresInvoice: false,
+      }),
+    ).rejects.toBeInstanceOf(ApplicationException);
+  });
+
   it('passes fiscal customer data to create invoice drafts', async () => {
     repo.findById.mockResolvedValue(account());
     repo.chargeAccount.mockResolvedValue({

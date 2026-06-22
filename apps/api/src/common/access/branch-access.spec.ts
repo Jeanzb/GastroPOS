@@ -1,32 +1,42 @@
-import { assertBranchAccess } from './branch-access';
+import type { UserRole } from '../../../generated/prisma';
+import { assertBranchAccess, type BranchAccessContext } from './branch-access';
+
+function ctx(role: UserRole, branchId: string | null): BranchAccessContext {
+  return { role, branchId };
+}
 
 describe('assertBranchAccess', () => {
-  it('defaults to the caller own branch when none requested', () => {
-    expect(assertBranchAccess({ branchId: 'b1', role: 'WAITER' })).toBe('b1');
+  it('defaults operational users to their own branch', () => {
+    expect(assertBranchAccess(ctx('CASHIER', 'branch_1'))).toBe('branch_1');
+    expect(assertBranchAccess(ctx('WAITER', 'branch_1'), null)).toBe('branch_1');
   });
 
-  it('allows requesting the caller own branch', () => {
-    expect(assertBranchAccess({ branchId: 'b1', role: 'CASHIER' }, 'b1')).toBe('b1');
+  it('blocks operational users from another branch', () => {
+    expect(() => assertBranchAccess(ctx('CASHIER', 'branch_1'), 'branch_2')).toThrow(
+      'You do not have access to the requested branch.',
+    );
+    expect(() => assertBranchAccess(ctx('INVENTORY_MANAGER', 'branch_1'), 'branch_2')).toThrow(
+      'You do not have access to the requested branch.',
+    );
   });
 
-  it('rejects another branch for operational roles', () => {
-    expect(() => assertBranchAccess({ branchId: 'b1', role: 'CASHIER' }, 'b2')).toThrow();
-    expect(() => assertBranchAccess({ branchId: 'b1', role: 'WAITER' }, 'b2')).toThrow();
-    expect(() => assertBranchAccess({ branchId: 'b1', role: 'KITCHEN' }, 'b2')).toThrow();
-  });
+  it.each<UserRole>(['OWNER', 'ADMIN', 'ACCOUNTANT'])(
+    'allows %s to request a specific branch',
+    (role) => {
+      expect(assertBranchAccess(ctx(role, null), 'branch_2')).toBe('branch_2');
+    },
+  );
 
-  it('allows cross-branch queries for OWNER, ADMIN and ACCOUNTANT', () => {
-    expect(assertBranchAccess({ branchId: 'b1', role: 'OWNER' }, 'b2')).toBe('b2');
-    expect(assertBranchAccess({ branchId: 'b1', role: 'ADMIN' }, 'b2')).toBe('b2');
-    expect(assertBranchAccess({ branchId: 'b1', role: 'ACCOUNTANT' }, 'b2')).toBe('b2');
-  });
+  it.each<UserRole>(['OWNER', 'ADMIN', 'ACCOUNTANT'])(
+    'allows %s tenant-wide reads when no branch is requested',
+    (role) => {
+      expect(assertBranchAccess(ctx(role, null))).toBeUndefined();
+    },
+  );
 
-  it('returns undefined (all branches) for tenant-wide cross-branch roles', () => {
-    expect(assertBranchAccess({ branchId: null, role: 'OWNER' })).toBeUndefined();
-    expect(assertBranchAccess({ branchId: null, role: 'ADMIN' })).toBeUndefined();
-  });
-
-  it('rejects an operational role without a branch and none requested', () => {
-    expect(() => assertBranchAccess({ branchId: null, role: 'WAITER' })).toThrow();
+  it('rejects branchless operational users instead of falling back to tenant-wide access', () => {
+    expect(() => assertBranchAccess(ctx('WAITER', null))).toThrow(
+      'You do not have access to the requested branch.',
+    );
   });
 });

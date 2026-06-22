@@ -17,10 +17,10 @@ export interface BranchAccessContext {
 /**
  * Resolves which branch a request may read or operate on, enforcing branch isolation.
  *
- * - No branch requested → the caller's own branch. Tenant-wide roles (no branch) get
+ * - No branch requested -> the caller's own branch. Tenant-wide roles without branch get
  *   `undefined`, meaning "all branches of the tenant".
- * - Requested branch === own branch → allowed.
- * - Requested branch ≠ own branch → only OWNER/ADMIN/ACCOUNTANT; everyone else gets 403.
+ * - Requested branch === own branch -> allowed.
+ * - Requested branch !== own branch -> only OWNER/ADMIN/ACCOUNTANT; everyone else gets 403.
  */
 export function assertBranchAccess(
   ctx: BranchAccessContext,

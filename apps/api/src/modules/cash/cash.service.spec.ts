@@ -142,6 +142,7 @@ describe('CashService', () => {
     closeSession: jest.Mock;
     findZSessionById: jest.Mock;
     findClosedSalesForShift: jest.Mock;
+    findClosedSalesForSession: jest.Mock;
     findTenantTimezone: jest.Mock;
   };
   let audit: { tryRecord: jest.Mock };
@@ -158,8 +159,10 @@ describe('CashService', () => {
       closeSession: jest.fn(),
       findZSessionById: jest.fn(),
       findClosedSalesForShift: jest.fn(),
+      findClosedSalesForSession: jest.fn(),
       findTenantTimezone: jest.fn(),
     };
+    repo.findClosedSalesForSession.mockResolvedValue([]);
     repo.findTenantTimezone.mockResolvedValue('America/Bogota');
     audit = { tryRecord: jest.fn() };
     service = new CashService(repo as unknown as CashRepository, audit as unknown as AuditService);
@@ -269,6 +272,8 @@ describe('CashService', () => {
     );
     expect(result.status).toBe('CLOSED');
     expect(result.difference).toBe(-2000);
+    expect(result.cashExpectedAmount).toBe(140000);
+    expect(result.bankedExpectedAmount).toBe(0);
   });
 
   it('rejects closing a session outside the actor branch', async () => {
@@ -291,7 +296,7 @@ describe('CashService', () => {
       }),
     );
     repo.branchExists.mockResolvedValue(true);
-    repo.findClosedSalesForShift.mockResolvedValue([
+    repo.findClosedSalesForSession.mockResolvedValue([
       zSale(),
       zSale({
         id: 'sale_2',
@@ -328,7 +333,7 @@ describe('CashService', () => {
 
     const result = await service.getZReport(ctx, 'cash_1');
 
-    expect(repo.findClosedSalesForShift).toHaveBeenCalledWith('tenant_1', 'branch_1', now, now);
+    expect(repo.findClosedSalesForSession).toHaveBeenCalledWith('tenant_1', 'branch_1', 'cash_1');
     expect(result).toEqual(
       expect.objectContaining({
         branchName: 'Sede Centro',
@@ -336,6 +341,9 @@ describe('CashService', () => {
         operationalDate: '2025-12-31',
         businessDayStartsAtHour: 4,
         expectedAmount: 130000,
+        cashExpectedAmount: 130000,
+        bankedExpectedAmount: 30000,
+        totalExpectedAmount: 160000,
         countedAmount: 129000,
         difference: -1000,
         totalSales: 70000,
@@ -349,6 +357,7 @@ describe('CashService', () => {
       { method: PaymentMethod.CASH, amount: 40000, count: 1 },
       { method: PaymentMethod.CARD, amount: 30000, count: 1 },
     ]);
+    expect(result.paymentsByMethod).toEqual(result.byMethod);
     expect(result.movements).toEqual([
       expect.objectContaining({
         id: 'cash_out',
@@ -370,6 +379,6 @@ describe('CashService', () => {
 
     await expect(service.getZReport(ctx, 'cash_1')).rejects.toBeInstanceOf(ApplicationException);
 
-    expect(repo.findClosedSalesForShift).not.toHaveBeenCalled();
+    expect(repo.findClosedSalesForSession).not.toHaveBeenCalled();
   });
 });

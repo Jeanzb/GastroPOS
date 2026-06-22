@@ -16,6 +16,20 @@ interface DiningZone {
   id: string;
 }
 
+interface DiningTable {
+  id: string;
+  number: string;
+}
+
+interface TableAccount {
+  id: string;
+  items: Array<{ id: string }>;
+}
+
+interface ProductsResponse {
+  data: Array<{ id: string }>;
+}
+
 const CASH_MOVEMENT_SIGN: Record<CashMovement['type'], 1 | -1> = {
   OPENING_BALANCE: 1,
   CASH_IN: 1,
@@ -103,7 +117,7 @@ function closeActiveCashSession(auth: LoginResponse): Cypress.Chainable<void> {
 function createTestTable(
   auth: LoginResponse,
   tableNumber: string,
-): Cypress.Chainable<{ number: string }> {
+): Cypress.Chainable<DiningTable> {
   return cy
     .env<{ apiUrl: string }>(['apiUrl'])
     .then(({ apiUrl }) =>
@@ -134,14 +148,60 @@ function createTestTable(
       cy
         .env<{ apiUrl: string }>(['apiUrl'])
         .then(({ apiUrl }) =>
-          cy.request({
+          cy.request<DiningTable>({
             method: 'POST',
             url: `${apiUrl}/dining-zones/${zone.id}/tables`,
             headers: authHeaders(auth),
             body: { number: tableNumber, seats: 2 },
           }),
         )
-        .then(() => cy.wrap({ number: tableNumber })),
+        .then(({ body }) => cy.wrap({ id: body.id, number: body.number })),
+    );
+}
+
+function createTableAccountWithFirstProduct(
+  auth: LoginResponse,
+  tableId: string,
+): Cypress.Chainable<TableAccount> {
+  return cy
+    .env<{ apiUrl: string }>(['apiUrl'])
+    .then(({ apiUrl }) =>
+      cy.request<TableAccount>({
+        method: 'POST',
+        url: `${apiUrl}/dining-tables/${tableId}/account`,
+        headers: authHeaders(auth),
+        body: {
+          waiterName: 'Mesero Cypress',
+          guestCount: 2,
+          customerName: 'Mesa Cypress QA',
+        },
+      }),
+    )
+    .then(({ body: account }) =>
+      cy
+        .env<{ apiUrl: string }>(['apiUrl'])
+        .then(({ apiUrl }) =>
+          cy.request<ProductsResponse>({
+            method: 'GET',
+            url: `${apiUrl}/products?isActive=true&page=1&pageSize=1`,
+            headers: authHeaders(auth),
+          }),
+        )
+        .then(({ body }) => {
+          expect(body.data, 'sellable products').to.have.length.greaterThan(0);
+
+          return cy
+            .env<{ apiUrl: string }>(['apiUrl'])
+            .then(({ apiUrl }) =>
+              cy.request<TableAccount>({
+                method: 'POST',
+                url: `${apiUrl}/table-accounts/${account.id}/items`,
+                headers: authHeaders(auth),
+                body: { productId: body.data[0].id, quantity: 1 },
+              }),
+            )
+            .then(({ body: accountWithItem }) => cy.wrap(accountWithItem));
+        }),
     );
 }
 
@@ -206,21 +266,27 @@ describe('Restaurant operations', () => {
 
   it('creates an inventory item and adjusts stock -> Kardex shows the movement', () => {
     const stamp = uniqueId('cy-inventory');
-    const sku = `CY-${stamp}`.toUpperCase();
     const itemName = `Insumo ${stamp}`;
 
     cy.intercept('GET', '**/api/v1/inventory-items*').as('getInventoryItems');
+    cy.intercept('GET', '**/api/v1/inventory-categories*').as('getInventoryCategories');
     cy.intercept('GET', '**/api/v1/stock-movements*').as('getStockMovements');
     cy.intercept('POST', '**/api/v1/inventory-items').as('createInventoryItem');
     cy.intercept('POST', '**/api/v1/inventory-items/*/adjustments').as('adjustInventoryItem');
 
     cy.loginByApi('/inventory');
     cy.wait('@getInventoryItems');
+    cy.wait('@getInventoryCategories').its('response.body').should('have.length.greaterThan', 0);
     cy.get('[data-cy="inventory-page"]').should('be.visible');
 
     cy.get('[data-cy="inventory-new-item"]').click();
     cy.get('[data-cy="inventory-item-dialog"]').should('be.visible');
-    cy.get('[data-cy="inventory-item-sku"]').type(sku);
+    cy.get('[data-cy="inventory-item-sku-auto"]')
+      .should('be.disabled')
+      .and('have.value', 'Generacion automatica');
+    cy.get('[data-cy="inventory-item-category"]').click();
+    cy.get('[role="option"]').first().click();
+    cy.get('body').type('{esc}');
     cy.get('[data-cy="inventory-item-name"]').type(itemName);
     cy.get('[data-cy="inventory-item-unit-code"]').type('{selectall}KG');
     cy.get('[data-cy="inventory-item-unit-name"]').type('{selectall}Kilogramo');
@@ -228,14 +294,17 @@ describe('Restaurant operations', () => {
     cy.get('[data-cy="inventory-item-initial-cost"]').type('{selectall}12000');
     cy.get('[data-cy="inventory-item-minimum-stock"]').type('{selectall}2');
     cy.get('[data-cy="inventory-item-submit"]').click();
-    cy.wait('@createInventoryItem').its('response.body').should('include', {
-      sku,
-      name: itemName,
-      stockOnHand: 5,
+    cy.wait('@createInventoryItem').then(({ response }) => {
+      expect(response?.body).to.include({
+        name: itemName,
+        stockOnHand: 5,
+      });
+      expect(response?.body.sku).to.match(/^[A-Z]{3}-\d{4}$/);
     });
     cy.wait('@getInventoryItems');
 
     cy.contains('[data-cy="inventory-item-row"]', itemName)
+      .scrollIntoView()
       .should('be.visible')
       .and('contain', '5 KG')
       .within(() => {
@@ -250,7 +319,7 @@ describe('Restaurant operations', () => {
     cy.wait('@adjustInventoryItem').its('response.body.stockOnHand').should('eq', 8);
     cy.wait('@getInventoryItems');
 
-    cy.contains('[data-cy="inventory-item-row"]', itemName).should('contain', '8 KG');
+    cy.contains('[data-cy="inventory-item-row"]', itemName).scrollIntoView().should('contain', '8 KG');
     cy.wait('@getStockMovements');
     cy.contains(itemName).should('be.visible');
   });
@@ -290,7 +359,13 @@ describe('Restaurant operations', () => {
     const tableNumber = `CY${Cypress._.random(1000, 9999)}${Date.now().toString().slice(-6)}`;
 
     apiLogin()
-      .then((auth) => closeActiveCashSession(auth).then(() => createTestTable(auth, tableNumber)))
+      .then((auth) =>
+        closeActiveCashSession(auth)
+          .then(() => createTestTable(auth, tableNumber))
+          .then((table) =>
+            createTableAccountWithFirstProduct(auth, table.id).then(() => cy.wrap(table)),
+          ),
+      )
       .then(({ number }) => {
         cy.intercept('GET', '**/api/v1/cash-sessions/active').as('getActiveCash');
         cy.intercept('POST', '**/api/v1/cash-sessions').as('openCash');
@@ -304,8 +379,7 @@ describe('Restaurant operations', () => {
         cy.wait('@openCash').its('response.statusCode').should('be.oneOf', [200, 201]);
 
         cy.intercept('GET', '**/api/v1/dining-zones').as('getDiningZones');
-        cy.intercept('POST', '**/api/v1/dining-tables/*/account').as('openAccount');
-        cy.intercept('POST', '**/api/v1/table-accounts/*/items').as('addItem');
+        cy.intercept('GET', '**/api/v1/dining-tables/*/account').as('getTableAccount');
         cy.intercept('GET', '**/api/v1/table-accounts/*/command').as('getCommand');
         cy.intercept('POST', '**/api/v1/table-accounts/*/charge').as('chargeAccount');
 
@@ -315,10 +389,7 @@ describe('Restaurant operations', () => {
         cy.contains('[data-cy="dining-table-card"]', number).click();
 
         cy.get('[data-cy="pos-page"]').should('be.visible');
-        cy.get('[data-cy="pos-open-account"]').click();
-        cy.wait('@openAccount').its('response.statusCode').should('be.oneOf', [200, 201]);
-        cy.get('[data-cy="pos-product-card"]').first().click();
-        cy.wait('@addItem').its('response.body.items').should('have.length.greaterThan', 0);
+        cy.wait('@getTableAccount').its('response.body.items').should('have.length.greaterThan', 0);
         cy.get('[data-cy="pos-order-item"]').should('exist');
 
         cy.get('[data-cy="pos-command"]').click();
@@ -336,9 +407,8 @@ describe('Restaurant operations', () => {
           expect(response?.body.total).to.be.greaterThan(0);
         });
         cy.get('[data-cy="pos-receipt-dialog"]').should('be.visible').contains('Cerrar').click();
-
-        cy.loginByApi('/tables');
-        cy.wait('@getDiningZones');
+        cy.location('hash').should('eq', '#/tables');
+        cy.get('[data-cy="tables-page"]').should('be.visible');
         cy.contains('[data-cy="dining-table-card"]', number).should('contain', 'Libre');
 
         cy.intercept('POST', '**/api/v1/cash-sessions/*/close').as('closeCash');
@@ -358,6 +428,37 @@ describe('Restaurant operations', () => {
           );
         });
         cy.get('[data-cy="cash-z-report-dialog"]').should('be.visible').and('contain', 'Reporte Z');
+      });
+  });
+
+  it('blocks POS charging when the cash session is closed', () => {
+    const tableNumber = `NC${Cypress._.random(1000, 9999)}${Date.now().toString().slice(-6)}`;
+
+    apiLogin()
+      .then((auth) =>
+        closeActiveCashSession(auth)
+          .then(() => createTestTable(auth, tableNumber))
+          .then((table) =>
+            createTableAccountWithFirstProduct(auth, table.id).then(() => cy.wrap(table)),
+          ),
+      )
+      .then(({ number }) => {
+        cy.intercept('GET', '**/api/v1/dining-zones').as('getDiningZones');
+        cy.intercept('GET', '**/api/v1/dining-tables/*/account').as('getTableAccount');
+
+        cy.loginByApi('/tables');
+        cy.wait('@getDiningZones');
+        cy.contains('[data-cy="dining-table-card"]', number).click();
+
+        cy.get('[data-cy="pos-page"]').should('be.visible');
+        cy.wait('@getTableAccount').its('response.body.items').should('have.length.greaterThan', 0);
+        cy.get('[data-cy="pos-order-item"]').should('exist');
+
+        cy.get('[data-cy="pos-charge-open"]').click();
+        cy.get('[data-cy="pos-charge-dialog"]').should('not.exist');
+        cy.get('[data-cy="pos-cash-required-dialog"]')
+          .should('be.visible')
+          .and('contain', 'Debe abrir el turno de caja (base inicial) para poder registrar ventas');
       });
   });
 });

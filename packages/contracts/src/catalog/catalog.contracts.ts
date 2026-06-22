@@ -9,6 +9,34 @@ export interface ProductCategoryDto {
   updatedAt: string;
 }
 
+export interface ProductInventoryLinkDto {
+  inventoryItemId: string;
+  ingredientId: string;
+  sku: string;
+  name: string;
+  baseUnitCode: string;
+}
+
+export interface ProductRecipeIngredientDto {
+  ingredientId: string;
+  inventoryItemId: string | null;
+  sku: string;
+  name: string;
+  baseUnitCode: string;
+  quantity: number;
+}
+
+export interface ProductRecipeDto {
+  id: string;
+  isActive: boolean;
+  ingredients: ProductRecipeIngredientDto[];
+}
+
+export interface ProductRecipeIngredientPayload {
+  ingredientId: string;
+  quantity: number;
+}
+
 export interface ProductDto {
   id: string;
   categoryId: string | null;
@@ -21,6 +49,8 @@ export interface ProductDto {
   isActive: boolean;
   isSellable: boolean;
   isInventoried: boolean;
+  inventoryLink: ProductInventoryLinkDto | null;
+  recipe: ProductRecipeDto | null;
   createdAt: string;
   updatedAt: string;
 }

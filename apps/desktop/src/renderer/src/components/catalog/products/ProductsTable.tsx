@@ -64,10 +64,22 @@ function ProductRow({
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{product.name}</p>
-          <p className="nums truncate text-[11px] text-[#9A9286]">{product.sku ?? 'Sin SKU'}</p>
+          <p className="nums truncate text-[11px] text-[#9A9286]">
+            {product.sku ?? 'Sin SKU'}
+            {product.inventoryLink ? ` · Inv. ${product.inventoryLink.sku}` : ''}
+          </p>
+          {product.isInventoried ? (
+            <p className="truncate text-[11px] text-[#6B6359]">
+              {product.recipe?.ingredients.length
+                ? `Receta: ${product.recipe.ingredients.length} insumos`
+                : product.inventoryLink
+                  ? 'Consumo 1:1 enlazado'
+                  : 'Inventario pendiente'}
+            </p>
+          ) : null}
         </div>
       </div>
-      <p className="truncate text-[13px] text-[#6B6359]">{categoryName ?? 'Sin categoría'}</p>
+      <p className="truncate text-[13px] text-[#6B6359]">{categoryName ?? 'Sin categoria'}</p>
       <p className="nums text-right text-[13.5px] font-bold">
         {formatMoney(product.priceAmount, product.currency)}
       </p>
@@ -93,7 +105,7 @@ export function ProductsTable({ products, categoryNames, isLoading, onEdit, onDe
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className={cn(GRID, 'border-b border-border bg-surface-quiet/60 px-[18px] py-3')}>
         <span className={HEADER}>Producto</span>
-        <span className={HEADER}>Categoría</span>
+        <span className={HEADER}>Categoria</span>
         <span className={cn(HEADER, 'text-right')}>Precio</span>
         <span className={cn(HEADER, 'text-right')}>Estado</span>
         <span className={cn(HEADER, 'text-right')}>Acciones</span>
@@ -110,7 +122,7 @@ export function ProductsTable({ products, categoryNames, isLoading, onEdit, onDe
 
       {!isLoading && products.length === 0 ? (
         <div className="px-[18px] py-12 text-center text-sm text-muted-foreground">
-          Aún no hay productos. Crea el primero para empezar.
+          Aun no hay productos. Crea el primero para empezar.
         </div>
       ) : null}
 

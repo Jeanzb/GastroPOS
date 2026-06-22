@@ -8,6 +8,7 @@ import {
 } from '@/components/catalog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCategories, useProducts } from '@/hooks/catalog';
+import { useInventory } from '@/hooks/inventory';
 import { useAppToast } from '@/hooks/ui';
 import type { CategoryFormValues, ProductFormValues } from '@/schemas/catalog';
 import type {
@@ -52,6 +53,12 @@ function toProductPayload(values: ProductFormValues): CreateProductPayload {
     isActive: values.availability.isActive,
     isSellable: values.availability.isSellable,
     isInventoried: values.availability.isInventoried,
+    recipeIngredients: values.availability.isInventoried
+      ? values.recipe.ingredients.map((ingredient) => ({
+          ingredientId: ingredient.ingredientId,
+          quantity: ingredient.quantity,
+        }))
+      : [],
   };
 }
 
@@ -66,11 +73,13 @@ export function ProductsPage() {
   const appToast = useAppToast();
   const categories = useCategories();
   const products = useProducts();
+  const inventory = useInventory();
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductDto>();
   const [productToDelete, setProductToDelete] = useState<ProductDto>();
   const categoryList = categories.listQuery.data?.data ?? EMPTY_CATEGORIES;
   const productList = products.listQuery.data?.data ?? EMPTY_PRODUCTS;
+  const inventoryItems = inventory.itemsQuery.data?.data ?? [];
   const categoryNames = useMemo(() => buildCategoryNames(categoryList), [categoryList]);
   const isCategorySaving =
     categories.createMutation.isPending || categories.updateMutation.isPending;
@@ -243,6 +252,7 @@ export function ProductsPage() {
         open={isProductFormOpen}
         product={selectedProduct}
         products={productList}
+        inventoryItems={inventoryItems}
         categories={categoryList}
         isSubmitting={isProductSaving}
         onOpenChange={setIsProductFormOpen}

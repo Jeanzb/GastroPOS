@@ -8,11 +8,12 @@ import type {
   UpdateProductPayload,
 } from '@/types/catalog';
 
-export function useProducts() {
+export function useProducts(initialParams?: ProductListParams) {
   const queryClient = useQueryClient();
   const [params, setParams] = useState<ProductListParams>({
     page: 1,
     pageSize: DEFAULT_PAGE_SIZE,
+    ...initialParams,
   });
 
   const listQuery = useQuery({

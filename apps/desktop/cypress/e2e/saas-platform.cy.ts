@@ -83,7 +83,7 @@ describe('SaaS platform', () => {
     cy.contains('[data-cy="platform-tenant-row"]', tenantName)
       .should('be.visible')
       .and('contain', 'BASIC')
-      .and('contain', 'ACTIVE');
+      .and('contain', 'Activo');
 
     cy.intercept('PATCH', '**/api/v1/platform/tenants/*/status').as('updateTenantStatus');
     cy.contains('[data-cy="platform-tenant-row"]', tenantName)
@@ -124,6 +124,7 @@ describe('SaaS platform', () => {
     cy.visit(appPath('/platform/features'));
     cy.get('[data-cy="platform-feature-tenant-select"]').click();
     cy.contains('[role="option"]', tenantName).click();
+    cy.get('body').type('{esc}');
     cy.wait('@getTenantFeatures');
     cy.get('[data-cy="platform-feature-toggle-inventory.enabled"]').click();
     cy.get('[data-cy="platform-feature-disable-reason"]').type('Bloqueo Cypress de inventario');

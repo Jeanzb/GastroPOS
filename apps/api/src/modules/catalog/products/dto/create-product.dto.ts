@@ -8,7 +8,22 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class ProductRecipeIngredientDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(64)
+  ingredientId!: string;
+
+  @ApiProperty({ example: 150, description: 'Integer quantity in the ingredient base unit.' })
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+}
 
 export class CreateProductDto {
   @ApiProperty({ example: 'Empanada de carne' })
@@ -62,4 +77,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isInventoried?: boolean;
+
+  @ApiPropertyOptional({ type: [ProductRecipeIngredientDto] })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ProductRecipeIngredientDto)
+  recipeIngredients?: ProductRecipeIngredientDto[];
 }

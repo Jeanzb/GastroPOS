@@ -21,6 +21,7 @@ export function useTableAccount(tableId?: string | null) {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.tableAccount, tableId] }),
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.diningZones] }),
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.cashSession] }),
     ]);
   };
 

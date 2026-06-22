@@ -42,6 +42,7 @@ export interface UpdateInventoryItemData {
   name?: string;
   baseUnitCode?: string;
   baseUnitName?: string;
+  productId?: string | null;
   minimumStock?: number;
   allowNegativeStock?: boolean;
   isActive?: boolean;
@@ -63,11 +64,14 @@ export type CreateInventoryItemResult =
   | { status: 'INVALID_BRANCH' }
   | { status: 'INVALID_CATEGORY' }
   | { status: 'INVALID_PRODUCT' }
-  | { status: 'DUPLICATE_SKU' };
+  | { status: 'DUPLICATE_SKU' }
+  | { status: 'DUPLICATE_PRODUCT_LINK' };
 
 export type UpdateInventoryItemResult =
   | { status: 'UPDATED'; item: InventoryBalanceWithIngredient }
-  | { status: 'NOT_FOUND' };
+  | { status: 'NOT_FOUND' }
+  | { status: 'INVALID_PRODUCT' }
+  | { status: 'DUPLICATE_PRODUCT_LINK' };
 
 export type AdjustInventoryStockResult =
   | { status: 'ADJUSTED'; item: InventoryBalanceWithIngredient }
@@ -188,9 +192,18 @@ export class InventoryRepository {
         });
       } catch (error) {
         if (isUniqueConstraint(error)) {
-          return { status: 'DUPLICATE_SKU' };
+          return isProductLinkConstraint(error)
+            ? { status: 'DUPLICATE_PRODUCT_LINK' }
+            : { status: 'DUPLICATE_SKU' };
         }
         throw error;
+      }
+
+      if (data.productId) {
+        await tx.product.updateMany({
+          where: { id: data.productId, tenantId: data.tenantId, deletedAt: null },
+          data: { isInventoried: true, updatedById: data.createdById },
+        });
       }
 
       const balance = await tx.inventoryBalance.create({
@@ -251,15 +264,40 @@ export class InventoryRepository {
               actorUserId: data.updatedById,
             });
 
-      await tx.inventoryIngredient.update({
-        where: { id: current.ingredientId },
-        data: {
-          name: data.name,
-          baseUnitId: unit?.id,
-          isActive: data.isActive,
-          updatedById: data.updatedById,
-        },
-      });
+      if (data.productId !== undefined && data.productId !== null) {
+        const product = await tx.product.findFirst({
+          where: { id: data.productId, tenantId: data.tenantId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!product) {
+          return { status: 'INVALID_PRODUCT' };
+        }
+      }
+
+      try {
+        await tx.inventoryIngredient.update({
+          where: { id: current.ingredientId },
+          data: {
+            name: data.name,
+            baseUnitId: unit?.id,
+            productId: data.productId,
+            isActive: data.isActive,
+            updatedById: data.updatedById,
+          },
+        });
+      } catch (error) {
+        if (isProductLinkConstraint(error)) {
+          return { status: 'DUPLICATE_PRODUCT_LINK' };
+        }
+        throw error;
+      }
+
+      if (data.productId) {
+        await tx.product.updateMany({
+          where: { id: data.productId, tenantId: data.tenantId, deletedAt: null },
+          data: { isInventoried: true, updatedById: data.updatedById },
+        });
+      }
 
       await tx.inventoryBalance.update({
         where: { id: data.id },
@@ -437,6 +475,7 @@ export class InventoryRepository {
         include: {
           baseUnit: { select: { id: true, code: true, name: true } },
           category: { select: { id: true, name: true, skuPrefix: true } },
+          product: { select: { id: true, sku: true, name: true } },
         },
       },
     } satisfies Prisma.InventoryBalanceInclude;
@@ -445,6 +484,17 @@ export class InventoryRepository {
 
 function isUniqueConstraint(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+function isProductLinkConstraint(error: unknown): boolean {
+  const target =
+    error instanceof Prisma.PrismaClientKnownRequestError ? error.meta?.target : undefined;
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002' &&
+    ((Array.isArray(target) && target.includes('productId')) ||
+      (typeof target === 'string' && target.includes('productId')))
+  );
 }
 
 function weightedAverageCost(

@@ -23,6 +23,8 @@ export interface InventoryItemDto {
   ingredientId: string;
   branchId: string;
   productId: string | null;
+  productSku: string | null;
+  productName: string | null;
   categoryId: string;
   categoryName: string;
   categoryPrefix: string;
@@ -84,6 +86,7 @@ export interface UpdateInventoryItemRequest {
   name?: string;
   baseUnitCode?: string;
   baseUnitName?: string;
+  productId?: string | null;
   minimumStock?: number;
   allowNegativeStock?: boolean;
   isActive?: boolean;

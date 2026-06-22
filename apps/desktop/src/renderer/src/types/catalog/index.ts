@@ -1,3 +1,5 @@
+import type { ProductRecipeIngredientPayload } from '@gastroai/contracts';
+
 export type {
   PaginatedResult,
   ProductCategoryDto,
@@ -37,6 +39,7 @@ export interface CreateProductPayload {
   isActive?: boolean;
   isSellable?: boolean;
   isInventoried?: boolean;
+  recipeIngredients?: ProductRecipeIngredientPayload[];
 }
 
 export type UpdateProductPayload = Partial<CreateProductPayload>;

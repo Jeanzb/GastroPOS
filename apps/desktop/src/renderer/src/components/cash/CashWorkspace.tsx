@@ -130,7 +130,9 @@ export function CashWorkspace() {
   const session = cash.activeSessionQuery.data ?? null;
   const movements = cash.movementsQuery.data ?? EMPTY_MOVEMENTS;
   const currency = session?.currency ?? 'COP';
-  const expectedAmount = session ? calculateExpectedAmount(movements) : 0;
+  const cashExpectedAmount = session?.cashExpectedAmount ?? (session ? calculateExpectedAmount(movements) : 0);
+  const bankedExpectedAmount = session?.bankedExpectedAmount ?? 0;
+  const totalExpectedAmount = session?.totalExpectedAmount ?? cashExpectedAmount + bankedExpectedAmount;
   const isLoading =
     cash.activeSessionQuery.isLoading || (Boolean(session) && cash.movementsQuery.isLoading);
 
@@ -193,7 +195,7 @@ export function CashWorkspace() {
       setZReportSessionId(closedSession.id);
       setIsZReportOpen(true);
       toast.success('Caja cerrada', {
-        description: `Diferencia registrada: ${formatMoney(values.countedAmount - expectedAmount, currency)}.`,
+        description: `Diferencia registrada: ${formatMoney(values.countedAmount - cashExpectedAmount, currency)}.`,
       });
     } catch (error) {
       toast.error('No se pudo cerrar la caja', {
@@ -249,19 +251,19 @@ export function CashWorkspace() {
                   <div className="rounded-lg border border-success/20 bg-success-soft p-4 text-success">
                     <p className="text-sm text-muted-foreground">Efectivo esperado</p>
                     <p className="nums mt-2 font-display text-3xl font-semibold">
-                      {formatMoney(expectedAmount, currency)}
+                      {formatMoney(cashExpectedAmount, currency)}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border bg-background p-4">
-                    <p className="text-sm text-muted-foreground">Base inicial</p>
+                    <p className="text-sm text-muted-foreground">Bancarizado / virtual</p>
                     <p className="nums mt-2 font-display text-3xl font-semibold">
-                      {formatMoney(session?.openingBalance ?? 0, currency)}
+                      {formatMoney(bankedExpectedAmount, currency)}
                     </p>
                   </div>
                   <div className="rounded-lg border border-orange/20 bg-orange/10 p-4">
-                    <p className="text-sm text-muted-foreground">Apertura</p>
-                    <p className="mt-2 font-display text-xl font-semibold">
-                      {session ? formatDateTime(session.openedAt) : 'Sin turno'}
+                    <p className="text-sm text-muted-foreground">Total controlado</p>
+                    <p className="nums mt-2 font-display text-3xl font-semibold">
+                      {formatMoney(totalExpectedAmount, currency)}
                     </p>
                   </div>
                 </div>
@@ -312,11 +314,15 @@ export function CashWorkspace() {
               <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
                 <p className="text-sm text-white/55">Esperado actual</p>
                 <p className="nums mt-1 text-2xl font-semibold">
-                  {formatMoney(expectedAmount, currency)}
+                  {formatMoney(cashExpectedAmount, currency)}
+                </p>
+                <p className="mt-1 text-xs text-white/45">
+                  Solo efectivo físico en gaveta. Virtual:{' '}
+                  <span className="nums">{formatMoney(bankedExpectedAmount, currency)}</span>
                 </p>
               </div>
               <Button
-                className="w-full"
+                className="w-full bg-orange text-white hover:bg-orange/90"
                 disabled={!session || cash.closeMutation.isPending}
                 onClick={() => setIsCloseDialogOpen(true)}
                 data-cy="cash-close-open"
@@ -330,7 +336,7 @@ export function CashWorkspace() {
               </Button>
               <Button
                 variant="outline"
-                className="w-full bg-background"
+                className="w-full border-white/20 bg-white text-carbon hover:bg-white/90"
                 disabled={!session || cash.movementMutation.isPending}
                 onClick={() => setIsMovementDialogOpen(true)}
               >
@@ -339,7 +345,7 @@ export function CashWorkspace() {
               </Button>
               <Button
                 variant="outline"
-                className="w-full bg-background"
+                className="w-full border-white/20 bg-white text-carbon hover:bg-white/90 disabled:bg-white/20 disabled:text-white/45"
                 disabled={!zReportSessionId}
                 onClick={() => setIsZReportOpen(true)}
                 data-cy="cash-z-report-open"
@@ -366,7 +372,7 @@ export function CashWorkspace() {
       />
       <CloseCashSessionDialog
         open={isCloseDialogOpen}
-        expectedAmount={expectedAmount}
+        expectedAmount={cashExpectedAmount}
         currency={currency}
         isSubmitting={cash.closeMutation.isPending}
         onOpenChange={setIsCloseDialogOpen}

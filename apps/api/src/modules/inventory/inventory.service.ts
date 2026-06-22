@@ -17,6 +17,7 @@ import type { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import type { ListInventoryItemsQueryDto } from './dto/list-inventory-items-query.dto';
 import type { ListStockMovementsQueryDto } from './dto/list-stock-movements-query.dto';
 import type { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
+import type { UpdateInventoryProductLinkDto } from './dto/update-inventory-product-link.dto';
 import { toInventoryCategoryDto, toInventoryItemDto, toStockMovementDto } from './inventory.mapper';
 import { InventoryRepository } from './inventory.repository';
 
@@ -110,6 +111,9 @@ export class InventoryService {
     if (result.status === 'DUPLICATE_SKU') {
       throw duplicateSku();
     }
+    if (result.status === 'DUPLICATE_PRODUCT_LINK') {
+      throw duplicateProductLink();
+    }
 
     const dtoResult = toInventoryItemDto(result.item);
     await this.auditService.tryRecord({
@@ -144,6 +148,8 @@ export class InventoryService {
         dto.baseUnitCode === undefined
           ? undefined
           : normalizeUnitName(dto.baseUnitName, dto.baseUnitCode),
+      productId:
+        dto.productId === undefined ? undefined : dto.productId?.trim() || null,
       minimumStock: dto.minimumStock,
       allowNegativeStock: dto.allowNegativeStock,
       isActive: dto.isActive,
@@ -152,6 +158,12 @@ export class InventoryService {
 
     if (result.status === 'NOT_FOUND') {
       throw notFound();
+    }
+    if (result.status === 'INVALID_PRODUCT') {
+      throw invalidProduct();
+    }
+    if (result.status === 'DUPLICATE_PRODUCT_LINK') {
+      throw duplicateProductLink();
     }
 
     const before = toInventoryItemDto(existing);
@@ -166,6 +178,14 @@ export class InventoryService {
     });
 
     return after;
+  }
+
+  updateProductLink(
+    ctx: TenantRequestContext,
+    id: string,
+    dto: UpdateInventoryProductLinkDto,
+  ): Promise<InventoryItemDto> {
+    return this.updateItem(ctx, id, { productId: dto.productId ?? null });
   }
 
   async adjustStock(
@@ -252,6 +272,13 @@ function duplicateSku(): ApplicationException {
   return new ApplicationException(409, {
     code: ApiErrorCode.CONFLICT,
     message: 'An inventory ingredient already exists with this SKU.',
+  });
+}
+
+function duplicateProductLink(): ApplicationException {
+  return new ApplicationException(409, {
+    code: ApiErrorCode.CONFLICT,
+    message: 'This product is already linked to another inventory ingredient.',
   });
 }
 

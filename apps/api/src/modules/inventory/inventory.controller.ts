@@ -19,6 +19,7 @@ import { CreateInventoryItemDto } from './dto/create-inventory-item.dto';
 import { ListInventoryItemsQueryDto } from './dto/list-inventory-items-query.dto';
 import { ListStockMovementsQueryDto } from './dto/list-stock-movements-query.dto';
 import { UpdateInventoryItemDto } from './dto/update-inventory-item.dto';
+import { UpdateInventoryProductLinkDto } from './dto/update-inventory-product-link.dto';
 import { InventoryService } from './inventory.service';
 
 @ApiTags('inventory')
@@ -63,6 +64,16 @@ export class InventoryController {
     @Body() body: UpdateInventoryItemDto,
   ): Promise<InventoryItemDto> {
     return this.service.updateItem(ctx, id, body);
+  }
+
+  @Patch('inventory-items/:id/product-link')
+  @RequireRoles('OWNER', 'ADMIN', 'INVENTORY_MANAGER')
+  updateProductLink(
+    @CurrentTenantContext() ctx: TenantRequestContext,
+    @Param('id') id: string,
+    @Body() body: UpdateInventoryProductLinkDto,
+  ): Promise<InventoryItemDto> {
+    return this.service.updateProductLink(ctx, id, body);
   }
 
   @Post('inventory-items/:id/adjustments')

@@ -49,6 +49,7 @@ function inventoryBalance(
       updatedById: null,
       baseUnit: { id: 'unit_1', code: 'KG', name: 'Kilogramo' },
       category: { id: 'inventory_category_1', name: 'Carnes', skuPrefix: 'CAR' },
+      product: { id: 'product_1', sku: 'BAN-001', name: 'Bandeja paisa' },
     },
     ...overrides,
   };

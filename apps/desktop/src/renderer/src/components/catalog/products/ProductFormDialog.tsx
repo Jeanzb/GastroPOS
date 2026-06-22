@@ -24,11 +24,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { productFormSchema, type ProductFormValues } from '@/schemas/catalog';
 import type { ProductCategoryDto, ProductDto } from '@/types/catalog';
+import type { InventoryItemDto } from '@/types/inventory';
 
 interface ProductFormDialogProps {
   open: boolean;
   product?: ProductDto;
   products: ProductDto[];
+  inventoryItems: InventoryItemDto[];
   categories: ProductCategoryDto[];
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,10 +38,10 @@ interface ProductFormDialogProps {
 }
 
 const NO_CATEGORY_VALUE = '__none__';
+const NO_INGREDIENT_VALUE = '__none__';
 const EMPTY_INGREDIENT: ProductFormValues['recipe']['ingredients'][number] = {
-  name: '',
+  ingredientId: '',
   quantity: 1,
-  unit: 'und',
 };
 
 function getDefaultValues(product?: ProductDto): ProductFormValues {
@@ -62,7 +64,11 @@ function getDefaultValues(product?: ProductDto): ProductFormValues {
       isInventoried: product?.isInventoried ?? false,
     },
     recipe: {
-      ingredients: product?.isInventoried ? [{ ...EMPTY_INGREDIENT }] : [],
+      ingredients:
+        product?.recipe?.ingredients.map((ingredient) => ({
+          ingredientId: ingredient.ingredientId,
+          quantity: ingredient.quantity,
+        })) ?? [],
     },
   };
 }
@@ -129,6 +135,7 @@ export function ProductFormDialog({
   open,
   product,
   products,
+  inventoryItems,
   categories,
   isSubmitting,
   onOpenChange,
@@ -505,27 +512,50 @@ export function ProductFormDialog({
                               key={`ingredient-${index}`}
                               className="grid gap-3 rounded-lg border border-border bg-surface-muted p-3 md:grid-cols-[1fr_110px_100px_auto]"
                             >
-                              <form.Field name={`recipe.ingredients[${index}].name`}>
+                              <form.Field name={`recipe.ingredients[${index}].ingredientId`}>
                                 {(ingredientField) => {
                                   const error = getFieldError(ingredientField.state.meta.errors);
-                                  const inputId = `ingredient-${index}-name`;
+                                  const inputId = `ingredient-${index}-id`;
+                                  const selectedIngredient = inventoryItems.find(
+                                    (item) => item.ingredientId === ingredientField.state.value,
+                                  );
 
                                   return (
                                     <div className="space-y-2">
                                       <label className="text-xs font-medium" htmlFor={inputId}>
                                         Insumo
                                       </label>
-                                      <Input
-                                        id={inputId}
-                                        placeholder="Carne molida"
-                                        value={ingredientField.state.value}
-                                        onBlur={ingredientField.handleBlur}
-                                        onChange={(event) =>
-                                          ingredientField.handleChange(event.target.value)
+                                      <Select
+                                        value={ingredientField.state.value || NO_INGREDIENT_VALUE}
+                                        onValueChange={(value) =>
+                                          ingredientField.handleChange(
+                                            value === NO_INGREDIENT_VALUE ? '' : value,
+                                          )
                                         }
-                                        aria-invalid={Boolean(error)}
-                                        aria-describedby={error ? `${inputId}-error` : undefined}
-                                      />
+                                      >
+                                        <SelectTrigger
+                                        id={inputId}
+                                          aria-invalid={Boolean(error)}
+                                          aria-describedby={error ? `${inputId}-error` : undefined}
+                                        >
+                                          <SelectValue placeholder="Selecciona insumo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value={NO_INGREDIENT_VALUE}>
+                                            Selecciona insumo
+                                          </SelectItem>
+                                          {inventoryItems.map((item) => (
+                                            <SelectItem key={item.ingredientId} value={item.ingredientId}>
+                                              {item.name} · {item.sku}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      {selectedIngredient ? (
+                                        <p className="text-[11px] text-muted-foreground">
+                                          Unidad base {selectedIngredient.baseUnitCode}
+                                        </p>
+                                      ) : null}
                                       {error ? (
                                         <p
                                           id={`${inputId}-error`}
@@ -552,8 +582,8 @@ export function ProductFormDialog({
                                       <Input
                                         id={inputId}
                                         type="number"
-                                        min={0.01}
-                                        step={0.01}
+                                        min={1}
+                                        step={1}
                                         value={quantityField.state.value}
                                         onBlur={quantityField.handleBlur}
                                         onChange={(event) =>
@@ -575,39 +605,27 @@ export function ProductFormDialog({
                                 }}
                               </form.Field>
 
-                              <form.Field name={`recipe.ingredients[${index}].unit`}>
-                                {(unitField) => {
-                                  const error = getFieldError(unitField.state.meta.errors);
-                                  const inputId = `ingredient-${index}-unit`;
-
-                                  return (
-                                    <div className="space-y-2">
-                                      <label className="text-xs font-medium" htmlFor={inputId}>
-                                        Unidad
-                                      </label>
-                                      <Input
-                                        id={inputId}
-                                        placeholder="g"
-                                        value={unitField.state.value}
-                                        onBlur={unitField.handleBlur}
-                                        onChange={(event) =>
-                                          unitField.handleChange(event.target.value)
-                                        }
-                                        aria-invalid={Boolean(error)}
-                                        aria-describedby={error ? `${inputId}-error` : undefined}
-                                      />
-                                      {error ? (
-                                        <p
-                                          id={`${inputId}-error`}
-                                          className="text-xs text-destructive"
-                                        >
-                                          {error}
-                                        </p>
-                                      ) : null}
-                                    </div>
-                                  );
-                                }}
-                              </form.Field>
+                              <div className="space-y-2">
+                                <span className="text-xs font-medium">SKU inventario</span>
+                                <form.Subscribe
+                                  selector={(state) =>
+                                    state.values.recipe.ingredients[index]?.ingredientId
+                                  }
+                                >
+                                  {(ingredientId) => {
+                                    const selectedIngredient = inventoryItems.find(
+                                      (item) => item.ingredientId === ingredientId,
+                                    );
+                                    return (
+                                      <div className="rounded-md border border-border bg-background px-3 py-2 text-xs">
+                                        {selectedIngredient
+                                          ? `${selectedIngredient.sku} · ${selectedIngredient.baseUnitCode}`
+                                          : 'Sin insumo'}
+                                      </div>
+                                    );
+                                  }}
+                                </form.Subscribe>
+                              </div>
 
                               <div className="flex items-end justify-end">
                                 <Button

@@ -114,6 +114,23 @@ export class CashRepository {
     });
   }
 
+  findClosedSalesForSession(
+    tenantId: string,
+    branchId: string,
+    cashSessionId: string,
+  ): Promise<CashZSaleRecord[]> {
+    return this.prisma.sale.findMany({
+      where: {
+        tenantId,
+        branchId,
+        cashSessionId,
+        status: SaleStatus.CLOSED,
+      },
+      include: CASH_Z_SALE_INCLUDE,
+      orderBy: { closedAt: 'asc' },
+    });
+  }
+
   listMovements(cashSessionId: string): Promise<CashMovement[]> {
     return this.prisma.tenantScoped.cashMovement.findMany({
       where: { cashSessionId },

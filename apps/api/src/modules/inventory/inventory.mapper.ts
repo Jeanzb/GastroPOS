@@ -3,6 +3,7 @@ import type {
   InventoryBalance,
   InventoryCategory,
   InventoryIngredient,
+  Product,
   StockMovement,
   UnitOfMeasure,
 } from '../../../generated/prisma';
@@ -11,6 +12,7 @@ export type InventoryBalanceWithIngredient = InventoryBalance & {
   ingredient: InventoryIngredient & {
     baseUnit: Pick<UnitOfMeasure, 'id' | 'code' | 'name'>;
     category: Pick<InventoryCategory, 'id' | 'name' | 'skuPrefix'>;
+    product: Pick<Product, 'id' | 'sku' | 'name'> | null;
   };
 };
 
@@ -24,6 +26,8 @@ export function toInventoryItemDto(item: InventoryBalanceWithIngredient): Invent
     ingredientId: item.ingredientId,
     branchId: item.branchId,
     productId: item.ingredient.productId,
+    productSku: item.ingredient.product?.sku ?? null,
+    productName: item.ingredient.product?.name ?? null,
     categoryId: item.ingredient.category.id,
     categoryName: item.ingredient.category.name,
     categoryPrefix: item.ingredient.category.skuPrefix,

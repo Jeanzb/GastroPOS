@@ -7,6 +7,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Loader2,
   Package,
   PanelTop,
   ReceiptText,
@@ -171,7 +172,7 @@ export function Sidebar() {
         <SidebarNavSection label="administration" items={visibleAdministrationItems} />
       </nav>
 
-      <div className="mt-auto space-y-3 border-t border-sidebar-border px-4 py-4">
+      <div className="mt-auto border-t border-sidebar-border px-4 py-4">
         <div className="flex items-center gap-3 rounded-lg p-1">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/[0.08] text-xs font-bold text-orange-soft">
             {getInitials(user?.fullName)}
@@ -184,18 +185,22 @@ export function Sidebar() {
               {ROLE_LABELS[user.role]}
             </p>
           </div>
+          <button
+            type="button"
+            disabled={isLoggingOut}
+            data-cy="shift-close"
+            className="motion-press grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.03] text-sidebar-foreground/55 hover:bg-white/[0.08] hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring/60 disabled:cursor-not-allowed disabled:opacity-55"
+            title="Cerrar turno y salir"
+            aria-label="Cerrar turno y salir"
+            onClick={() => void logout()}
+          >
+            {isLoggingOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
+          </button>
         </div>
-        <button
-          type="button"
-          disabled={isLoggingOut}
-          data-cy="shift-close"
-          className="motion-press flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-orange/90 text-sm font-bold text-white shadow-sm shadow-black/20 hover:bg-orange focus-visible:ring-2 focus-visible:ring-sidebar-ring/60 disabled:opacity-60"
-          title="Cierra tu turno y sesion"
-          onClick={() => void logout()}
-        >
-          <LogOut className="h-4 w-4" />
-          {isLoggingOut ? 'Cerrando turno...' : 'Cerrar Turno / Salir'}
-        </button>
       </div>
     </aside>
   );

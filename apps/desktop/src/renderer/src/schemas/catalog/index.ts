@@ -10,9 +10,8 @@ export const categoryFormSchema = z.object({
 });
 
 export const productIngredientFormSchema = z.object({
-  name: z.string().trim().min(2, 'El insumo debe tener al menos 2 caracteres'),
-  quantity: z.number().min(0.01, 'La cantidad debe ser mayor a cero'),
-  unit: z.string().trim().min(1, 'La unidad es obligatoria').max(16, 'Unidad demasiado larga'),
+  ingredientId: z.string().trim().min(1, 'Selecciona un insumo'),
+  quantity: z.number().int('La cantidad debe ser entera').min(1, 'Debe ser mayor a cero'),
 });
 
 export const productFormSchema = z.object({

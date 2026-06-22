@@ -6,6 +6,7 @@ import type { AuditService } from '../../audit/audit.service';
 import type { ProductCategoryRepository } from '../categories/product-category.repository';
 import type { CatalogActor } from '../catalog.types';
 import { CreateProductDto } from './dto/create-product.dto';
+import type { ProductWithInventory } from './product.mapper';
 import { ProductService } from './product.service';
 import type { ProductRepository } from './product.repository';
 
@@ -15,7 +16,7 @@ const actor: CatalogActor = {
   actorUserId: 'user_1',
 };
 
-function product(overrides: Partial<Product> = {}): Product {
+function product(overrides: Partial<Product> = {}): ProductWithInventory {
   const now = new Date('2026-01-01T00:00:00.000Z');
   return {
     id: 'prod_1',
@@ -34,6 +35,8 @@ function product(overrides: Partial<Product> = {}): Product {
     deletedAt: null,
     createdById: 'user_1',
     updatedById: null,
+    inventoryIngredients: [],
+    recipes: [],
     ...overrides,
   };
 }

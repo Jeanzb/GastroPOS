@@ -32,6 +32,12 @@ export class UpdateInventoryItemDto {
   @MaxLength(80)
   baseUnitName?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  productId?: string | null;
+
   @ApiPropertyOptional({ default: 0 })
   @IsOptional()
   @IsInt()

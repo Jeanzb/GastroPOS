@@ -184,7 +184,7 @@ export function ChargeDialog({
   const form = useForm<ChargeTableAccountValues>({
     resolver: zodResolver(chargeTableAccountSchema),
     defaultValues: {
-      method: 'CARD',
+      method: 'CASH',
       amount: account?.balanceDue ?? 0,
       reference: '',
       requiresInvoice: false,
@@ -196,7 +196,7 @@ export function ChargeDialog({
   useEffect(() => {
     if (open) {
       form.reset({
-        method: 'CARD',
+        method: 'CASH',
         amount: account?.balanceDue ?? 0,
         reference: '',
         requiresInvoice: false,

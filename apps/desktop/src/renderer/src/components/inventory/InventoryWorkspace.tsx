@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useProducts } from '@/hooks/catalog';
 import { useInventory, useStockMovements } from '@/hooks/inventory';
 import { useAppToast } from '@/hooks/ui';
 import { formatDateTime, formatMoney } from '@/lib/format';
@@ -136,8 +137,12 @@ function ItemRow({
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">{item.name}</p>
         <p className="nums truncate text-[11px] text-[#9A9286]">
-          {item.sku} · {item.baseUnitCode}
+          SKU inv. {item.sku} · {item.baseUnitCode}
+          {item.productSku ? ` · SKU producto ${item.productSku}` : ''}
         </p>
+        {item.productName ? (
+          <p className="truncate text-[11px] text-[#6B6359]">{item.productName}</p>
+        ) : null}
       </div>
       <p className="nums text-right text-[13.5px] font-bold">
         {item.stockOnHand} {item.baseUnitCode}
@@ -170,6 +175,7 @@ export function InventoryWorkspace() {
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItemDto | null>(null);
   const { itemsQuery, categoriesQuery, createMutation, adjustMutation } = useInventory();
+  const products = useProducts({ page: 1, pageSize: 100, isActive: true });
   const stockMovements = useStockMovements();
   const items = itemsQuery.data?.data ?? [];
   const movementsPage = stockMovements.query.data;
@@ -194,6 +200,7 @@ export function InventoryWorkspace() {
         name: values.name,
         baseUnitCode: values.baseUnitCode,
         baseUnitName: values.baseUnitName,
+        productId: values.productId || null,
         initialStock: values.initialStock,
         initialUnitCost: values.initialStock > 0 ? values.initialUnitCost : undefined,
         minimumStock: values.minimumStock,
@@ -426,7 +433,9 @@ export function InventoryWorkspace() {
       <InventoryItemFormDialog
         branchId={activeBranchId}
         categories={categoriesQuery.data ?? []}
+        products={products.listQuery.data?.data ?? []}
         categoriesLoading={categoriesQuery.isLoading}
+        productsLoading={products.listQuery.isLoading}
         isSubmitting={createMutation.isPending}
         open={itemDialogOpen}
         onOpenChange={setItemDialogOpen}

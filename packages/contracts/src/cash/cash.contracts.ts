@@ -27,6 +27,10 @@ export interface CashSessionDto {
   currency: string;
   openingBalance: number;
   expectedAmount: number | null;
+  cashExpectedAmount: number;
+  bankedExpectedAmount: number;
+  totalExpectedAmount: number;
+  paymentsByMethod: CashZReportPaymentMethodDto[];
   countedAmount: number | null;
   difference: number | null;
   notes: string | null;
@@ -94,6 +98,9 @@ export interface CashZReportDto {
   closedById: string | null;
   openingBalance: number;
   expectedAmount: number;
+  cashExpectedAmount: number;
+  bankedExpectedAmount: number;
+  totalExpectedAmount: number;
   countedAmount: number | null;
   difference: number | null;
   totalSales: number;
@@ -102,6 +109,7 @@ export interface CashZReportDto {
   itemsSold: number;
   invoicedCount: number;
   byMethod: CashZReportPaymentMethodDto[];
+  paymentsByMethod: CashZReportPaymentMethodDto[];
   movements: CashZReportMovementDto[];
   topProducts: CashZReportTopProductDto[];
   generatedAt: string;

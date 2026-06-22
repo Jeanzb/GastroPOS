@@ -111,6 +111,8 @@ model Tenant {
   featureOverrides  TenantFeatureOverride[]
   productCategories ProductCategory[]
   products          Product[]
+  productRecipes    ProductRecipe[]
+  productRecipeIngredients ProductRecipeIngredient[]
   fiscalProfile     FiscalProfile?
   fiscalProviders   FiscalProviderConfig[]
   invoices          Invoice[]
@@ -567,12 +569,57 @@ model Product {
   saleItems      SaleItem[]
   purchaseItems  PurchaseItem[]
   inventoryIngredients InventoryIngredient[]
+  recipes        ProductRecipe[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, categoryId])
   @@index([tenantId, isActive])
   @@map("products")
+}
+
+model ProductRecipe {
+  id        String  @id @default(cuid())
+  tenantId  String
+  productId String
+  isActive  Boolean @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant      Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product     Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredients ProductRecipeIngredient[]
+
+  @@unique([tenantId, productId])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+  @@map("product_recipes")
+}
+
+model ProductRecipeIngredient {
+  id           String @id @default(cuid())
+  tenantId     String
+  recipeId     String
+  ingredientId String
+  quantity     Int
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipe     ProductRecipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient InventoryIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, recipeId, ingredientId])
+  @@index([tenantId])
+  @@index([ingredientId])
+  @@map("product_recipe_ingredients")
 }
 
 /// Colombian fiscal configuration per tenant. This stores readiness metadata,
@@ -1185,8 +1232,10 @@ model InventoryIngredient {
   category  InventoryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   balances  InventoryBalance[]
   movements StockMovement[]
+  recipeIngredients ProductRecipeIngredient[]
 
   @@unique([tenantId, sku])
+  @@unique([tenantId, productId])
   @@index([tenantId])
   @@index([tenantId, productId])
   @@index([tenantId, categoryId])

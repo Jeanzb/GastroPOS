@@ -36,13 +36,18 @@ import {
   type InventoryItemFormValues,
 } from '@/schemas/inventory';
 import type { InventoryCategoryDto } from '@/types/inventory';
+import type { ProductDto } from '@/types/catalog';
+
+const NO_PRODUCT_LINK = 'NO_PRODUCT_LINK';
 
 interface InventoryItemFormDialogProps {
   branchId: string | null | undefined;
   isSubmitting: boolean;
   open: boolean;
   categories: InventoryCategoryDto[];
+  products: ProductDto[];
   categoriesLoading?: boolean;
+  productsLoading?: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: InventoryItemFormValues) => Promise<void>;
 }
@@ -54,6 +59,7 @@ function defaultValues(branchId?: string | null): InventoryItemFormInput {
     name: '',
     baseUnitCode: 'UND',
     baseUnitName: 'Unidad',
+    productId: null,
     initialStock: 0,
     initialUnitCost: 0,
     minimumStock: 0,
@@ -66,7 +72,9 @@ export function InventoryItemFormDialog({
   isSubmitting,
   open,
   categories,
+  products,
   categoriesLoading = false,
+  productsLoading = false,
   onOpenChange,
   onSubmit,
 }: InventoryItemFormDialogProps) {
@@ -154,6 +162,46 @@ export function InventoryItemFormDialog({
                         {...field}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="productId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Producto enlazado</FormLabel>
+                    <Select
+                      value={field.value ?? NO_PRODUCT_LINK}
+                      onValueChange={(value) =>
+                        field.onChange(value === NO_PRODUCT_LINK ? null : value)
+                      }
+                      disabled={productsLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-cy="inventory-item-product-link">
+                          <SelectValue placeholder="Opcional" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NO_PRODUCT_LINK}>Sin producto enlazado</SelectItem>
+                        {products.map((product) => (
+                          <SelectItem
+                            key={product.id}
+                            value={product.id}
+                            disabled={Boolean(product.inventoryLink)}
+                          >
+                            {product.name}
+                            {product.sku ? ` (${product.sku})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Se usa como consumo 1:1 si el producto no tiene receta.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

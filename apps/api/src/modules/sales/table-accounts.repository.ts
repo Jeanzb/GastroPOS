@@ -7,13 +7,13 @@ import {
   FiscalInvoiceStatus,
   PaymentMethod,
   SaleStatus,
-  StockMovementType,
   type CustomerDocumentType,
   type Invoice,
   type Prisma,
   type Product,
 } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
+import { InventoryConsumptionService } from '../inventory/inventory-consumption.service';
 
 const TABLE_ACCOUNT_INCLUDE = {
   diningTable: {
@@ -75,11 +75,15 @@ export type ChargeAccountResult =
   | { status: 'CHARGED'; account: TableAccountSaleRecord; invoice: Invoice | null }
   | { status: 'NO_ACTIVE_CASH_SESSION' }
   | { status: 'ACCOUNT_NOT_FOUND' }
-  | { status: 'INSUFFICIENT_STOCK'; itemName: string };
+  | { status: 'INSUFFICIENT_STOCK'; itemName: string }
+  | { status: 'INVENTORY_NOT_CONFIGURED'; itemName: string };
 
 @Injectable()
 export class TableAccountsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly inventoryConsumption: InventoryConsumptionService,
+  ) {}
 
   async branchExists(tenantId: string, branchId: string): Promise<boolean> {
     const branch = await this.prisma.branch.findFirst({
@@ -299,23 +303,26 @@ export class TableAccountsRepository {
         return { status: 'ACCOUNT_NOT_FOUND' };
       }
 
-      const cashSession =
-        data.method === PaymentMethod.CASH
-          ? await tx.cashSession.findFirst({
-              where: {
-                tenantId: data.tenantId,
-                branchId: data.branchId,
-                status: CashSessionStatus.OPEN,
-              },
-            })
-          : null;
+      const cashSession = await tx.cashSession.findFirst({
+        where: {
+          tenantId: data.tenantId,
+          branchId: data.branchId,
+          status: CashSessionStatus.OPEN,
+        },
+      });
 
-      if (data.method === PaymentMethod.CASH && !cashSession) {
+      if (!cashSession) {
         return { status: 'NO_ACTIVE_CASH_SESSION' };
       }
 
-      const stockResult = await this.deductStockForSale(tx, data, sale);
-      if (stockResult.status === 'INSUFFICIENT_STOCK') {
+      const stockResult = await this.inventoryConsumption.consumeSaleItems(tx, {
+        tenantId: data.tenantId,
+        branchId: data.branchId,
+        saleId: sale.id,
+        items: sale.items,
+        actorUserId: data.chargedById,
+      });
+      if (stockResult.status !== 'OK') {
         return stockResult;
       }
 
@@ -330,7 +337,7 @@ export class TableAccountsRepository {
         },
       });
 
-      if (cashSession) {
+      if (data.method === PaymentMethod.CASH) {
         await tx.cashMovement.create({
           data: {
             tenantId: data.tenantId,
@@ -456,7 +463,7 @@ export class TableAccountsRepository {
         },
         data: {
           status: SaleStatus.CLOSED,
-          cashSessionId: cashSession?.id ?? sale.cashSessionId,
+          cashSessionId: cashSession.id,
           customerId,
           customerName: data.customer?.name ?? sale.customerName,
           requiresInvoice: data.requiresInvoice,
@@ -490,102 +497,6 @@ export class TableAccountsRepository {
 
       return { status: 'CHARGED', account, invoice };
     });
-  }
-
-  /**
-   * Kardex-accurate stock deduction for a charged sale. For each inventoried product,
-   * the branch balance is decremented and a SALE_CONSUMPTION movement is recorded.
-   * Untracked non-inventoried products are skipped; inventoried products with no
-   * balance are treated as unavailable stock.
-   */
-  private async deductStockForSale(
-    tx: Prisma.TransactionClient,
-    data: ChargeAccountData,
-    sale: TableAccountSaleRecord,
-  ): Promise<{ status: 'OK' } | { status: 'INSUFFICIENT_STOCK'; itemName: string }> {
-    const deductions: Array<{
-      balanceId: string;
-      ingredientId: string;
-      quantity: number;
-      stockBefore: number;
-      stockAfter: number;
-    }> = [];
-
-    for (const item of sale.items) {
-      if (!item.productId) {
-        continue;
-      }
-
-      const product = await tx.product.findFirst({
-        where: {
-          id: item.productId,
-          tenantId: data.tenantId,
-          deletedAt: null,
-          isActive: true,
-        },
-        select: { id: true, isInventoried: true },
-      });
-
-      if (!product?.isInventoried) {
-        continue;
-      }
-
-      const inventoryItem = await tx.inventoryBalance.findFirst({
-        where: {
-          tenantId: data.tenantId,
-          branchId: data.branchId,
-          deletedAt: null,
-          ingredient: {
-            productId: item.productId,
-            isActive: true,
-            deletedAt: null,
-          },
-        },
-        include: { ingredient: { select: { id: true, name: true } } },
-      });
-
-      if (!inventoryItem) {
-        return { status: 'INSUFFICIENT_STOCK', itemName: item.nameSnapshot };
-      }
-
-      const stockBefore = inventoryItem.stockOnHand;
-      const stockAfter = stockBefore - item.quantity;
-      if (stockAfter < 0 && !inventoryItem.allowNegativeStock) {
-        return { status: 'INSUFFICIENT_STOCK', itemName: inventoryItem.ingredient.name };
-      }
-
-      deductions.push({
-        balanceId: inventoryItem.id,
-        ingredientId: inventoryItem.ingredientId,
-        quantity: item.quantity,
-        stockBefore,
-        stockAfter,
-      });
-    }
-
-    for (const deduction of deductions) {
-      await tx.inventoryBalance.update({
-        where: { id: deduction.balanceId },
-        data: { stockOnHand: deduction.stockAfter, updatedById: data.chargedById },
-      });
-
-      await tx.stockMovement.create({
-        data: {
-          tenantId: data.tenantId,
-          branchId: data.branchId,
-          inventoryBalanceId: deduction.balanceId,
-          ingredientId: deduction.ingredientId,
-          type: StockMovementType.SALE_CONSUMPTION,
-          quantity: deduction.quantity,
-          stockBefore: deduction.stockBefore,
-          stockAfter: deduction.stockAfter,
-          reason: `Venta mesa - ${sale.id}`,
-          createdById: data.chargedById,
-        },
-      });
-    }
-
-    return { status: 'OK' };
   }
 
   private async recalculateAndFind(

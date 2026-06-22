@@ -28,7 +28,7 @@ import type { TenantRequestContext } from '../auth/auth.types';
 import { AuditService } from '../audit/audit.service';
 import { CashRepository } from './cash.repository';
 import type { CashZSaleRecord, CashZSessionRecord } from './cash.repository';
-import { toCashMovementDto, toCashSessionDto } from './cash.mapper';
+import { toCashMovementDto, toCashSessionDto, type CashSessionTotals } from './cash.mapper';
 import type { CloseCashSessionDto } from './dto/close-cash-session.dto';
 import type { OpenCashSessionDto } from './dto/open-cash-session.dto';
 import type { RegisterCashMovementDto } from './dto/register-cash-movement.dto';
@@ -73,7 +73,12 @@ export class CashService {
       openedById: ctx.actorUserId,
     });
 
-    const result = toCashSessionDto(session);
+    const result = toCashSessionDto(session, {
+      cashExpectedAmount: session.openingBalance,
+      bankedExpectedAmount: 0,
+      totalExpectedAmount: session.openingBalance,
+      paymentsByMethod: [],
+    });
     await this.auditService.tryRecord({
       ...auditBase(ctx),
       action: 'CASH_SESSION_OPENED',
@@ -100,7 +105,12 @@ export class CashService {
       });
     }
 
-    return toCashSessionDto(session);
+    const [movements, sales] = await Promise.all([
+      this.repository.listMovements(session.id),
+      this.repository.findClosedSalesForSession(ctx.tenantId, session.branchId, session.id),
+    ]);
+
+    return toCashSessionDto(session, buildCashSessionTotals(movements, sales));
   }
 
   async listMovements(ctx: TenantRequestContext, sessionId: string): Promise<CashMovementDto[]> {
@@ -161,7 +171,12 @@ export class CashService {
       closedAt,
     });
 
-    const result = toCashSessionDto(closed);
+    const sales = await this.repository.findClosedSalesForSession(
+      ctx.tenantId,
+      session.branchId,
+      session.id,
+    );
+    const result = toCashSessionDto(closed, buildCashSessionTotals(movements, sales));
     await this.auditService.tryRecord({
       ...auditBase(ctx),
       action: 'CASH_SESSION_CLOSED',
@@ -183,13 +198,11 @@ export class CashService {
       });
     }
 
-    const closedAt = session.closedAt ?? dayjs.utc().toDate();
     const timezone = normalizeTimezone(await this.repository.findTenantTimezone(ctx.tenantId));
-    const sales = await this.repository.findClosedSalesForShift(
+    const sales = await this.repository.findClosedSalesForSession(
       ctx.tenantId,
       session.branchId,
-      session.openedAt,
-      closedAt,
+      session.id,
     );
 
     return buildZReport(session, sales, timezone);
@@ -273,8 +286,8 @@ function buildZReport(
   sales: CashZSaleRecord[],
   timezone: string,
 ): CashZReportDto {
-  const methodMap = new Map<CashZReportPaymentMethod, CashZReportPaymentMethodDto>();
   const productMap = new Map<string, CashZReportTopProductDto>();
+  const totals = buildCashSessionTotals(session.movements, sales);
   let totalSales = 0;
   let itemsSold = 0;
   let invoicedCount = 0;
@@ -287,14 +300,6 @@ function buildZReport(
     }
     if (sale.requiresInvoice) {
       invoicedCount += 1;
-    }
-
-    for (const payment of sale.payments) {
-      const method = payment.method as CashZReportPaymentMethod;
-      const entry = methodMap.get(method) ?? { method, amount: 0, count: 0 };
-      entry.amount += payment.amount;
-      entry.count += 1;
-      methodMap.set(method, entry);
     }
 
     for (const item of sale.items) {
@@ -310,12 +315,7 @@ function buildZReport(
     }
   }
 
-  const expectedAmount =
-    session.expectedAmount ??
-    session.movements.reduce(
-      (total, movement) => total + MOVEMENT_SIGN[movement.type] * movement.amount,
-      0,
-    );
+  const expectedAmount = session.expectedAmount ?? totals.cashExpectedAmount;
 
   const movements = session.movements
     .filter(
@@ -352,6 +352,9 @@ function buildZReport(
     closedById: session.closedById,
     openingBalance: session.openingBalance,
     expectedAmount,
+    cashExpectedAmount: totals.cashExpectedAmount,
+    bankedExpectedAmount: totals.bankedExpectedAmount,
+    totalExpectedAmount: totals.totalExpectedAmount,
     countedAmount: session.countedAmount,
     difference: session.difference,
     totalSales,
@@ -359,9 +362,47 @@ function buildZReport(
     averageTicket: ticketCount > 0 ? Math.round(totalSales / ticketCount) : 0,
     itemsSold,
     invoicedCount,
-    byMethod: [...methodMap.values()].sort((a, b) => b.amount - a.amount),
+    byMethod: totals.paymentsByMethod,
+    paymentsByMethod: totals.paymentsByMethod,
     movements,
     topProducts: [...productMap.values()].sort((a, b) => b.total - a.total).slice(0, 5),
     generatedAt: toIsoString(dayjs.utc().toDate()),
   };
+}
+
+function buildCashSessionTotals(
+  movements: CashMovement[],
+  sales: CashZSaleRecord[],
+): CashSessionTotals {
+  const paymentsByMethod = buildPaymentsByMethod(sales);
+  const cashExpectedAmount = movements.reduce(
+    (total, movement) => total + MOVEMENT_SIGN[movement.type] * movement.amount,
+    0,
+  );
+  const bankedExpectedAmount = paymentsByMethod
+    .filter((payment) => payment.method !== 'CASH')
+    .reduce((total, payment) => total + payment.amount, 0);
+
+  return {
+    cashExpectedAmount,
+    bankedExpectedAmount,
+    totalExpectedAmount: cashExpectedAmount + bankedExpectedAmount,
+    paymentsByMethod,
+  };
+}
+
+function buildPaymentsByMethod(sales: CashZSaleRecord[]): CashZReportPaymentMethodDto[] {
+  const methodMap = new Map<CashZReportPaymentMethod, CashZReportPaymentMethodDto>();
+
+  for (const sale of sales) {
+    for (const payment of sale.payments) {
+      const method = payment.method as CashZReportPaymentMethod;
+      const entry = methodMap.get(method) ?? { method, amount: 0, count: 0 };
+      entry.amount += payment.amount;
+      entry.count += 1;
+      methodMap.set(method, entry);
+    }
+  }
+
+  return [...methodMap.values()].sort((a, b) => b.amount - a.amount);
 }

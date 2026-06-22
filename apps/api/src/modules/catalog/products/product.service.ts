@@ -64,18 +64,28 @@ export class ProductService {
       await this.assertSkuAvailable(sku);
     }
 
-    const created = await this.repository.create({
-      categoryId: dto.categoryId ?? null,
-      sku,
-      name: dto.name.trim(),
-      description: dto.description?.trim() || null,
-      priceAmount: dto.priceAmount,
-      currency: dto.currency ?? 'COP',
-      isActive: dto.isActive ?? true,
-      isSellable: dto.isSellable ?? true,
-      isInventoried: dto.isInventoried ?? false,
-      createdById: actor.actorUserId,
-    });
+    let created;
+    try {
+      created = await this.repository.create({
+        tenantId: actor.tenantId,
+        categoryId: dto.categoryId ?? null,
+        sku,
+        name: dto.name.trim(),
+        description: dto.description?.trim() || null,
+        priceAmount: dto.priceAmount,
+        currency: dto.currency ?? 'COP',
+        isActive: dto.isActive ?? true,
+        isSellable: dto.isSellable ?? true,
+        isInventoried: dto.isInventoried ?? false,
+        createdById: actor.actorUserId,
+        recipeIngredients: normalizeRecipe(dto.recipeIngredients),
+      });
+    } catch (error) {
+      if (isInvalidRecipeIngredient(error)) {
+        throw invalidRecipeIngredient();
+      }
+      throw error;
+    }
 
     const result = toProductDto(created);
     await this.auditService.tryRecord({
@@ -109,19 +119,30 @@ export class ProductService {
     }
 
     const before = toProductDto(existing);
-    const updated = await this.repository.update(id, {
-      categoryId: dto.categoryId,
-      sku: dto.sku === undefined ? undefined : sku || null,
-      name: dto.name?.trim(),
-      description:
-        dto.description === undefined ? undefined : dto.description.trim() || null,
-      priceAmount: dto.priceAmount,
-      currency: dto.currency,
-      isActive: dto.isActive,
-      isSellable: dto.isSellable,
-      isInventoried: dto.isInventoried,
-      updatedById: actor.actorUserId,
-    });
+    let updated;
+    try {
+      updated = await this.repository.update(id, {
+        tenantId: actor.tenantId,
+        categoryId: dto.categoryId,
+        sku: dto.sku === undefined ? undefined : sku || null,
+        name: dto.name?.trim(),
+        description:
+          dto.description === undefined ? undefined : dto.description.trim() || null,
+        priceAmount: dto.priceAmount,
+        currency: dto.currency,
+        isActive: dto.isActive,
+        isSellable: dto.isSellable,
+        isInventoried: dto.isInventoried,
+        updatedById: actor.actorUserId,
+        recipeIngredients:
+          dto.recipeIngredients === undefined ? undefined : normalizeRecipe(dto.recipeIngredients),
+      });
+    } catch (error) {
+      if (isInvalidRecipeIngredient(error)) {
+        throw invalidRecipeIngredient();
+      }
+      throw error;
+    }
 
     const after = toProductDto(updated);
     await this.auditService.tryRecord({
@@ -188,6 +209,38 @@ export class ProductService {
       });
     }
   }
+}
+
+function normalizeRecipe(
+  recipeIngredients:
+    | Array<{ ingredientId: string; quantity: number }>
+    | undefined,
+): Array<{ ingredientId: string; quantity: number }> | undefined {
+  if (recipeIngredients === undefined) {
+    return undefined;
+  }
+
+  const byIngredient = new Map<string, number>();
+  for (const ingredient of recipeIngredients) {
+    const ingredientId = ingredient.ingredientId.trim();
+    byIngredient.set(ingredientId, (byIngredient.get(ingredientId) ?? 0) + ingredient.quantity);
+  }
+
+  return [...byIngredient.entries()].map(([ingredientId, quantity]) => ({
+    ingredientId,
+    quantity,
+  }));
+}
+
+function isInvalidRecipeIngredient(error: unknown): boolean {
+  return error instanceof Error && error.message === 'INVALID_RECIPE_INGREDIENT';
+}
+
+function invalidRecipeIngredient(): ApplicationException {
+  return new ApplicationException(400, {
+    code: ApiErrorCode.BAD_REQUEST,
+    message: 'One or more recipe ingredients do not exist for this tenant.',
+  });
 }
 
 function auditBase(actor: CatalogActor) {
