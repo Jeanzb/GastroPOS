@@ -1143,11 +1143,22 @@ model PurchaseItem {
 }
 
 /// Unit catalog used by inventory items. Conversions are explicit future work.
+enum UnitDimension {
+  MASS
+  VOLUME
+  COUNT
+}
+
 model UnitOfMeasure {
   id       String @id @default(cuid())
   tenantId String
   code     String
   name     String
+
+  // Physical dimension + multiplier to the canonical base of that dimension
+  // (MASS->g, VOLUME->ml, COUNT->und). Enables recipe/purchase unit conversion.
+  dimension UnitDimension @default(COUNT)
+  factor    Float         @default(1)
 
   isActive Boolean @default(true)
 
