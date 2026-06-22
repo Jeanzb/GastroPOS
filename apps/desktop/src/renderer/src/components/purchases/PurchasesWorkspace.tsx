@@ -32,6 +32,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePurchases, useSuppliers } from '@/hooks/purchases';
 import { useAppToast } from '@/hooks/ui';
+import { formatDocument } from '@/lib/co-document';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { PurchaseFormValues } from '@/schemas/purchases';
 import type { SupplierFormValues } from '@/schemas/suppliers';
@@ -82,20 +83,18 @@ function toPurchasePayload(values: PurchaseFormValues) {
     reference: normalizeOptional(values.reference),
     notes: normalizeOptional(values.notes),
     taxTotal: values.taxTotal,
-    items: [
-      {
-        name: values.itemName.trim(),
-        quantity: values.quantity,
-        unitCost: values.unitCost,
-      },
-    ],
+    items: values.items.map((item) => ({
+      name: item.name.trim(),
+      quantity: item.quantity,
+      unitCost: item.unitCost,
+    })),
   };
 }
 
 function toSupplierPayload(values: SupplierFormValues) {
   return {
     name: values.name.trim(),
-    documentNumber: normalizeOptional(values.documentNumber),
+    documentNumber: formatDocument(values.documentType, values.documentNumber ?? ''),
     email: normalizeOptional(values.email),
     phone: normalizeOptional(values.phone),
     address: normalizeOptional(values.address),
