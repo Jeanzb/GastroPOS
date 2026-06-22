@@ -1066,6 +1066,7 @@ model Purchase {
 
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, createdAt])
   @@index([supplierId])
   @@map("purchases")
 }
