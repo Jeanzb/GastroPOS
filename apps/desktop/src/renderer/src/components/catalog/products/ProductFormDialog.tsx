@@ -24,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { productFormSchema, type ProductFormValues } from '@/schemas/catalog';
 import type { ProductCategoryDto, ProductDto } from '@/types/catalog';
+import { formatMoney } from '@/lib/format';
 import type { InventoryItemDto } from '@/types/inventory';
 
 interface ProductFormDialogProps {
@@ -663,6 +664,29 @@ export function ProductFormDialog({
                         </div>
                       )}
                     </form.Field>
+                    <form.Subscribe selector={(state) => state.values.recipe.ingredients}>
+                      {(ingredients) => {
+                        if (ingredients.length === 0) {
+                          return null;
+                        }
+                        const cost = ingredients.reduce((sum, ing) => {
+                          const item = inventoryItems.find(
+                            (candidate) => candidate.ingredientId === ing.ingredientId,
+                          );
+                          return sum + (item ? ing.quantity * item.averageCost : 0);
+                        }, 0);
+                        return (
+                          <div className="mt-3 flex items-center justify-between rounded-lg border border-dashed border-border bg-surface-muted px-4 py-2.5">
+                            <span className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                              Costo estimado del plato
+                            </span>
+                            <span className="nums text-sm font-bold" data-cy="recipe-cost">
+                              {formatMoney(cost, 'COP')}
+                            </span>
+                          </div>
+                        );
+                      }}
+                    </form.Subscribe>
                   </section>
                 ) : null
               }
