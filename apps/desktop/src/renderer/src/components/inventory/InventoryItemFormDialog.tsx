@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { MoneyInput } from '@/components/ui/money-input';
-import { SI_UNITS, getUnit, type UnitDimension } from '@/lib/units';
+import { SI_UNITS, getUnit, normalizeUnitCode, type UnitDimension } from '@/lib/units';
 import {
   Select,
   SelectContent,
@@ -221,7 +221,7 @@ export function InventoryItemFormDialog({
                   <FormItem className="md:col-span-2">
                     <FormLabel>Unidad base</FormLabel>
                     <Select
-                      value={field.value}
+                      value={normalizeUnitCode(field.value)}
                       onValueChange={(value) => {
                         field.onChange(value);
                         form.setValue('baseUnitName', getUnit(value)?.name ?? value);

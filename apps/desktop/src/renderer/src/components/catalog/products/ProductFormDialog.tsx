@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { productFormSchema, type ProductFormValues } from '@/schemas/catalog';
 import type { ProductCategoryDto, ProductDto } from '@/types/catalog';
 import { formatMoney } from '@/lib/format';
-import { convertQuantity, dimensionForCode, unitsForDimension } from '@/lib/units';
+import { convertQuantity, dimensionForCode, normalizeUnitCode, unitsForDimension } from '@/lib/units';
 import type { InventoryItemDto } from '@/types/inventory';
 
 interface ProductFormDialogProps {
@@ -74,9 +74,10 @@ function getDefaultValues(
         product?.recipe?.ingredients.map((ingredient) => ({
           ingredientId: ingredient.ingredientId,
           quantity: ingredient.quantity,
-          unitCode:
+          unitCode: normalizeUnitCode(
             inventoryItems.find((item) => item.ingredientId === ingredient.ingredientId)
               ?.baseUnitCode ?? 'und',
+          ),
         })) ?? [],
     },
   };
@@ -560,7 +561,7 @@ export function ProductFormDialog({
                                           if (baseCode) {
                                             form.setFieldValue(
                                               `recipe.ingredients[${index}].unitCode`,
-                                              baseCode,
+                                              normalizeUnitCode(baseCode),
                                             );
                                           }
                                         }}
@@ -645,7 +646,9 @@ export function ProductFormDialog({
                                               >
                                                 {(unitField) => (
                                                   <Select
-                                                    value={unitField.state.value || baseCode}
+                                                    value={normalizeUnitCode(
+                                                      unitField.state.value || baseCode,
+                                                    )}
                                                     onValueChange={(newUnit) => {
                                                       const cur =
                                                         Number(quantityField.state.value) || 0;
