@@ -27,8 +27,16 @@ export const SI_UNITS: readonly UnitDefinition[] = [
 
 const BY_CODE = new Map<string, UnitDefinition>(SI_UNITS.map((unit) => [unit.code, unit]));
 
+const ALIASES: Record<string, string> = { un: 'und', lt: 'L', l: 'L' };
+
+/** Resolve legacy/free-text codes to a canonical SI code: "KG"->"kg", "UND"->"und", "l"->"L". */
+export function normalizeUnitCode(code: string): string {
+  const lower = code.trim().toLowerCase();
+  return ALIASES[lower] ?? lower;
+}
+
 export function getUnit(code: string): UnitDefinition | undefined {
-  return BY_CODE.get(code);
+  return BY_CODE.get(normalizeUnitCode(code));
 }
 
 export class UnknownUnitError extends Error {
@@ -50,8 +58,8 @@ export class IncompatibleUnitsError extends Error {
 
 /** True when both units share the same dimension (e.g. kg↔lb, ml↔L). */
 export function canConvert(fromCode: string, toCode: string): boolean {
-  const from = BY_CODE.get(fromCode);
-  const to = BY_CODE.get(toCode);
+  const from = getUnit(fromCode);
+  const to = getUnit(toCode);
   return Boolean(from && to && from.dimension === to.dimension);
 }
 
@@ -60,18 +68,18 @@ export function canConvert(fromCode: string, toCode: string): boolean {
  * e.g. convertQuantity(1.5, 'kg', 'g') === 1500, convertQuantity(200, 'g', 'kg') === 0.2.
  */
 export function convertQuantity(amount: number, fromCode: string, toCode: string): number {
-  const from = BY_CODE.get(fromCode);
+  const from = getUnit(fromCode);
   if (!from) {
     throw new UnknownUnitError(fromCode);
   }
-  const to = BY_CODE.get(toCode);
+  const to = getUnit(toCode);
   if (!to) {
     throw new UnknownUnitError(toCode);
   }
   if (from.dimension !== to.dimension) {
     throw new IncompatibleUnitsError(fromCode, toCode);
   }
-  if (fromCode === toCode) {
+  if (from.code === to.code) {
     return amount;
   }
   return (amount * from.factor) / to.factor;

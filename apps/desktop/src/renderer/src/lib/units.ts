@@ -22,12 +22,20 @@ export const SI_UNITS: UnitOption[] = [
 
 const BY_CODE = new Map(SI_UNITS.map((unit) => [unit.code, unit]));
 
+const ALIASES: Record<string, string> = { un: 'und', lt: 'L', l: 'L' };
+
+/** Resolve legacy/free-text codes to a canonical SI code: "KG"->"kg", "UND"->"und", "l"->"L". */
+export function normalizeUnitCode(code: string): string {
+  const lower = code.trim().toLowerCase();
+  return ALIASES[lower] ?? lower;
+}
+
 export function getUnit(code: string): UnitOption | undefined {
-  return BY_CODE.get(code);
+  return BY_CODE.get(normalizeUnitCode(code));
 }
 
 export function dimensionForCode(code: string): UnitDimension {
-  return BY_CODE.get(code)?.dimension ?? 'COUNT';
+  return getUnit(code)?.dimension ?? 'COUNT';
 }
 
 export function unitsForDimension(dimension: UnitDimension): UnitOption[] {
@@ -36,8 +44,8 @@ export function unitsForDimension(dimension: UnitDimension): UnitOption[] {
 
 /** Convert between units of the same dimension; returns NaN if incompatible/unknown. */
 export function convertQuantity(amount: number, fromCode: string, toCode: string): number {
-  const from = BY_CODE.get(fromCode);
-  const to = BY_CODE.get(toCode);
+  const from = getUnit(fromCode);
+  const to = getUnit(toCode);
   if (!from || !to || from.dimension !== to.dimension) {
     return Number.NaN;
   }

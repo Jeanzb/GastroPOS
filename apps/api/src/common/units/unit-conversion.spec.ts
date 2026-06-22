@@ -3,6 +3,7 @@ import {
   UnknownUnitError,
   canConvert,
   convertQuantity,
+  getUnit,
   unitsForDimension,
 } from './unit-conversion';
 
@@ -30,6 +31,13 @@ describe('unit-conversion', () => {
 
   it('throws on unknown units', () => {
     expect(() => convertQuantity(1, 'caja', 'und')).toThrow(UnknownUnitError);
+  });
+
+  it('resolves legacy/free-text codes case-insensitively', () => {
+    expect(getUnit('KG')?.dimension).toBe('MASS');
+    expect(getUnit('UND')?.dimension).toBe('COUNT');
+    expect(getUnit('l')?.code).toBe('L');
+    expect(convertQuantity(2, 'KG', 'g')).toBe(2000);
   });
 
   it('lists units per dimension for unit pickers', () => {
