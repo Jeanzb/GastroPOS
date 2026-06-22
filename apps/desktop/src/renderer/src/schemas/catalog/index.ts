@@ -11,7 +11,9 @@ export const categoryFormSchema = z.object({
 
 export const productIngredientFormSchema = z.object({
   ingredientId: z.string().trim().min(1, 'Selecciona un insumo'),
-  quantity: z.number().int('La cantidad debe ser entera').min(1, 'Debe ser mayor a cero'),
+  // Amount in the chosen `unitCode`; converted to the ingredient base unit on submit.
+  quantity: z.number().positive('Debe ser mayor a cero'),
+  unitCode: z.string().trim().min(1),
 });
 
 export const productFormSchema = z.object({

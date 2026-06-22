@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { productFormSchema, type ProductFormValues } from '@/schemas/catalog';
 import type { ProductCategoryDto, ProductDto } from '@/types/catalog';
 import { formatMoney } from '@/lib/format';
+import { convertQuantity, dimensionForCode, unitsForDimension } from '@/lib/units';
 import type { InventoryItemDto } from '@/types/inventory';
 
 interface ProductFormDialogProps {
@@ -43,9 +44,13 @@ const NO_INGREDIENT_VALUE = '__none__';
 const EMPTY_INGREDIENT: ProductFormValues['recipe']['ingredients'][number] = {
   ingredientId: '',
   quantity: 1,
+  unitCode: 'und',
 };
 
-function getDefaultValues(product?: ProductDto): ProductFormValues {
+function getDefaultValues(
+  product?: ProductDto,
+  inventoryItems: InventoryItemDto[] = [],
+): ProductFormValues {
   return {
     identity: {
       name: product?.name ?? '',
@@ -69,6 +74,9 @@ function getDefaultValues(product?: ProductDto): ProductFormValues {
         product?.recipe?.ingredients.map((ingredient) => ({
           ingredientId: ingredient.ingredientId,
           quantity: ingredient.quantity,
+          unitCode:
+            inventoryItems.find((item) => item.ingredientId === ingredient.ingredientId)
+              ?.baseUnitCode ?? 'und',
         })) ?? [],
     },
   };
@@ -144,22 +152,37 @@ export function ProductFormDialog({
 }: ProductFormDialogProps) {
   const mode = product ? 'edit' : 'create';
   const form = useForm({
-    defaultValues: getDefaultValues(product),
+    defaultValues: getDefaultValues(product, inventoryItems),
     validators: {
       onSubmit: productFormSchema,
     },
     onSubmit: async ({ value }) => {
-      await onSubmit(value);
-      form.reset(getDefaultValues());
+      const payload: ProductFormValues = {
+        ...value,
+        recipe: {
+          ingredients: value.recipe.ingredients.map((ing) => {
+            const baseCode =
+              inventoryItems.find((item) => item.ingredientId === ing.ingredientId)
+                ?.baseUnitCode ?? ing.unitCode;
+            const inBase = convertQuantity(ing.quantity, ing.unitCode, baseCode);
+            const quantity = Number.isFinite(inBase)
+              ? Math.max(1, Math.round(inBase))
+              : Math.max(1, Math.round(ing.quantity));
+            return { ingredientId: ing.ingredientId, quantity, unitCode: baseCode };
+          }),
+        },
+      };
+      await onSubmit(payload);
+      form.reset(getDefaultValues(undefined, inventoryItems));
       onOpenChange(false);
     },
   });
 
   useEffect(() => {
     if (open) {
-      form.reset(getDefaultValues(product));
+      form.reset(getDefaultValues(product, inventoryItems));
     }
-  }, [form, open, product]);
+  }, [form, open, product, inventoryItems]);
 
   const submitLabel = mode === 'create' ? 'Crear producto' : 'Guardar cambios';
 
@@ -511,7 +534,7 @@ export function ProductFormDialog({
                           {field.state.value.map((_ingredient, index) => (
                             <div
                               key={`ingredient-${index}`}
-                              className="grid gap-3 rounded-lg border border-border bg-surface-muted p-3 md:grid-cols-[1fr_110px_100px_auto]"
+                              className="grid gap-3 rounded-lg border border-border bg-surface-muted p-3 md:grid-cols-[1fr_180px_100px_auto]"
                             >
                               <form.Field name={`recipe.ingredients[${index}].ingredientId`}>
                                 {(ingredientField) => {
@@ -528,11 +551,19 @@ export function ProductFormDialog({
                                       </label>
                                       <Select
                                         value={ingredientField.state.value || NO_INGREDIENT_VALUE}
-                                        onValueChange={(value) =>
-                                          ingredientField.handleChange(
-                                            value === NO_INGREDIENT_VALUE ? '' : value,
-                                          )
-                                        }
+                                        onValueChange={(value) => {
+                                          const id = value === NO_INGREDIENT_VALUE ? '' : value;
+                                          ingredientField.handleChange(id);
+                                          const baseCode = inventoryItems.find(
+                                            (item) => item.ingredientId === id,
+                                          )?.baseUnitCode;
+                                          if (baseCode) {
+                                            form.setFieldValue(
+                                              `recipe.ingredients[${index}].unitCode`,
+                                              baseCode,
+                                            );
+                                          }
+                                        }}
                                       >
                                         <SelectTrigger
                                         id={inputId}
@@ -580,12 +611,13 @@ export function ProductFormDialog({
                                       <label className="text-xs font-medium" htmlFor={inputId}>
                                         Cantidad
                                       </label>
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1.5">
                                         <Input
                                           id={inputId}
                                           type="number"
-                                          min={1}
-                                          step={1}
+                                          min={0}
+                                          step="any"
+                                          inputMode="decimal"
                                           value={quantityField.state.value}
                                           onBlur={quantityField.handleBlur}
                                           onChange={(event) =>
@@ -600,14 +632,53 @@ export function ProductFormDialog({
                                           }
                                         >
                                           {(ingredientId) => {
-                                            const unit = inventoryItems.find(
-                                              (item) => item.ingredientId === ingredientId,
-                                            )?.baseUnitCode;
-                                            return unit ? (
-                                              <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-                                                {unit}
-                                              </span>
-                                            ) : null;
+                                            const baseCode =
+                                              inventoryItems.find(
+                                                (item) => item.ingredientId === ingredientId,
+                                              )?.baseUnitCode ?? 'und';
+                                            const options = unitsForDimension(
+                                              dimensionForCode(baseCode),
+                                            );
+                                            return (
+                                              <form.Field
+                                                name={`recipe.ingredients[${index}].unitCode`}
+                                              >
+                                                {(unitField) => (
+                                                  <Select
+                                                    value={unitField.state.value || baseCode}
+                                                    onValueChange={(newUnit) => {
+                                                      const cur =
+                                                        Number(quantityField.state.value) || 0;
+                                                      const converted = convertQuantity(
+                                                        cur,
+                                                        unitField.state.value || baseCode,
+                                                        newUnit,
+                                                      );
+                                                      if (Number.isFinite(converted)) {
+                                                        quantityField.handleChange(
+                                                          Number(converted.toFixed(4)),
+                                                        );
+                                                      }
+                                                      unitField.handleChange(newUnit);
+                                                    }}
+                                                  >
+                                                    <SelectTrigger
+                                                      className="w-[80px] shrink-0"
+                                                      aria-label="Unidad"
+                                                    >
+                                                      <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                      {options.map((unit) => (
+                                                        <SelectItem key={unit.code} value={unit.code}>
+                                                          {unit.code}
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                )}
+                                              </form.Field>
+                                            );
                                           }}
                                         </form.Subscribe>
                                       </div>
@@ -673,7 +744,16 @@ export function ProductFormDialog({
                           const item = inventoryItems.find(
                             (candidate) => candidate.ingredientId === ing.ingredientId,
                           );
-                          return sum + (item ? ing.quantity * item.averageCost : 0);
+                          if (!item) {
+                            return sum;
+                          }
+                          const inBase = convertQuantity(
+                            ing.quantity,
+                            ing.unitCode,
+                            item.baseUnitCode,
+                          );
+                          const qty = Number.isFinite(inBase) ? inBase : ing.quantity;
+                          return sum + qty * item.averageCost;
                         }, 0);
                         return (
                           <div className="mt-3 flex items-center justify-between rounded-lg border border-dashed border-border bg-surface-muted px-4 py-2.5">
