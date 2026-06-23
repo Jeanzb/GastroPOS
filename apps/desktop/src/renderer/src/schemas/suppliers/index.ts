@@ -14,6 +14,11 @@ export const supplierFormSchema = z.object({
     .max(20)
     .regex(/^[A-Za-z0-9]*$/, 'Caracteres inválidos')
     .optional(),
+  verificationDigit: z
+    .string()
+    .trim()
+    .regex(/^\d?$/, 'DV inválido')
+    .optional(),
   email: z.union([z.string().trim().email('Correo invalido'), z.literal('')]).optional(),
   phone: z.string().trim().max(40).optional(),
   address: z.string().trim().max(200).optional(),

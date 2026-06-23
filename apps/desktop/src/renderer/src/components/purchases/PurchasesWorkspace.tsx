@@ -95,7 +95,11 @@ function toPurchasePayload(values: PurchaseFormValues) {
 function toSupplierPayload(values: SupplierFormValues) {
   return {
     name: values.name.trim(),
-    documentNumber: formatDocument(values.documentType, values.documentNumber ?? ''),
+    documentNumber: formatDocument(
+      values.documentType,
+      values.documentNumber ?? '',
+      values.verificationDigit,
+    ),
     email: normalizeOptional(values.email),
     phone: normalizeOptional(values.phone),
     address: normalizeOptional(values.address),

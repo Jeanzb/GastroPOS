@@ -58,13 +58,18 @@ function cleanNumber(type: DocumentType, raw: string): string {
  * Stored document string, e.g. "NIT 900123456-7", "CC 1098765432",
  * "CE 1234567", "PAS AB123456".
  */
-export function formatDocument(type: DocumentType, rawNumber: string): string | undefined {
+export function formatDocument(
+  type: DocumentType,
+  rawNumber: string,
+  verificationDigit?: string,
+): string | undefined {
   const cleaned = cleanNumber(type, rawNumber);
   if (!cleaned) {
     return undefined;
   }
   if (type === 'NIT') {
-    return `NIT ${cleaned}-${computeNitVerificationDigit(cleaned)}`;
+    const dv = verificationDigit?.trim() || computeNitVerificationDigit(cleaned);
+    return `NIT ${cleaned}-${dv}`;
   }
   return `${type} ${cleaned}`;
 }

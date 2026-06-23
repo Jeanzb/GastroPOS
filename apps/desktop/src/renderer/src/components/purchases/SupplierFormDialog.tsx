@@ -49,6 +49,7 @@ const DEFAULT_VALUES: SupplierFormValues = {
   personType: 'JURIDICA',
   documentType: 'NIT',
   documentNumber: '',
+  verificationDigit: '',
   email: '',
   phone: '',
   address: '',
@@ -79,9 +80,7 @@ export function SupplierFormDialog({
 
   const personType = form.watch('personType');
   const documentType = form.watch('documentType');
-  const documentNumber = form.watch('documentNumber') ?? '';
-  const verificationDigit =
-    documentType === 'NIT' ? computeNitVerificationDigit(documentNumber) : null;
+  const verificationDigit = form.watch('verificationDigit') ?? '';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -185,27 +184,42 @@ export function SupplierFormDialog({
                             name={field.name}
                             ref={field.ref}
                             onBlur={field.onBlur}
-                            onChange={(event) =>
-                              field.onChange(
-                                isNumericDocument(documentType)
-                                  ? event.target.value.replace(/\D/g, '')
-                                  : event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
-                              )
-                            }
+                            onChange={(event) => {
+                              const next = isNumericDocument(documentType)
+                                ? event.target.value.replace(/\D/g, '')
+                                : event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                              field.onChange(next);
+                              if (documentType === 'NIT') {
+                                form.setValue(
+                                  'verificationDigit',
+                                  computeNitVerificationDigit(next) ?? '',
+                                );
+                              }
+                            }}
                           />
                         </FormControl>
-                        {requiresVerificationDigit(documentType) && verificationDigit !== null ? (
+                        {requiresVerificationDigit(documentType) ? (
                           <div
-                            className="flex shrink-0 flex-col items-center rounded-md border border-border bg-surface-quiet px-3 py-1"
-                            data-cy="supplier-document-dv"
-                            title="Dígito de verificación (calculado)"
+                            className="flex shrink-0 flex-col items-center gap-1"
+                            title="Dígito de verificación (editable)"
                           >
                             <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
                               DV
                             </span>
-                            <span className="nums text-sm font-bold leading-none">
-                              {verificationDigit}
-                            </span>
+                            <Input
+                              data-cy="supplier-document-dv"
+                              className="nums h-9 w-12 text-center text-sm font-bold"
+                              inputMode="numeric"
+                              maxLength={1}
+                              value={verificationDigit}
+                              onChange={(event) =>
+                                form.setValue(
+                                  'verificationDigit',
+                                  event.target.value.replace(/\D/g, '').slice(0, 1),
+                                  { shouldValidate: true },
+                                )
+                              }
+                            />
                           </div>
                         ) : null}
                       </div>
