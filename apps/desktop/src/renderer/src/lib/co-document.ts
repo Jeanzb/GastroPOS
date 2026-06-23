@@ -17,16 +17,54 @@ export function computeNitVerificationDigit(nit: string): string | null {
   return String(remainder < 2 ? remainder : 11 - remainder);
 }
 
-export type DocumentType = 'NIT' | 'CC';
+export type PersonType = 'JURIDICA' | 'NATURAL';
+export type DocumentType = 'NIT' | 'CC' | 'CE' | 'PAS';
 
-/** Builds the stored document string, e.g. "NIT 900123456-7" or "CC 1098765432". */
+export const PERSON_TYPE_LABEL: Record<PersonType, string> = {
+  JURIDICA: 'Persona jurídica',
+  NATURAL: 'Persona natural',
+};
+
+export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
+  NIT: 'NIT',
+  CC: 'Cédula de ciudadanía',
+  CE: 'Cédula de extranjería',
+  PAS: 'Pasaporte',
+};
+
+/** Document types each person type may use (Colombian rules). */
+export const DOCUMENT_TYPES_BY_PERSON: Record<PersonType, DocumentType[]> = {
+  JURIDICA: ['NIT'],
+  NATURAL: ['CC', 'CE', 'PAS'],
+};
+
+/** Only the NIT carries a DIAN verification digit. */
+export function requiresVerificationDigit(type: DocumentType): boolean {
+  return type === 'NIT';
+}
+
+/** Passports are alphanumeric; the rest are numeric. */
+export function isNumericDocument(type: DocumentType): boolean {
+  return type !== 'PAS';
+}
+
+function cleanNumber(type: DocumentType, raw: string): string {
+  return type === 'PAS'
+    ? raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+    : raw.replace(/\D/g, '');
+}
+
+/**
+ * Stored document string, e.g. "NIT 900123456-7", "CC 1098765432",
+ * "CE 1234567", "PAS AB123456".
+ */
 export function formatDocument(type: DocumentType, rawNumber: string): string | undefined {
-  const digits = rawNumber.replace(/\D/g, '');
-  if (!digits) {
+  const cleaned = cleanNumber(type, rawNumber);
+  if (!cleaned) {
     return undefined;
   }
   if (type === 'NIT') {
-    return `NIT ${digits}-${computeNitVerificationDigit(digits)}`;
+    return `NIT ${cleaned}-${computeNitVerificationDigit(cleaned)}`;
   }
-  return `CC ${digits}`;
+  return `${type} ${cleaned}`;
 }

@@ -27,7 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { computeNitVerificationDigit } from '@/lib/co-document';
+import {
+  DOCUMENT_TYPE_LABEL,
+  DOCUMENT_TYPES_BY_PERSON,
+  computeNitVerificationDigit,
+  isNumericDocument,
+  requiresVerificationDigit,
+  type PersonType,
+} from '@/lib/co-document';
 import { supplierFormSchema, type SupplierFormValues } from '@/schemas/suppliers';
 
 interface SupplierFormDialogProps {
@@ -39,6 +46,7 @@ interface SupplierFormDialogProps {
 
 const DEFAULT_VALUES: SupplierFormValues = {
   name: '',
+  personType: 'JURIDICA',
   documentType: 'NIT',
   documentNumber: '',
   email: '',
@@ -69,6 +77,7 @@ export function SupplierFormDialog({
     onOpenChange(false);
   });
 
+  const personType = form.watch('personType');
   const documentType = form.watch('documentType');
   const documentNumber = form.watch('documentNumber') ?? '';
   const verificationDigit =
@@ -101,13 +110,42 @@ export function SupplierFormDialog({
                 )}
               />
 
-              <div className="grid gap-4 md:col-span-2 md:grid-cols-[150px_1fr]">
+              <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="personType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de persona</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          form.setValue(
+                            'documentType',
+                            DOCUMENT_TYPES_BY_PERSON[value as PersonType][0],
+                          );
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full" data-cy="supplier-person-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="JURIDICA">Persona jurídica</SelectItem>
+                          <SelectItem value="NATURAL">Persona natural</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="documentType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo</FormLabel>
+                      <FormLabel>Tipo de documento</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger className="w-full" data-cy="supplier-document-type">
@@ -115,8 +153,11 @@ export function SupplierFormDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="NIT">NIT</SelectItem>
-                          <SelectItem value="CC">Cédula</SelectItem>
+                          {DOCUMENT_TYPES_BY_PERSON[personType].map((dt) => (
+                            <SelectItem key={dt} value={dt}>
+                              {DOCUMENT_TYPE_LABEL[dt]}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -126,22 +167,34 @@ export function SupplierFormDialog({
                   control={form.control}
                   name="documentNumber"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{documentType === 'NIT' ? 'NIT' : 'Cédula'}</FormLabel>
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>{DOCUMENT_TYPE_LABEL[documentType]}</FormLabel>
                       <div className="flex items-center gap-2">
                         <FormControl>
                           <Input
                             data-cy="supplier-document"
-                            inputMode="numeric"
-                            placeholder={documentType === 'NIT' ? '900123456' : '1098765432'}
+                            inputMode={isNumericDocument(documentType) ? 'numeric' : 'text'}
+                            placeholder={
+                              documentType === 'NIT'
+                                ? '900123456'
+                                : documentType === 'PAS'
+                                  ? 'AB123456'
+                                  : '1098765432'
+                            }
                             value={field.value ?? ''}
                             name={field.name}
                             ref={field.ref}
                             onBlur={field.onBlur}
-                            onChange={(event) => field.onChange(event.target.value.replace(/\D/g, ''))}
+                            onChange={(event) =>
+                              field.onChange(
+                                isNumericDocument(documentType)
+                                  ? event.target.value.replace(/\D/g, '')
+                                  : event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                              )
+                            }
                           />
                         </FormControl>
-                        {documentType === 'NIT' && verificationDigit !== null ? (
+                        {requiresVerificationDigit(documentType) && verificationDigit !== null ? (
                           <div
                             className="flex shrink-0 flex-col items-center rounded-md border border-border bg-surface-quiet px-3 py-1"
                             data-cy="supplier-document-dv"
@@ -160,7 +213,6 @@ export function SupplierFormDialog({
                     </FormItem>
                   )}
                 />
-
               </div>
 
               <FormField
