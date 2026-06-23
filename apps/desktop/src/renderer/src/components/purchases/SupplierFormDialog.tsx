@@ -167,48 +167,45 @@ export function SupplierFormDialog({
                   name="documentNumber"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>{DOCUMENT_TYPE_LABEL[documentType]}</FormLabel>
-                      <div className="flex items-center gap-2">
-                        <FormControl>
-                          <Input
-                            data-cy="supplier-document"
-                            inputMode={isNumericDocument(documentType) ? 'numeric' : 'text'}
-                            placeholder={
-                              documentType === 'NIT'
-                                ? '900123456'
-                                : documentType === 'PAS'
-                                  ? 'AB123456'
-                                  : '1098765432'
-                            }
-                            value={field.value ?? ''}
-                            name={field.name}
-                            ref={field.ref}
-                            onBlur={field.onBlur}
-                            onChange={(event) => {
-                              const next = isNumericDocument(documentType)
-                                ? event.target.value.replace(/\D/g, '')
-                                : event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                              field.onChange(next);
-                              if (documentType === 'NIT') {
-                                form.setValue(
-                                  'verificationDigit',
-                                  computeNitVerificationDigit(next) ?? '',
-                                );
+                      <div className="flex items-end gap-2">
+                        <div className="flex-1 space-y-2">
+                          <FormLabel>{DOCUMENT_TYPE_LABEL[documentType]}</FormLabel>
+                          <FormControl>
+                            <Input
+                              data-cy="supplier-document"
+                              inputMode={isNumericDocument(documentType) ? 'numeric' : 'text'}
+                              placeholder={
+                                documentType === 'NIT'
+                                  ? '900123456'
+                                  : documentType === 'PAS'
+                                    ? 'AB123456'
+                                    : '1098765432'
                               }
-                            }}
-                          />
-                        </FormControl>
+                              value={field.value ?? ''}
+                              name={field.name}
+                              ref={field.ref}
+                              onBlur={field.onBlur}
+                              onChange={(event) => {
+                                const next = isNumericDocument(documentType)
+                                  ? event.target.value.replace(/\D/g, '')
+                                  : event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                field.onChange(next);
+                                if (documentType === 'NIT') {
+                                  form.setValue(
+                                    'verificationDigit',
+                                    computeNitVerificationDigit(next) ?? '',
+                                  );
+                                }
+                              }}
+                            />
+                          </FormControl>
+                        </div>
                         {requiresVerificationDigit(documentType) ? (
-                          <div
-                            className="flex shrink-0 flex-col items-center gap-1"
-                            title="Dígito de verificación (editable)"
-                          >
-                            <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                              DV
-                            </span>
+                          <div className="shrink-0 space-y-2" title="Dígito de verificación (editable)">
+                            <FormLabel className="block text-center">DV</FormLabel>
                             <Input
                               data-cy="supplier-document-dv"
-                              className="nums h-9 w-12 text-center text-sm font-bold"
+                              className="nums h-9 w-14 text-center text-sm font-bold"
                               inputMode="numeric"
                               maxLength={1}
                               value={verificationDigit}
