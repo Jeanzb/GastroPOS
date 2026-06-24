@@ -28,6 +28,7 @@ export interface AppToastApi {
   clienteRegistrado: (name?: string) => string | number;
   comandaEnviada: (tableNumber?: string, itemCount?: number) => string | number;
   empleadoSuspendido: (name: string) => string | number;
+  empleadoEliminado: (name: string) => string | number;
 }
 
 export function useAppToast(): AppToastApi {
@@ -58,6 +59,8 @@ export function useAppToast(): AppToastApi {
         ),
       empleadoSuspendido: (name) =>
         toast.warning('Empleado suspendido', withDefaults(`${name} ya no puede iniciar sesion`)),
+      empleadoEliminado: (name) =>
+        toast.success('Empleado eliminado', withDefaults(`${name} perdio el acceso · historial conservado`)),
     }),
     [],
   );

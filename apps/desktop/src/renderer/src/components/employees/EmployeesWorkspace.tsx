@@ -1,6 +1,17 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
-import { KeyRound, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { KeyRound, Loader2, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { DcChip, KpiCard, type DcChipTone } from '@/components/operations';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -162,6 +173,7 @@ export function EmployeesWorkspace() {
   const employees = useEmployees();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [pinEmployee, setPinEmployee] = useState<EmployeeDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EmployeeDto | null>(null);
   const employeeList = employees.listQuery.data?.data ?? EMPTY_EMPLOYEES;
   const total = employees.listQuery.data?.meta.total ?? employeeList.length;
 
@@ -215,16 +227,15 @@ export function EmployeesWorkspace() {
     }
   };
 
-  const onDelete = async (employee: EmployeeDto) => {
-    const confirmed = window.confirm(
-      `Eliminar a ${employee.fullName}? Pierde el acceso de inmediato. El historial se conserva.`,
-    );
-    if (!confirmed) {
+  const confirmDelete = async () => {
+    if (!deleteTarget) {
       return;
     }
+    const employee = deleteTarget;
     try {
       await employees.deleteMutation.mutateAsync(employee.id);
-      appToast.success('Empleado eliminado', `${employee.fullName} ya no puede iniciar sesion.`);
+      appToast.empleadoEliminado(employee.fullName);
+      setDeleteTarget(null);
     } catch (error) {
       appToast.error(
         'No se pudo eliminar',
@@ -314,7 +325,7 @@ export function EmployeesWorkspace() {
                       employee={employee}
                       onSetPin={setPinEmployee}
                       onToggle={onToggle}
-                      onDelete={onDelete}
+                      onDelete={setDeleteTarget}
                     />
                   ))
                 : null}
@@ -344,6 +355,49 @@ export function EmployeesWorkspace() {
         }}
         onSubmit={onSetPin}
       />
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !employees.deleteMutation.isPending) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent data-cy="employee-delete-dialog">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-[#FBEAE4] text-[#C0431A]">
+              <Trash2 />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Eliminar a {deleteTarget?.fullName}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Pierde el acceso de inmediato y desaparece de la lista. El historial de ventas y
+              auditoria se conserva.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={employees.deleteMutation.isPending}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-cy="employee-delete-confirm"
+              className="bg-[#C0431A] text-white hover:bg-[#A5380F]"
+              disabled={employees.deleteMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDelete();
+              }}
+            >
+              {employees.deleteMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}
+              Eliminar empleado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
