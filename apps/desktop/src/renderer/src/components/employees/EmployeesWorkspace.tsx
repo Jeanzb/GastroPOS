@@ -1,5 +1,5 @@
 import { useMemo, useState, type ChangeEvent } from 'react';
-import { KeyRound, Plus, Search, ShieldCheck } from 'lucide-react';
+import { KeyRound, Plus, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import { DcChip, KpiCard, type DcChipTone } from '@/components/operations';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,10 +66,12 @@ function EmployeeCard({
   employee,
   onSetPin,
   onToggle,
+  onDelete,
 }: {
   employee: EmployeeDto;
   onSetPin: (employee: EmployeeDto) => void;
   onToggle: (employee: EmployeeDto) => void;
+  onDelete: (employee: EmployeeDto) => void;
 }) {
   const role = ROLE_META[employee.role];
 
@@ -138,6 +140,17 @@ function EmployeeCard({
           >
             {employee.isActive ? 'Suspender' : 'Activar'}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            data-cy="employee-delete"
+            className="text-[#C0431A]"
+            title="Eliminar empleado"
+            onClick={() => onDelete(employee)}
+          >
+            <Trash2 className="size-4" />
+          </Button>
         </div>
       </div>
     </div>
@@ -198,6 +211,24 @@ export function EmployeesWorkspace() {
       appToast.error(
         'No se pudo cambiar el acceso',
         getErrorMessage(error, 'El backend rechazo el cambio de estado.'),
+      );
+    }
+  };
+
+  const onDelete = async (employee: EmployeeDto) => {
+    const confirmed = window.confirm(
+      `Eliminar a ${employee.fullName}? Pierde el acceso de inmediato. El historial se conserva.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await employees.deleteMutation.mutateAsync(employee.id);
+      appToast.success('Empleado eliminado', `${employee.fullName} ya no puede iniciar sesion.`);
+    } catch (error) {
+      appToast.error(
+        'No se pudo eliminar',
+        getErrorMessage(error, 'El backend rechazo la eliminacion.'),
       );
     }
   };
@@ -283,6 +314,7 @@ export function EmployeesWorkspace() {
                       employee={employee}
                       onSetPin={setPinEmployee}
                       onToggle={onToggle}
+                      onDelete={onDelete}
                     />
                   ))
                 : null}

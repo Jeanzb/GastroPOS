@@ -20,7 +20,11 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth';
 
 const loginSchema = z.object({
-  email: z.string().email('Ingresa un usuario valido'),
+  email: z
+    .string()
+    .trim()
+    .min(3, 'Ingresa un usuario valido')
+    .regex(/^[A-Za-z0-9._%+@-]+$/, 'Usuario o correo invalido'),
   password: z.string().min(1, 'Ingresa tu contrasena'),
 });
 
@@ -96,7 +100,14 @@ export function LoginForm() {
                   <FormItem>
                     <FormLabel>Usuario</FormLabel>
                     <FormControl>
-                      <Input type="email" autoFocus placeholder="owner@gastroai.local" {...field} />
+                      <Input
+                        type="text"
+                        autoFocus
+                        autoCapitalize="none"
+                        autoComplete="username"
+                        placeholder="jeanzb o owner@gastroai.local"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

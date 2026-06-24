@@ -115,9 +115,10 @@ export function EmployeeFormDialog({
                     <FormLabel>Usuario</FormLabel>
                     <FormControl>
                       <Input
-                        type="email"
+                        type="text"
+                        autoCapitalize="none"
                         data-cy="employee-email"
-                        placeholder="mesero@gastroia.local"
+                        placeholder="jeanzb o mesero@gastroia.local"
                         {...field}
                       />
                     </FormControl>

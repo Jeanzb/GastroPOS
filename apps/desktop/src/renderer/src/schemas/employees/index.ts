@@ -11,7 +11,12 @@ export const USER_ROLES = [
 ] as const;
 
 export const employeeFormSchema = z.object({
-  email: z.string().trim().email('Ingresa un correo valido').max(160),
+  email: z
+    .string()
+    .trim()
+    .min(3, 'Ingresa un usuario valido')
+    .max(160)
+    .regex(/^[A-Za-z0-9._%+@-]+$/, 'Solo letras, numeros y . _ - @'),
   fullName: z
     .string()
     .trim()
