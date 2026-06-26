@@ -70,7 +70,6 @@ services:
   - type: web
     name: gastroia-web
     runtime: static
-    plan: free
     branch: main
     buildCommand: curl -fsSL https://bun.sh/install | bash && export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:$PATH" && bun install --frozen-lockfile && bun run --filter @gastroai/contracts build && bun run --filter @gastroai/desktop build
     staticPublishPath: apps/desktop/out/renderer
