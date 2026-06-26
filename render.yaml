@@ -14,10 +14,8 @@ services:
     branch: main
     dockerfilePath: ./Dockerfile.api
     dockerContext: .
-    preDeployCommand: npx prisma migrate deploy --schema=prisma/schema.prisma
     healthCheckPath: /api/v1/health/live
     autoDeployTrigger: commit
-    maxShutdownDelaySeconds: 30
     envVars:
       - key: NODE_ENV
         value: production
@@ -73,7 +71,6 @@ services:
     name: gastroia-web
     runtime: static
     plan: free
-    region: oregon
     branch: main
     buildCommand: curl -fsSL https://bun.sh/install | bash && export BUN_INSTALL="$HOME/.bun" && export PATH="$BUN_INSTALL/bin:$PATH" && bun install --frozen-lockfile && bun run --filter @gastroai/contracts build && bun run --filter @gastroai/desktop build
     staticPublishPath: apps/desktop/out/renderer
