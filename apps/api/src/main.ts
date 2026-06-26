@@ -51,7 +51,7 @@ async function bootstrap() {
   }
 
   const port = config.get('API_PORT', { infer: true });
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   Logger.log(
     `GastroAI API ready at http://localhost:${port}/${globalPrefix}`,

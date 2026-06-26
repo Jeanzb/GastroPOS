@@ -6,6 +6,7 @@ import { z } from 'zod';
  */
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().positive().optional(),
   API_PORT: z.coerce.number().int().positive().default(3000),
   API_GLOBAL_PREFIX: z.string().min(1).default('api/v1'),
 
@@ -35,6 +36,7 @@ export type Env = z.infer<typeof envSchema>;
 export function validateEnv(config: Record<string, unknown>): Env {
   const normalizedConfig = {
     ...config,
+    API_PORT: config.API_PORT ?? config.PORT ?? 3000,
     TENANT_JWT_ACCESS_SECRET: config.TENANT_JWT_ACCESS_SECRET ?? config.JWT_ACCESS_SECRET,
     TENANT_JWT_ISSUER: config.TENANT_JWT_ISSUER ?? config.JWT_ISSUER ?? 'gastroai-api',
     PLATFORM_JWT_ACCESS_SECRET:

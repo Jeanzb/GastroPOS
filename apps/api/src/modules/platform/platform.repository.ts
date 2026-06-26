@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { PlatformRole, TenantStatus } from '@gastroai/contracts';
-import { UserRole } from '../../generated/prisma';
+import { UserRole } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
 import type { AuthenticatedPlatformUser } from './platform.types';
 import { DEFAULT_INVENTORY_CATEGORIES } from '../inventory/inventory-categories.constants';

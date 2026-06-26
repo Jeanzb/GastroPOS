@@ -1,4 +1,4 @@
-import type { Prisma } from '../../generated/prisma';
+import type { Prisma } from '../../../generated/prisma';
 import { ApiErrorCode } from '../errors/api-error-code';
 import { ApplicationException } from '../errors/application.exception';
 import { dayjs } from './dayjs';
