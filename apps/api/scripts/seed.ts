@@ -11,15 +11,26 @@ function envValue(name: string, fallback: string): string {
   return value && value.trim().length > 0 ? value.trim() : fallback;
 }
 
-async function main(): Promise<void> {
+function passwordEnvValue(name: string, developmentFallback: string): string {
+  const value = process.env[name];
+  if (value && value.trim().length > 0) {
+    return value.trim();
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`${name} must be configured before production seed.`);
+  }
+  return developmentFallback;
+}
+
+export async function seedInitialData(): Promise<void> {
   const tenantName = envValue('SEED_TENANT_NAME', 'GastroAI Demo');
   const tenantSlug = envValue('SEED_TENANT_SLUG', 'gastroai-demo');
   const branchName = envValue('SEED_BRANCH_NAME', 'Sede El Poblado');
   const branchCode = envValue('SEED_BRANCH_CODE', 'MAIN');
   const ownerEmail = envValue('SEED_OWNER_EMAIL', 'owner@gastroai.local');
-  const ownerPassword = envValue('SEED_OWNER_PASSWORD', 'ChangeMe123!');
+  const ownerPassword = passwordEnvValue('SEED_OWNER_PASSWORD', 'ChangeMe123!');
   const platformOwnerEmail = envValue('SEED_PLATFORM_OWNER_EMAIL', 'platform@gastroai.local');
-  const platformOwnerPassword = envValue(
+  const platformOwnerPassword = passwordEnvValue(
     'SEED_PLATFORM_OWNER_PASSWORD',
     'ChangeMePlatform123!',
   );
@@ -495,11 +506,13 @@ function minutesAgo(minutes: number): Date {
   return new Date(Date.now() - minutes * 60_000);
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  seedInitialData()
+    .catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

@@ -20,19 +20,21 @@ This repo deploys to Render with the root `render.yaml` Blueprint.
    - `SEED_PLATFORM_OWNER_PASSWORD`
 5. Apply the Blueprint.
 
-Render runs Prisma migrations through the API service `preDeployCommand`.
+The API container runs Prisma migrations during startup. It also runs the
+initial seed only when the database has no platform users, tenants or tenant
+users.
 
 ## Initial Platform User
 
-The deploy does not run the seed automatically. After the first successful deploy,
-open a Render shell for `gastroia-api` and run:
+On the first successful `gastroia-api` startup, the container runs:
 
 ```bash
-bun apps/api/scripts/seed.ts
+bun apps/api/scripts/seed-if-empty.ts
 ```
 
-That creates the platform owner, the BASIC plan/features, the demo tenant, branch,
-inventory categories, tables and starter products using the `SEED_*` env vars.
+That creates the platform owner, the BASIC plan/features, the demo tenant,
+branch, inventory categories, tables and starter products using the `SEED_*`
+env vars. The script skips automatically after initial data exists.
 
 ## Production URLs
 
