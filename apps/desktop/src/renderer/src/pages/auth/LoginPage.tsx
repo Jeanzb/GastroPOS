@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { CheckCircle2 } from 'lucide-react';
 import { LoginForm } from '@/components/auth';
 import { LogoMark, Wordmark } from '@/components/brand';
@@ -21,17 +22,22 @@ export function LoginPage() {
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-[1.1fr_0.9fr]">
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex">
-        <div className="flex items-center gap-3">
+        <Link
+          to="/platform/login"
+          title="Panel de plataforma (superadmin)"
+          data-cy="platform-login-logo"
+          className="group flex w-fit items-center gap-3 rounded-xl p-1 transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/50"
+        >
           <div className="grid h-14 w-14 place-items-center rounded-xl bg-white shadow-lg shadow-black/15">
             <LogoMark className="h-12 w-12" />
           </div>
           <div>
             <Wordmark className="text-2xl" />
-            <p className="mt-1 text-xs text-sidebar-foreground/50">
+            <p className="mt-1 text-xs text-sidebar-foreground/50 transition group-hover:text-sidebar-foreground/72">
               Inteligencia operativa para restaurantes
             </p>
           </div>
-        </div>
+        </Link>
 
         <div className="max-w-xl space-y-8">
           <div className="space-y-4">
