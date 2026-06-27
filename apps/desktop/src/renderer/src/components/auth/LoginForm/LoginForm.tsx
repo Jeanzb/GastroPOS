@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowRight, KeyRound, Loader2, ShieldCheck, UserRound } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { KeyRound, Loader2, ShieldCheck, UserRound } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { LogoMark, Wordmark } from '@/components/brand';
@@ -105,7 +105,7 @@ export function LoginForm() {
                         autoFocus
                         autoCapitalize="none"
                         autoComplete="username"
-                        placeholder="jeanzb o owner@gastroai.local"
+                        placeholder="Usuario o correo"
                         {...field}
                       />
                     </FormControl>
@@ -227,14 +227,6 @@ export function LoginForm() {
           {isPinMode ? <UserRound className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
           {isPinMode ? 'Usar usuario y contraseña' : 'Acceso rápido por cédula'}
         </Button>
-        <Link
-          to="/platform/login"
-          className="mt-3 flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          data-cy="platform-login-link"
-        >
-          Panel global / crear clientes
-          <ArrowRight className="h-4 w-4" />
-        </Link>
       </CardContent>
     </Card>
   );
