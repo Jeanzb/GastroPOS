@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 import { useState } from 'react';
-import { useRouter } from '@tanstack/react-router';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Link, useRouter } from '@tanstack/react-router';
+import { ArrowLeft, Loader2, ShieldCheck } from 'lucide-react';
 import { DarkLogoLockup } from '@/components/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,7 @@ export function PlatformLoginPage() {
   const setSession = usePlatformAuthStore((state) => state.setSession);
   const { loginMutation } = usePlatformAuth();
   const [email, setEmail] = useState('platform@gastroai.local');
-  const [password, setPassword] = useState('ChangeMePlatform123!');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,6 +87,13 @@ export function PlatformLoginPage() {
               {loginMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
               Entrar a plataforma
             </Button>
+            <Link
+              to="/login"
+              className="flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white/55 transition hover:bg-white/7 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/50"
+            >
+              <ArrowLeft className="size-4" />
+              Volver al acceso restaurante
+            </Link>
           </form>
         </CardContent>
       </Card>
