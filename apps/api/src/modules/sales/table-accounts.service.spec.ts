@@ -145,6 +145,30 @@ describe('TableAccountsService', () => {
     expect(result.tableNumber).toBe('01');
   });
 
+  it('forces the authenticated waiter name when a waiter opens a table account', async () => {
+    repo.openAccount.mockResolvedValue(
+      account({ items: [], subtotal: 0, grandTotal: 0, waiterName: 'Diego Gomez' }),
+    );
+
+    await service.openAccount(
+      { ...actor, role: 'WAITER', fullName: 'Diego Gomez', authScope: 'POS' },
+      'table_1',
+      {
+        waiterName: 'Maria Restrepo',
+        guestCount: 3,
+        customerName: 'Familia Gomez',
+      },
+    );
+
+    expect(repo.openAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        waiterName: 'Diego Gomez',
+        guestCount: 3,
+        customerName: 'Familia Gomez',
+      }),
+    );
+  });
+
   it('adds a sellable product and returns recalculated totals', async () => {
     repo.findById.mockResolvedValue(account({ items: [], subtotal: 0, grandTotal: 0 }));
     repo.findSellableProduct.mockResolvedValue(product());

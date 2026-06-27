@@ -44,22 +44,27 @@ export class AuthService {
   async login(input: {
     email: string;
     password: string;
+    tenantIdentifier?: string;
     tenantSlug?: string;
     metadata: AuthRequestMetadata;
   }): Promise<AuthResponse> {
     const email = input.email.trim().toLowerCase();
-    const users = await this.usersRepository.findActiveLoginCandidates(email, input.tenantSlug);
+    const users = await this.usersRepository.findActiveLoginCandidates(
+      email,
+      input.tenantIdentifier,
+      input.tenantSlug,
+    );
 
     if (users.length === 0) {
       await this.passwordHashing.verifyAgainstDummy(input.password);
-      await this.auditFailedLogin(email, input.tenantSlug, input.metadata);
+      await this.auditFailedLogin(email, input.tenantIdentifier ?? input.tenantSlug, input.metadata);
       throw invalidCredentials();
     }
 
-    if (users.length > 1 && !input.tenantSlug) {
+    if (users.length > 1) {
       throw new ApplicationException(400, {
-        code: 'TENANT_REQUIRED',
-        message: 'Tenant slug is required for this user.',
+        code: 'TENANT_AMBIGUOUS',
+        message: 'Restaurant identifier is ambiguous.',
       });
     }
 
@@ -67,7 +72,7 @@ export class AuthService {
     const passwordMatches = await this.passwordHashing.verify(input.password, user.passwordHash);
 
     if (!passwordMatches) {
-      await this.auditFailedLogin(email, input.tenantSlug, input.metadata);
+      await this.auditFailedLogin(email, input.tenantIdentifier ?? input.tenantSlug, input.metadata);
       throw invalidCredentials();
     }
 
@@ -290,7 +295,7 @@ export class AuthService {
 
   private async auditFailedLogin(
     email: string,
-    tenantSlug: string | undefined,
+    tenantIdentifier: string | undefined,
     metadata: AuthRequestMetadata,
   ): Promise<void> {
     await this.auditService.tryRecord({
@@ -298,7 +303,7 @@ export class AuthService {
       entityType: 'User',
       metadata: {
         email,
-        tenantSlug,
+        tenantIdentifier,
         result: 'invalid_credentials',
       },
       ...metadata,

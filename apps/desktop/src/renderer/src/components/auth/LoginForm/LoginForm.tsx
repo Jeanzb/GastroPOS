@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/auth';
 
 const loginSchema = z.object({
+  tenantIdentifier: z.string().trim().min(2, 'Ingresa el restaurante o NIT').max(160),
   email: z
     .string()
     .trim()
@@ -43,7 +44,7 @@ export function LoginForm() {
   const [mode, setMode] = useState<'password' | 'pin'>('password');
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { tenantIdentifier: '', email: '', password: '' },
   });
   const staffForm = useForm<StaffLoginValues>({
     resolver: zodResolver(staffLoginSchema),
@@ -52,6 +53,7 @@ export function LoginForm() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     await loginMutation.mutateAsync({
+      tenantIdentifier: values.tenantIdentifier,
       email: values.email,
       password: values.password,
     });
@@ -84,7 +86,7 @@ export function LoginForm() {
           <CardDescription className="mt-2">
             {isPinMode
               ? 'Ingresa el nombre de tu comercio y tu cédula para entrar.'
-              : 'Entra con tu usuario. La empresa, tenant y sede se cargan desde tu cuenta.'}
+              : 'Entra con tu usuario. El restaurante y la sede se cargan desde tu cuenta.'}
           </CardDescription>
         </div>
       </CardHeader>
@@ -93,6 +95,27 @@ export function LoginForm() {
         {!isPinMode ? (
           <Form key="login-password" {...form}>
             <form onSubmit={onSubmit} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="tenantIdentifier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Restaurante o NIT</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        autoCapitalize="none"
+                        autoComplete="organization"
+                        placeholder="GastroIA Demo o 900123456"
+                        data-cy="login-tenant-identifier"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="email"

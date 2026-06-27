@@ -8,10 +8,10 @@ import { usePlatformAuthStore } from '@/stores';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { to: '/platform', label: 'Overview', icon: LayoutDashboard },
+  { to: '/platform', label: 'Estado', icon: LayoutDashboard },
   { to: '/platform/tenants', label: 'Restaurantes', icon: Building2 },
   { to: '/platform/features', label: 'Modulos', icon: SlidersHorizontal },
-  { to: '/platform/plans', label: 'Plan BASIC', icon: Tags },
+  { to: '/platform/plans', label: 'Plan Basico', icon: Tags },
 ] as const;
 
 interface PlatformShellProps {

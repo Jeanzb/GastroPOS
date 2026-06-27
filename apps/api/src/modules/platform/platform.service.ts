@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import type Redis from 'ioredis';
 import type {
+  CreatePlatformBranchRequest,
   CreatePlatformTenantRequest,
   PlatformAuthResponse,
+  PlatformHealthCheckDto,
+  PlatformHealthDto,
   PlatformOverviewDto,
   PlatformTenantDetailDto,
   PlatformTenantDto,
@@ -15,6 +19,7 @@ import type {
 } from '@gastroai/contracts';
 import { TenantAccessCacheService } from '../../common/access/tenant-access-cache.service';
 import { ApplicationException } from '../../common/errors/application.exception';
+import { REDIS_CLIENT } from '../../common/redis';
 import type { Env } from '../../config/env.schema';
 import { AuditService } from '../audit/audit.service';
 import { PasswordHashingService } from '../auth/application/password-hashing.service';
@@ -49,6 +54,7 @@ export class PlatformService {
     private readonly config: ConfigService<Env, true>,
     private readonly auditService: AuditService,
     private readonly tenantAccessCache: TenantAccessCacheService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   async login(input: {
@@ -193,23 +199,66 @@ export class PlatformService {
     input: CreatePlatformTenantRequest,
   ): Promise<PlatformTenantDetailDto> {
     const passwordHash = await this.passwordHashing.hash(input.ownerTemporaryPassword);
+    const slug = await this.generateInternalSlug(input.name);
+    const fiscalResponsibility = normalizeOptional(input.fiscalResponsibility);
     const tenant = await this.repository.createTenant({
       name: input.name.trim(),
-      slug: input.slug.trim().toLowerCase(),
+      slug,
+      nit: normalizeDocument(input.nit),
+      municipality: input.municipality.trim(),
+      taxRegime: normalizeOptional(input.taxRegime),
+      fiscalResponsibilities: fiscalResponsibility ? [fiscalResponsibility] : [],
       ownerEmail: input.ownerEmail.trim().toLowerCase(),
       ownerFullName: input.ownerFullName.trim(),
       ownerPasswordHash: passwordHash,
       branchName: input.branchName.trim(),
       branchCode: input.branchCode.trim().toUpperCase(),
+      branchAddress: normalizeOptional(input.branchAddress),
+      branchPhone: normalizeOptional(input.branchPhone),
     });
     await this.auditService.tryRecord({
       actorUserId: actor.id,
       action: 'PLATFORM_TENANT_CREATED',
       entityType: 'Tenant',
       entityId: tenant.id,
-      metadata: { slug: tenant.slug, plan: 'BASIC' },
+      metadata: { internalSlug: slug, plan: 'BASIC', nit: normalizeDocument(input.nit) },
     });
     return toPlatformTenantDetailDto(tenant);
+  }
+
+  async createBranch(
+    actor: AuthenticatedPlatformUser,
+    tenantId: string,
+    input: CreatePlatformBranchRequest,
+  ): Promise<PlatformTenantDetailDto> {
+    await this.getTenant(tenantId);
+    try {
+      await this.repository.createBranch({
+        tenantId,
+        name: input.name.trim(),
+        code: input.code.trim().toUpperCase(),
+        city: input.city.trim(),
+        address: normalizeOptional(input.address),
+        phone: normalizeOptional(input.phone),
+        actorUserId: actor.id,
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ApplicationException(409, {
+          code: 'BRANCH_CODE_EXISTS',
+          message: 'A branch with this code already exists for this restaurant.',
+        });
+      }
+      throw error;
+    }
+    await this.auditService.tryRecord({
+      actorUserId: actor.id,
+      action: 'PLATFORM_BRANCH_CREATED',
+      entityType: 'Branch',
+      entityId: tenantId,
+      metadata: { tenantId, branchCode: input.code.trim().toUpperCase() },
+    });
+    return this.getTenant(tenantId);
   }
 
   async updateTenantStatus(
@@ -263,6 +312,21 @@ export class PlatformService {
       throw tenantNotFound();
     }
     return toTenantFeatureOverrideDtos(tenant);
+  }
+
+  async getHealth(): Promise<PlatformHealthDto> {
+    const checks: PlatformHealthCheckDto[] = [
+      { name: 'api', status: 'operational', latencyMs: 0 },
+      await this.checkPostgres(),
+      await this.checkRedis(),
+    ];
+    const hasDown = checks.some((check) => check.status === 'down');
+    const hasDegraded = checks.some((check) => check.status === 'degraded');
+    return {
+      status: hasDown ? 'down' : hasDegraded ? 'degraded' : 'operational',
+      checkedAt: new Date().toISOString(),
+      checks,
+    };
   }
 
   async updateTenantFeatureOverride(
@@ -354,6 +418,53 @@ export class PlatformService {
   private expiresAtFromNow(): Date {
     return new Date(Date.now() + this.config.get('JWT_REFRESH_TTL', { infer: true }) * 1000);
   }
+
+  private async generateInternalSlug(name: string): Promise<string> {
+    const base = slugify(name) || `tenant-${randomUUID().slice(0, 8)}`;
+    if (!(await this.repository.slugExists(base))) {
+      return base;
+    }
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const candidate = `${base}-${randomUUID().slice(0, 6)}`;
+      if (!(await this.repository.slugExists(candidate))) {
+        return candidate;
+      }
+    }
+    return `${base}-${Date.now().toString(36)}`;
+  }
+
+  private async checkPostgres(): Promise<PlatformHealthCheckDto> {
+    const startedAt = Date.now();
+    try {
+      await this.repository.pingDatabase();
+      return { name: 'postgres', status: 'operational', latencyMs: Date.now() - startedAt };
+    } catch (error) {
+      return {
+        name: 'postgres',
+        status: 'down',
+        latencyMs: Date.now() - startedAt,
+        message: errorMessage(error),
+      };
+    }
+  }
+
+  private async checkRedis(): Promise<PlatformHealthCheckDto> {
+    const startedAt = Date.now();
+    try {
+      if (this.redis.status === 'wait') {
+        await this.redis.connect();
+      }
+      await this.redis.ping();
+      return { name: 'redis', status: 'operational', latencyMs: Date.now() - startedAt };
+    } catch (error) {
+      return {
+        name: 'redis',
+        status: 'degraded',
+        latencyMs: Date.now() - startedAt,
+        message: errorMessage(error),
+      };
+    }
+  }
 }
 
 function invalidPlatformCredentials(): ApplicationException {
@@ -386,4 +497,37 @@ function tenantFeatureNotFound(): ApplicationException {
 
 function isPast(date: Date): boolean {
   return date.getTime() <= Date.now();
+}
+
+function normalizeOptional(value?: string | null): string | null {
+  const normalized = value?.trim();
+  return normalized && normalized.length > 0 ? normalized : null;
+}
+
+function normalizeDocument(value: string): string {
+  return value.replace(/[^0-9]/g, '');
+}
+
+function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'P2002'
+  );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
 }

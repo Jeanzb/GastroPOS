@@ -12,6 +12,9 @@ import type {
 } from '@gastroai/contracts';
 import type { AuthenticatedPlatformUser } from './platform.types';
 
+const BASIC_PLAN_PRICE_AMOUNT = 99000;
+const BASIC_PLAN_CURRENCY = 'COP' as const;
+
 type UserRoleName =
   | 'OWNER'
   | 'ADMIN'
@@ -44,11 +47,11 @@ interface PlanRecord {
 interface TenantListRecord {
   id: string;
   name: string;
-  slug: string;
   status: TenantStatus;
   isActive: boolean;
   createdAt: Date;
   plan: { code: string } | null;
+  fiscalProfile: { nit: string; municipality: string | null } | null;
   _count: { branches: number; users: number };
   users: Array<{ lastLoginAt: Date | null }>;
 }
@@ -59,7 +62,15 @@ interface TenantDetailRecord extends Omit<TenantListRecord, 'users' | 'plan'> {
   cancelledAt: Date | null;
   archivedAt: Date | null;
   suspensionReason: string | null;
-  branches: Array<{ id: string; code: string; name: string; isActive: boolean }>;
+  branches: Array<{
+    id: string;
+    code: string;
+    name: string;
+    city: string | null;
+    address: string | null;
+    phone: string | null;
+    isActive: boolean;
+  }>;
   users: Array<{
     id: string;
     email: string;
@@ -89,10 +100,13 @@ export function toPlatformTenantDto(tenant: TenantListRecord): PlatformTenantDto
   return {
     id: tenant.id,
     name: tenant.name,
-    slug: tenant.slug,
+    nit: tenant.fiscalProfile?.nit ?? null,
+    municipality: tenant.fiscalProfile?.municipality ?? null,
     status: tenant.status,
     isActive: tenant.isActive,
     planCode: tenant.plan?.code ?? null,
+    planPriceAmount: tenant.plan?.code === 'BASIC' ? BASIC_PLAN_PRICE_AMOUNT : null,
+    planPriceCurrency: tenant.plan?.code === 'BASIC' ? BASIC_PLAN_CURRENCY : null,
     branchCount: tenant._count.branches,
     userCount: tenant._count.users,
     lastLoginAt: isoOrNull(tenant.users[0]?.lastLoginAt ?? null),
@@ -120,11 +134,11 @@ export function toPlatformTenantDetailDto(tenant: TenantDetailRecord): PlatformT
     ...toPlatformTenantDto({
       id: tenant.id,
       name: tenant.name,
-      slug: tenant.slug,
       status: tenant.status,
       isActive: tenant.isActive,
       createdAt: tenant.createdAt,
       plan: tenant.plan,
+      fiscalProfile: tenant.fiscalProfile,
       _count: tenant._count,
       users: tenant.users,
     }),
@@ -149,6 +163,9 @@ export function toPlanDto(plan: PlanRecord): PlanDto {
     name: plan.name,
     description: plan.description,
     isActive: plan.isActive,
+    priceAmount: plan.code === 'BASIC' ? BASIC_PLAN_PRICE_AMOUNT : 0,
+    currency: BASIC_PLAN_CURRENCY,
+    billingPeriod: 'MONTH',
     features: plan.features
       .map((feature) => toFeatureDto(feature.feature, feature.enabled))
       .sort((left, right) => left.code.localeCompare(right.code)),

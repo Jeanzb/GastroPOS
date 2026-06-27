@@ -1,4 +1,14 @@
-import { AlertTriangle, Building2, Clock3, DatabaseZap, ShieldAlert, ShieldCheck } from 'lucide-react';
+import type { PlatformHealthCheckDto, PlatformHealthStatus } from '@gastroai/contracts';
+import {
+  AlertTriangle,
+  Building2,
+  DatabaseZap,
+  HeartPulse,
+  Server,
+  ShieldAlert,
+  ShieldCheck,
+  Warehouse,
+} from 'lucide-react';
 import {
   PlatformCardSkeleton,
   PlatformMetricCard,
@@ -6,22 +16,41 @@ import {
   PlatformState,
   PlatformStatusBadge,
 } from '@/components/platform';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePlatformOverview, usePlatformTenants } from '@/hooks/platform';
+import { usePlatformHealth, usePlatformOverview, usePlatformTenants } from '@/hooks/platform';
+import { cn } from '@/lib/utils';
+
+const HEALTH_LABELS: Record<PlatformHealthCheckDto['name'], string> = {
+  api: 'API',
+  postgres: 'PostgreSQL',
+  redis: 'Redis',
+};
+
+const HEALTH_CLASSES: Record<PlatformHealthStatus, string> = {
+  operational: 'border-emerald-700/20 bg-emerald-700/10 text-emerald-800',
+  degraded: 'border-warning/30 bg-warning-soft text-warning',
+  down: 'border-destructive/25 bg-danger-soft text-destructive',
+};
 
 export function PlatformOverviewPage() {
   const overviewQuery = usePlatformOverview();
   const tenantsQuery = usePlatformTenants();
+  const healthQuery = usePlatformHealth();
   const overview = overviewQuery.data;
-  const alertTenants = (tenantsQuery.data ?? []).filter((tenant) =>
+  const tenants = tenantsQuery.data ?? [];
+  const alertTenants = tenants.filter((tenant) =>
     ['SUSPENDED', 'PAST_DUE', 'CANCELLED'].includes(tenant.status),
   );
+  const operatingBranches = tenants
+    .filter((tenant) => !['SUSPENDED', 'CANCELLED', 'ARCHIVED'].includes(tenant.status))
+    .reduce((sum, tenant) => sum + tenant.branchCount, 0);
 
   return (
     <PlatformShell
-      title="Overview global"
-      description="Estado comercial y operativo de restaurantes conectados."
+      title="Panel de control global"
+      description="Salud de plataforma, clientes activos y alertas operativas."
     >
       {overviewQuery.isLoading ? (
         <PlatformCardSkeleton count={4} />
@@ -35,7 +64,7 @@ export function PlatformOverviewPage() {
         <div className="platform-stagger grid gap-4 md:grid-cols-4">
           <PlatformMetricCard
             icon={Building2}
-            label="Tenants"
+            label="Restaurantes"
             value={overview?.totalTenants ?? 0}
             hint="Clientes creados"
           />
@@ -47,17 +76,17 @@ export function PlatformOverviewPage() {
             hint="Acceso normal"
           />
           <PlatformMetricCard
-            icon={Clock3}
-            label="Trial"
-            value={overview?.trialTenants ?? 0}
-            hint="En evaluacion"
+            icon={Warehouse}
+            label="Sedes"
+            value={operatingBranches}
+            hint="Operando en la red"
           />
           <PlatformMetricCard
             icon={ShieldAlert}
             label="Suspendidos"
             value={overview?.suspendedTenants ?? 0}
             tone="danger"
-            hint="Operaciones bloqueadas"
+            hint="Operacion bloqueada"
           />
         </div>
       )}
@@ -82,9 +111,9 @@ export function PlatformOverviewPage() {
                 <Skeleton className="h-12 rounded-lg" />
                 <Skeleton className="h-12 rounded-lg" />
               </div>
-            ) : tenantsQuery.data?.length ? (
+            ) : tenants.length ? (
               <div className="divide-y divide-border">
-                {tenantsQuery.data.slice(0, 6).map((tenant) => (
+                {tenants.slice(0, 6).map((tenant) => (
                   <div
                     key={tenant.id}
                     className="platform-row flex items-center justify-between rounded-lg px-2 py-3 text-sm"
@@ -92,7 +121,8 @@ export function PlatformOverviewPage() {
                     <div>
                       <p className="font-semibold">{tenant.name}</p>
                       <p className="text-muted-foreground">
-                        {tenant.slug} - {tenant.branchCount} sedes - {tenant.userCount} usuarios
+                        {tenant.municipality ?? 'Ciudad sin registrar'} - {tenant.branchCount} sedes -{' '}
+                        {tenant.userCount} usuarios
                       </p>
                     </div>
                     <PlatformStatusBadge status={tenant.status} />
@@ -100,45 +130,105 @@ export function PlatformOverviewPage() {
                 ))}
               </div>
             ) : (
-              <PlatformState title="Sin tenants" description="Crea el primer restaurante desde Restaurantes." />
+              <PlatformState title="Sin restaurantes" description="Crea el primer restaurante desde Restaurantes." />
             )}
           </CardContent>
         </Card>
 
-        <Card className="platform-card rounded-xl border-orange/25 bg-white/88">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-warning-soft text-warning">
-                <AlertTriangle className="size-5" />
+        <div className="grid gap-6">
+          <Card className="platform-card rounded-xl bg-white/88">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="grid size-10 place-items-center rounded-xl bg-emerald-700/10 text-emerald-800">
+                  <HeartPulse className="size-5" />
+                </div>
+                <div>
+                  <CardTitle>Salud plataforma</CardTitle>
+                  <CardDescription>API, base de datos y cache en tiempo real.</CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle>Alertas de acceso</CardTitle>
-                <CardDescription>Clientes que requieren accion de soporte o cobranza.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {tenantsQuery.isLoading ? (
-              <Skeleton className="h-16 rounded-lg" />
-            ) : alertTenants.length ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {alertTenants.map((tenant) => (
-                  <div
-                    key={tenant.id}
-                    className="platform-row rounded-lg border border-orange/25 bg-orange/8 p-4"
+            </CardHeader>
+            <CardContent>
+              {healthQuery.isLoading ? (
+                <Skeleton className="h-28 rounded-xl" />
+              ) : healthQuery.isError || !healthQuery.data ? (
+                <PlatformState
+                  title="Health no disponible"
+                  description="El endpoint platform no respondio correctamente."
+                  tone="danger"
+                />
+              ) : (
+                <div className="space-y-3">
+                  <Badge
+                    variant="outline"
+                    className={cn('rounded-full px-3 py-1 font-semibold', HEALTH_CLASSES[healthQuery.data.status])}
                   >
-                    <p className="font-semibold">{tenant.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{tenant.slug}</p>
-                    <PlatformStatusBadge status={tenant.status} className="mt-3" />
-                  </div>
-                ))}
+                    {healthQuery.data.status === 'operational'
+                      ? 'Operativa'
+                      : healthQuery.data.status === 'degraded'
+                        ? 'Degradada'
+                        : 'Caida'}
+                  </Badge>
+                  {healthQuery.data.checks.map((check) => (
+                    <HealthCheckRow key={check.name} check={check} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="platform-card rounded-xl border-orange/25 bg-white/88">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="grid size-10 place-items-center rounded-xl bg-warning-soft text-warning">
+                  <AlertTriangle className="size-5" />
+                </div>
+                <div>
+                  <CardTitle>Alertas de acceso</CardTitle>
+                  <CardDescription>Clientes que requieren accion de soporte.</CardDescription>
+                </div>
               </div>
-            ) : (
-              <PlatformState title="Sin alertas" description="No hay tenants suspendidos, cancelados o en mora." />
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {tenantsQuery.isLoading ? (
+                <Skeleton className="h-16 rounded-lg" />
+              ) : alertTenants.length ? (
+                <div className="grid gap-3">
+                  {alertTenants.map((tenant) => (
+                    <div
+                      key={tenant.id}
+                      className="platform-row rounded-lg border border-orange/25 bg-orange/8 p-4"
+                    >
+                      <p className="font-semibold">{tenant.name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        NIT {tenant.nit ?? 'sin registrar'} - {tenant.municipality ?? 'sin ciudad'}
+                      </p>
+                      <PlatformStatusBadge status={tenant.status} className="mt-3" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <PlatformState title="Sin alertas" description="No hay restaurantes suspendidos, cancelados o en mora." />
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </PlatformShell>
+  );
+}
+
+function HealthCheckRow({ check }: { check: PlatformHealthCheckDto }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border bg-muted/25 px-3 py-2 text-sm">
+      <div className="flex items-center gap-2">
+        <Server className="size-4 text-muted-foreground" />
+        <span className="font-semibold">{HEALTH_LABELS[check.name]}</span>
+      </div>
+      <span className={cn('rounded-full px-2.5 py-1 text-xs font-bold', HEALTH_CLASSES[check.status])}>
+        {check.status === 'operational' ? 'OK' : check.status === 'degraded' ? 'Degradado' : 'Caido'}
+        {typeof check.latencyMs === 'number' ? ` - ${check.latencyMs}ms` : ''}
+      </span>
+    </div>
   );
 }

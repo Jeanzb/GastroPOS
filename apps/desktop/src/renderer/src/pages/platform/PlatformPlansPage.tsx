@@ -1,62 +1,61 @@
-import { Boxes, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { PlatformShell, PlatformState } from '@/components/platform';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlatformPlans } from '@/hooks/platform';
+import { BASIC_PLAN_CURRENCY, BASIC_PLAN_PRICE_AMOUNT, featureDescription, featureLabel } from '@/lib/platform-labels';
+import { formatMoney } from '@/lib/format';
 
 export function PlatformPlansPage() {
   const plansQuery = usePlatformPlans();
+  const basicPlan = (plansQuery.data ?? []).find((plan) => plan.code === 'BASIC');
 
   return (
     <PlatformShell
-      title="Planes"
-      description="Modelo comercial actual: BASIC con todos los modulos incluidos."
+      title="Planes y suscripcion"
+      description="Catalogo comercial actual de la red GastroAI."
     >
       {plansQuery.isLoading ? (
-        <Skeleton className="h-72 rounded-xl" />
+        <Skeleton className="h-96 rounded-xl" />
       ) : plansQuery.isError ? (
         <PlatformState
           title="No se pudieron cargar"
           description="Revisa la sesion platform o la API de planes."
           tone="danger"
         />
+      ) : !basicPlan ? (
+        <PlatformState title="BASIC no disponible" description="El seed de planes debe crear el plan BASIC." tone="danger" />
       ) : (
-        <div className="platform-stagger grid gap-4 lg:grid-cols-2">
-          {(plansQuery.data ?? []).map((plan) => (
-            <Card key={plan.id} className="platform-card rounded-xl bg-white/88">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="grid size-10 place-items-center rounded-xl bg-emerald-700/10 text-emerald-700">
-                    <Boxes className="size-5" />
+        <Card className="platform-card max-w-xl rounded-2xl bg-white/92">
+          <CardContent className="p-7">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Plan unico</p>
+            <h2 className="mt-3 font-display text-3xl font-bold">Basico</h2>
+            <p className="nums mt-4 text-4xl font-bold">
+              {formatMoney(BASIC_PLAN_PRICE_AMOUNT, BASIC_PLAN_CURRENCY)}
+              <span className="ml-1 text-sm font-medium text-muted-foreground">/mes</span>
+            </p>
+            <div className="mt-6 border-t pt-5">
+              <div className="grid gap-3">
+                {basicPlan.features.map((feature) => (
+                  <div key={feature.code} className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 size-4 text-emerald-700" />
+                    <div>
+                      <p className="font-semibold">{featureLabel(feature.code)}</p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {featureDescription(feature.code, feature.description)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle>{plan.code}</CardTitle>
-                    <CardDescription>{plan.description}</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="font-display text-3xl font-semibold">{plan.name}</p>
-                <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                  Plan unico con todos los modulos incluidos. Los bloqueos se manejan como overrides de emergencia por tenant.
-                </p>
-                <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                  {plan.features.map((feature) => (
-                    <Badge
-                      key={feature.code}
-                      variant="outline"
-                      className="justify-start gap-2 rounded-xl border-emerald-700/15 bg-emerald-700/8 px-3 py-2 text-emerald-800"
-                    >
-                      <CheckCircle2 className="size-3.5" />
-                      {feature.code}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                ))}
+              </div>
+              <div className="mt-6 flex gap-3">
+                <Badge variant="outline">Todos los modulos</Badge>
+                <Badge variant="outline">Sin billing automatico</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </PlatformShell>
   );

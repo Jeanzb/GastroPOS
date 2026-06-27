@@ -243,11 +243,24 @@ export class AuthRepository {
     documentNumber: string,
   ): Promise<StaffLoginCandidate | null> {
     const value = commerce.trim();
+    const normalizedNit = normalizeDocument(value);
     const tenant = await this.prisma.tenant.findFirst({
       where: {
         isActive: true,
         deletedAt: null,
-        OR: [{ slug: value.toLowerCase() }, { name: { equals: value, mode: 'insensitive' } }],
+        OR: [
+          { name: { equals: value, mode: 'insensitive' } },
+          { slug: value.toLowerCase() },
+          ...(normalizedNit
+            ? [
+                {
+                  fiscalProfile: {
+                    is: { nit: normalizedNit },
+                  },
+                },
+              ]
+            : []),
+        ],
       },
       select: { id: true },
     });
@@ -329,4 +342,9 @@ export interface StaffLoginCandidate {
   fullName: string;
   role: AuthenticatedUser['role'];
   pinLockedUntil: Date | null;
+}
+
+function normalizeDocument(value: string | undefined): string | undefined {
+  const normalized = value?.replace(/[^0-9]/g, '');
+  return normalized && normalized.length >= 3 ? normalized : undefined;
 }

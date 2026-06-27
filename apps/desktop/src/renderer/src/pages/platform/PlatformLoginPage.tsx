@@ -43,7 +43,7 @@ export function PlatformLoginPage() {
           </div>
           <CardTitle className="font-display text-2xl">Panel global GastroAI</CardTitle>
           <CardDescription className="text-white/55">
-            Acceso exclusivo para soporte, administracion SaaS y lifecycle de tenants.
+            Acceso exclusivo para soporte, administracion SaaS y ciclo de vida de clientes.
           </CardDescription>
         </CardHeader>
         <CardContent>

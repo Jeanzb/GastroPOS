@@ -29,6 +29,7 @@ import {
   usePlatformTenants,
   useUpdateTenantFeatureOverride,
 } from '@/hooks/platform';
+import { featureDescription, featureLabel } from '@/lib/platform-labels';
 import type { TenantFeatureOverrideDto } from '@gastroai/contracts';
 
 export function PlatformFeaturesPage() {
@@ -62,7 +63,7 @@ export function PlatformFeaturesPage() {
         featureCode: feature.code,
         payload: { enabled: true, reason: 'Activacion manual desde platform' },
       });
-      toast.success('Modulo activado', `${feature.code} quedo disponible para el tenant.`);
+      toast.success('Modulo activado', `${featureLabel(feature.code)} quedo disponible para el restaurante.`);
     } catch (error) {
       toast.error('No se pudo activar', errorMessage(error));
     }
@@ -77,7 +78,7 @@ export function PlatformFeaturesPage() {
         featureCode: pendingFeature.code,
         payload: { enabled: false, reason: reason.trim() },
       });
-      toast.warning('Modulo desactivado', `${pendingFeature.code} quedo bloqueado para este tenant.`);
+      toast.warning('Modulo desactivado', `${featureLabel(pendingFeature.code)} quedo bloqueado para este restaurante.`);
       setPendingFeature(null);
       setReason('');
     } catch (error) {
@@ -91,7 +92,7 @@ export function PlatformFeaturesPage() {
     }
     try {
       await deleteOverride.mutateAsync(feature.code);
-      toast.info('Override removido', `${feature.code} vuelve a heredar BASIC.`);
+      toast.info('Override removido', `${featureLabel(feature.code)} vuelve a heredar BASIC.`);
     } catch (error) {
       toast.error('No se pudo remover', errorMessage(error));
     }
@@ -100,7 +101,7 @@ export function PlatformFeaturesPage() {
   return (
     <PlatformShell
       title="Licencias y modulos"
-      description="Controla emergencias por tenant sin cambiar el plan BASIC."
+      description="Controla emergencias por restaurante sin cambiar el plan BASIC."
     >
       <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
         <Card className="platform-card rounded-xl bg-white/88">
@@ -111,19 +112,19 @@ export function PlatformFeaturesPage() {
               </div>
               <div>
                 <CardTitle>Cliente</CardTitle>
-                <CardDescription>Selecciona el tenant que vas a administrar.</CardDescription>
+                <CardDescription>Selecciona el restaurante que vas a administrar.</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <Select value={selectedTenantId ?? undefined} onValueChange={setSelectedTenantId}>
               <SelectTrigger className="w-full" data-cy="platform-feature-tenant-select">
-                <SelectValue placeholder="Selecciona tenant" />
+                <SelectValue placeholder="Selecciona restaurante" />
               </SelectTrigger>
               <SelectContent>
                 {(tenantsQuery.data ?? []).map((tenant) => (
                   <SelectItem key={tenant.id} value={tenant.id}>
-                    {tenant.name}
+                    {tenant.name} {tenant.nit ? `- NIT ${tenant.nit}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -131,20 +132,22 @@ export function PlatformFeaturesPage() {
             {selectedTenant ? (
               <div className="platform-motion-in rounded-xl border bg-muted/30 p-4 text-sm">
                 <p className="font-semibold">{selectedTenant.name}</p>
-                <p className="text-muted-foreground">{selectedTenant.slug}</p>
+                <p className="text-muted-foreground">
+                  NIT {selectedTenant.nit ?? 'sin registrar'} - {selectedTenant.municipality ?? 'sin ciudad'}
+                </p>
                 <PlatformStatusBadge status={selectedTenant.status} className="mt-3" />
               </div>
             ) : null}
             <div className="rounded-xl border border-orange/20 bg-orange/8 p-4 text-sm text-carbon">
               <ShieldAlert className="mb-2 size-4 text-orange" />
-              Los overrides son para incidentes o soporte. El plan comercial sigue siendo BASIC.
+              Los cambios de modulos son para incidentes o soporte. El plan comercial sigue siendo BASIC.
             </div>
           </CardContent>
         </Card>
 
         <Card className="rounded-xl bg-white/88">
           <CardHeader>
-            <CardTitle>Feature flags</CardTitle>
+            <CardTitle>Licencias y modulos</CardTitle>
             <CardDescription>
               {featuresQuery.data?.length ?? 0} modulos registrados en la plataforma.
             </CardDescription>
@@ -159,7 +162,7 @@ export function PlatformFeaturesPage() {
             ) : tenantFeaturesQuery.isError ? (
               <PlatformState
                 title="No se pudieron cargar"
-                description="Revisa el tenant seleccionado y la sesion platform."
+                description="Revisa el restaurante seleccionado y la sesion platform."
                 tone="danger"
               />
             ) : tenantFeaturesQuery.data?.length ? (
@@ -172,12 +175,12 @@ export function PlatformFeaturesPage() {
                   >
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold">{feature.name}</p>
+                        <p className="font-semibold">{featureLabel(feature.code)}</p>
                         <Badge
                           variant={feature.source === 'OVERRIDE' ? 'destructive' : 'secondary'}
                           className="rounded-full"
                         >
-                          {feature.source}
+                          {feature.source === 'OVERRIDE' ? 'Override' : 'Plan BASIC'}
                         </Badge>
                         <Badge
                           variant={feature.enabled ? 'default' : 'outline'}
@@ -190,7 +193,9 @@ export function PlatformFeaturesPage() {
                           {feature.enabled ? 'Activo' : 'Bloqueado'}
                         </Badge>
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">{feature.code}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {featureDescription(feature.code, feature.description)}
+                      </p>
                       {feature.overrideReason ? (
                         <p className="mt-2 text-sm text-orange">{feature.overrideReason}</p>
                       ) : null}
@@ -212,7 +217,7 @@ export function PlatformFeaturesPage() {
                           onClick={() => handleReset(feature)}
                           disabled={deleteOverride.isPending}
                           title="Heredar BASIC"
-                          aria-label={`Remover override de ${feature.code}`}
+                          aria-label={`Remover override de ${featureLabel(feature.code)}`}
                         >
                           <RotateCcw className="size-4" />
                         </Button>
@@ -223,8 +228,8 @@ export function PlatformFeaturesPage() {
               </div>
             ) : (
               <PlatformState
-                title="Selecciona un tenant"
-                description="El listado mostrara features heredadas del plan y overrides de emergencia."
+                title="Selecciona un restaurante"
+                description="El listado mostrara modulos heredados del plan y cambios de emergencia."
               />
             )}
           </CardContent>
@@ -236,7 +241,7 @@ export function PlatformFeaturesPage() {
           <DialogHeader>
             <DialogTitle>Desactivar modulo</DialogTitle>
             <DialogDescription>
-              Indica el motivo operativo. Esta accion bloquea el modulo para el tenant seleccionado.
+              Indica el motivo operativo. Esta accion bloquea el modulo para el restaurante seleccionado.
             </DialogDescription>
           </DialogHeader>
           <Textarea

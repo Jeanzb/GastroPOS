@@ -31,6 +31,9 @@ export interface RequestActor {
   tenantId: string;
   branchId: string | null;
   actorUserId: string;
+  fullName?: string;
+  role?: UserRole;
+  authScope?: TenantAuthScope;
   requestId?: string;
   ipAddress?: string;
   userAgent?: string;

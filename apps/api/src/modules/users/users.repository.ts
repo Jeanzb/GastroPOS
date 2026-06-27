@@ -8,8 +8,13 @@ export class UsersRepository {
 
   async findActiveLoginCandidates(
     email: string,
+    tenantIdentifier?: string,
     tenantSlug?: string,
   ): Promise<LoginUserRecord[]> {
+    const rawIdentifier = tenantIdentifier?.trim();
+    const normalizedIdentifier = rawIdentifier?.toLowerCase();
+    const normalizedNit = normalizeDocument(rawIdentifier);
+
     return this.prisma.user.findMany({
       where: {
         email,
@@ -18,7 +23,26 @@ export class UsersRepository {
         tenant: {
           isActive: true,
           deletedAt: null,
-          ...(tenantSlug ? { slug: tenantSlug } : {}),
+          ...(rawIdentifier || tenantSlug
+            ? {
+                OR: [
+                  ...(rawIdentifier
+                    ? [{ name: { equals: rawIdentifier, mode: 'insensitive' as const } }]
+                    : []),
+                  ...(normalizedIdentifier ? [{ slug: normalizedIdentifier }] : []),
+                  ...(tenantSlug ? [{ slug: tenantSlug }] : []),
+                  ...(normalizedNit
+                    ? [
+                        {
+                          fiscalProfile: {
+                            is: { nit: normalizedNit },
+                          },
+                        },
+                      ]
+                    : []),
+                ],
+              }
+            : {}),
         },
       },
       select: {
@@ -36,3 +60,7 @@ export class UsersRepository {
   }
 }
 
+function normalizeDocument(value: string | undefined): string | undefined {
+  const normalized = value?.replace(/[^0-9]/g, '');
+  return normalized && normalized.length >= 3 ? normalized : undefined;
+}

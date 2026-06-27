@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class CreatePlatformTenantDto {
   @IsString()
@@ -7,10 +7,25 @@ export class CreatePlatformTenantDto {
   name!: string;
 
   @IsString()
-  @Matches(/^[a-z0-9-]+$/)
+  @MinLength(3)
+  @MaxLength(40)
+  @Matches(/^[0-9.-]+$/)
+  nit!: string;
+
+  @IsString()
   @MinLength(2)
-  @MaxLength(80)
-  slug!: string;
+  @MaxLength(120)
+  municipality!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  taxRegime?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  fiscalResponsibility?: string;
 
   @IsEmail()
   ownerEmail!: string;
@@ -35,4 +50,14 @@ export class CreatePlatformTenantDto {
   @MinLength(2)
   @MaxLength(20)
   branchCode!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  branchAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  branchPhone?: string;
 }

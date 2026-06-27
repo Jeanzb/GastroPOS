@@ -8,11 +8,27 @@ import { DEFAULT_INVENTORY_CATEGORIES } from '../inventory/inventory-categories.
 export interface PlatformTenantCreateData {
   name: string;
   slug: string;
+  nit: string;
+  municipality: string;
+  taxRegime: string | null;
+  fiscalResponsibilities: string[];
   ownerEmail: string;
   ownerFullName: string;
   ownerPasswordHash: string;
   branchName: string;
   branchCode: string;
+  branchAddress: string | null;
+  branchPhone: string | null;
+}
+
+export interface PlatformBranchCreateData {
+  tenantId: string;
+  name: string;
+  code: string;
+  city: string;
+  address: string | null;
+  phone: string | null;
+  actorUserId: string;
 }
 
 @Injectable()
@@ -168,12 +184,30 @@ export class PlatformRepository {
     });
   }
 
+  async slugExists(slug: string): Promise<boolean> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    return Boolean(tenant);
+  }
+
+  async pingDatabase(): Promise<void> {
+    await this.prisma.$queryRaw`SELECT 1`;
+  }
+
   listTenants() {
     return this.prisma.tenant.findMany({
       where: { deletedAt: null },
       orderBy: { createdAt: 'desc' },
       include: {
         plan: { select: { code: true } },
+        fiscalProfile: {
+          select: {
+            nit: true,
+            municipality: true,
+          },
+        },
         _count: { select: { branches: true, users: true } },
         users: {
           select: { lastLoginAt: true },
@@ -250,6 +284,21 @@ export class PlatformRepository {
           tenantId: tenant.id,
           name: data.branchName,
           code: data.branchCode,
+          city: data.municipality,
+          address: data.branchAddress,
+          phone: data.branchPhone,
+        },
+      });
+      await tx.fiscalProfile.create({
+        data: {
+          tenantId: tenant.id,
+          legalName: data.name,
+          nit: data.nit,
+          municipality: data.municipality,
+          taxRegime: data.taxRegime,
+          fiscalResponsibilities: data.fiscalResponsibilities,
+          address: data.branchAddress,
+          createdById: null,
         },
       });
       await tx.user.create({
@@ -283,6 +332,21 @@ export class PlatformRepository {
         where: { id: tenant.id },
         include: this.tenantDetailInclude(),
       });
+    });
+  }
+
+  async createBranch(data: PlatformBranchCreateData) {
+    return this.prisma.branch.create({
+      data: {
+        tenantId: data.tenantId,
+        name: data.name,
+        code: data.code,
+        city: data.city,
+        address: data.address,
+        phone: data.phone,
+        createdById: data.actorUserId,
+      },
+      select: { id: true },
     });
   }
 
@@ -383,8 +447,14 @@ export class PlatformRepository {
       _count: { select: { branches: true, users: true } },
       branches: {
         where: { deletedAt: null },
-        select: { id: true, code: true, name: true, isActive: true },
+        select: { id: true, code: true, name: true, city: true, address: true, phone: true, isActive: true },
         orderBy: { name: 'asc' as const },
+      },
+      fiscalProfile: {
+        select: {
+          nit: true,
+          municipality: true,
+        },
       },
       users: {
         where: { deletedAt: null },

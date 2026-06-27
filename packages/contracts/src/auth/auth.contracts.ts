@@ -3,6 +3,7 @@ import type { AuthScope } from '../enums/auth-scope';
 import type { AppPermission, RoleProfile } from './permissions.contracts';
 
 export interface LoginRequest {
+  tenantIdentifier: string;
   email: string;
   password: string;
 }

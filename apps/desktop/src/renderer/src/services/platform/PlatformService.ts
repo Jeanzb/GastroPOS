@@ -1,8 +1,10 @@
 import { platformApiClient } from '@/api';
 import type {
+  CreatePlatformBranchRequest,
   CreatePlatformTenantRequest,
   PlatformAuthResponse,
   PlatformFeatureDto,
+  PlatformHealthDto,
   PlatformLoginRequest,
   PlatformOverviewDto,
   PlatformTenantDetailDto,
@@ -43,6 +45,10 @@ export const PlatformService = {
     return platformApiClient.post<PlatformTenantDetailDto>('/platform/tenants', payload);
   },
 
+  createBranch(id: string, payload: CreatePlatformBranchRequest) {
+    return platformApiClient.post<PlatformTenantDetailDto>(`/platform/tenants/${id}/branches`, payload);
+  },
+
   updateTenantStatus(id: string, payload: UpdateTenantStatusRequest) {
     return platformApiClient.patch<PlatformTenantDetailDto>(
       `/platform/tenants/${id}/status`,
@@ -60,6 +66,10 @@ export const PlatformService = {
 
   listFeatures() {
     return platformApiClient.get<PlatformFeatureDto[]>('/platform/features');
+  },
+
+  getHealth() {
+    return platformApiClient.get<PlatformHealthDto>('/platform/health');
   },
 
   listTenantFeatures(id: string) {

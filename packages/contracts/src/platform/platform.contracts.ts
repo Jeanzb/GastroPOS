@@ -39,6 +39,9 @@ export interface PlanDto {
   name: string;
   description: string | null;
   isActive: boolean;
+  priceAmount: number;
+  currency: 'COP';
+  billingPeriod: 'MONTH';
   features: FeatureDto[];
 }
 
@@ -57,10 +60,13 @@ export interface TenantFeatureOverrideDto extends TenantFeatureDto {
 export interface PlatformTenantDto {
   id: string;
   name: string;
-  slug: string;
+  nit: string | null;
+  municipality: string | null;
   status: TenantStatus;
   isActive: boolean;
   planCode: string | null;
+  planPriceAmount: number | null;
+  planPriceCurrency: 'COP' | null;
   branchCount: number;
   userCount: number;
   lastLoginAt: string | null;
@@ -78,6 +84,9 @@ export interface PlatformTenantDetailDto extends PlatformTenantDto {
     id: string;
     code: string;
     name: string;
+    city: string | null;
+    address: string | null;
+    phone: string | null;
     isActive: boolean;
   }>;
   users: Array<{
@@ -100,12 +109,25 @@ export interface PlatformOverviewDto {
 
 export interface CreatePlatformTenantRequest {
   name: string;
-  slug: string;
+  nit: string;
+  municipality: string;
+  taxRegime?: string;
+  fiscalResponsibility?: string;
   ownerEmail: string;
   ownerFullName: string;
   ownerTemporaryPassword: string;
   branchName: string;
   branchCode: string;
+  branchAddress?: string;
+  branchPhone?: string;
+}
+
+export interface CreatePlatformBranchRequest {
+  name: string;
+  code: string;
+  city: string;
+  address?: string;
+  phone?: string;
 }
 
 export interface UpdateTenantStatusRequest {
@@ -120,4 +142,19 @@ export interface UpdateTenantPlanRequest {
 export interface UpdateTenantFeatureOverrideRequest {
   enabled: boolean;
   reason?: string | null;
+}
+
+export type PlatformHealthStatus = 'operational' | 'degraded' | 'down';
+
+export interface PlatformHealthCheckDto {
+  name: 'api' | 'postgres' | 'redis';
+  status: PlatformHealthStatus;
+  latencyMs?: number;
+  message?: string;
+}
+
+export interface PlatformHealthDto {
+  status: PlatformHealthStatus;
+  checkedAt: string;
+  checks: PlatformHealthCheckDto[];
 }

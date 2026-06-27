@@ -17,6 +17,7 @@ import type {
   PlatformAuthResponse,
   PlatformOverviewDto,
   PlatformFeatureDto,
+  PlatformHealthDto,
   PlatformTenantDetailDto,
   PlatformTenantDto,
   PlanDto,
@@ -26,6 +27,7 @@ import { PlatformService } from './platform.service';
 import { PlatformLoginDto } from './dto/platform-login.dto';
 import { PlatformRefreshTokenDto } from './dto/platform-refresh-token.dto';
 import { CreatePlatformTenantDto } from './dto/create-platform-tenant.dto';
+import { CreatePlatformBranchDto } from './dto/create-platform-branch.dto';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
 import { UpdateTenantPlanDto } from './dto/update-tenant-plan.dto';
 import { UpdateTenantFeatureOverrideDto } from './dto/update-tenant-feature-override.dto';
@@ -108,6 +110,18 @@ export class PlatformController {
     return this.platformService.createTenant(user, dto);
   }
 
+  @Post('tenants/:id/branches')
+  @UseGuards(PlatformJwtAuthGuard, PlatformRolesGuard)
+  @RequirePlatformRoles('PLATFORM_OWNER', 'PLATFORM_ADMIN')
+  @ApiBearerAuth()
+  createBranch(
+    @CurrentPlatformUser() user: AuthenticatedPlatformUser,
+    @Param('id') id: string,
+    @Body() dto: CreatePlatformBranchDto,
+  ): Promise<PlatformTenantDetailDto> {
+    return this.platformService.createBranch(user, id, dto);
+  }
+
   @Get('tenants/:id')
   @UseGuards(PlatformJwtAuthGuard)
   @ApiBearerAuth()
@@ -151,6 +165,13 @@ export class PlatformController {
   @ApiBearerAuth()
   listFeatures(): Promise<PlatformFeatureDto[]> {
     return this.platformService.listFeatures();
+  }
+
+  @Get('health')
+  @UseGuards(PlatformJwtAuthGuard)
+  @ApiBearerAuth()
+  getHealth(): Promise<PlatformHealthDto> {
+    return this.platformService.getHealth();
   }
 
   @Get('tenants/:id/features')

@@ -114,19 +114,12 @@ function OpenAccountForm({
       >
         <div className="grid grid-cols-2 gap-3">
           {autoAssignWaiter ? (
-            <FormField
-              control={form.control}
-              name="waiterName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Mesero</FormLabel>
-                  <FormControl>
-                    <Input value={field.value ?? ''} disabled />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="rounded-xl border border-border bg-muted/45 px-3 py-2.5">
+              <p className="text-xs font-medium text-muted-foreground">Mesero asignado</p>
+              <p className="mt-1 truncate text-sm font-semibold">
+                {defaultWaiterName || 'Tu usuario'}
+              </p>
+            </div>
           ) : (
             <FormField
               control={form.control}
@@ -258,10 +251,8 @@ export function PosWorkspace() {
     const names = (waitersQuery.data?.data ?? []).map((employee) => employee.fullName);
     return Array.from(new Set(names.filter((name) => Boolean(name.trim()))));
   }, [waitersQuery.data?.data]);
-  const isPosWaiter = user?.authScope === 'POS' && user.role === 'WAITER';
-  const defaultWaiterName = isPosWaiter
-    ? user.fullName
-    : table?.waiterName ?? '';
+  const isAuthenticatedWaiter = user?.role === 'WAITER';
+  const defaultWaiterName = isAuthenticatedWaiter ? user.fullName : table?.waiterName ?? '';
 
   const isMutating =
     account.openAccountMutation.isPending ||
@@ -551,7 +542,7 @@ export function PosWorkspace() {
                 table={table}
                 defaultWaiterName={defaultWaiterName}
                 waiterOptions={waiterOptions}
-                autoAssignWaiter={isPosWaiter}
+                autoAssignWaiter={isAuthenticatedWaiter}
                 isSubmitting={isMutating}
                 isLoadingWaiters={waitersQuery.isLoading}
                 onSubmit={handleOpenAccount}

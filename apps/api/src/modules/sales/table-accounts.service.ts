@@ -61,11 +61,15 @@ export class TableAccountsService {
     dto: OpenTableAccountDto,
   ): Promise<TableAccountDto> {
     const branchId = requireBranch(actor);
+    const waiterName =
+      actor.role === 'WAITER'
+        ? cleanOptional(actor.fullName) ?? null
+        : cleanOptional(dto.waiterName) ?? null;
     const account = await this.repository.openAccount({
       tenantId: actor.tenantId,
       branchId,
       tableId,
-      waiterName: cleanOptional(dto.waiterName) ?? null,
+      waiterName,
       guestCount: dto.guestCount ?? null,
       customerName: cleanOptional(dto.customerName) ?? null,
       createdById: actor.actorUserId,

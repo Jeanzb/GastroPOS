@@ -44,6 +44,7 @@ export class AuthController {
     return this.authService.login({
       email: dto.email,
       password: dto.password,
+      tenantIdentifier: dto.tenantIdentifier,
       tenantSlug: dto.tenantSlug,
       metadata: requestMetadata(request, userAgent, forwardedFor),
     });

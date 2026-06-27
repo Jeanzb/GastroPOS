@@ -302,6 +302,7 @@ model Branch {
   tenantId String
   name     String
   code     String
+  city     String?
   address  String?
   phone    String?
   isActive Boolean @default(true)

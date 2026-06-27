@@ -25,6 +25,7 @@ function branch(overrides: Partial<Branch> = {}): Branch {
     tenantId: 'tenant_1',
     name: 'Sede Centro',
     code: 'CE',
+    city: null,
     address: null,
     phone: null,
     isActive: true,
