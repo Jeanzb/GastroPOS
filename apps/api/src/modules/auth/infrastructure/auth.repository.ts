@@ -234,6 +234,14 @@ export class AuthRepository {
     };
   }
 
+  async branchExistsForTenant(tenantId: string, branchId: string): Promise<boolean> {
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, tenantId, isActive: true, deletedAt: null },
+      select: { id: true },
+    });
+    return Boolean(branch);
+  }
+
   /**
    * Resolve the single active employee for staff POS login by commerce (tenant name or slug)
    * + national ID (cédula). The cédula is unique per tenant, so this is unambiguous.

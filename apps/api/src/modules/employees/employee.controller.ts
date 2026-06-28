@@ -18,8 +18,8 @@ import { CurrentTenantContext } from '../auth/presentation/decorators/current-te
 import { RequireFeature } from '../auth/presentation/decorators/require-feature.decorator';
 import { RequireRoles } from '../auth/presentation/decorators/require-roles.decorator';
 import { FeatureGuard } from '../auth/presentation/guards/feature.guard';
-import { JwtAuthGuard } from '../auth/presentation/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/presentation/guards/roles.guard';
+import { TenantJwtAuthGuard } from '../auth/presentation/guards/tenant-jwt-auth.guard';
 import { TenantStatusGuard } from '../auth/presentation/guards/tenant-status.guard';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { ListEmployeesQueryDto } from './dto/list-employees-query.dto';
@@ -31,7 +31,7 @@ import { EmployeeService } from './employee.service';
 @ApiTags('employees')
 @ApiBearerAuth()
 @RequireFeature('employees.enabled')
-@UseGuards(JwtAuthGuard, TenantStatusGuard, FeatureGuard, RolesGuard)
+@UseGuards(TenantJwtAuthGuard, TenantStatusGuard, FeatureGuard, RolesGuard)
 @RequireRoles('OWNER', 'ADMIN')
 @Controller('employees')
 export class EmployeeController {

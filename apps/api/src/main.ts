@@ -1,5 +1,10 @@
 import 'reflect-metadata';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  Logger,
+  ValidationPipe,
+  type ValidationError,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -32,6 +37,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       transformOptions: { enableImplicitConversion: true },
+      exceptionFactory: validationExceptionFactory,
     }),
   );
 
@@ -66,3 +72,37 @@ async function bootstrap() {
 }
 
 void bootstrap();
+
+function validationExceptionFactory(errors: ValidationError[]): BadRequestException {
+  const fields = collectValidationFields(errors);
+  return new BadRequestException({
+    code: 'VALIDATION_ERROR',
+    message: 'Validation failed.',
+    details: {
+      fields,
+      validation: Object.entries(fields).flatMap(([field, messages]) =>
+        messages.map((message) => `${field} ${message}`),
+      ),
+    },
+  });
+}
+
+function collectValidationFields(
+  errors: ValidationError[],
+  parentPath = '',
+): Record<string, string[]> {
+  const fields: Record<string, string[]> = {};
+
+  for (const error of errors) {
+    const fieldPath = parentPath ? `${parentPath}.${error.property}` : error.property;
+    const messages = error.constraints ? Object.values(error.constraints) : [];
+    if (messages.length > 0) {
+      fields[fieldPath] = messages;
+    }
+    if (error.children?.length) {
+      Object.assign(fields, collectValidationFields(error.children, fieldPath));
+    }
+  }
+
+  return fields;
+}

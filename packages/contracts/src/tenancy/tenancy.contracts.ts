@@ -10,6 +10,7 @@ export interface BranchDto {
   tenantId: string;
   name: string;
   code: string;
+  city: string | null;
   address: string | null;
   phone: string | null;
   isActive: boolean;

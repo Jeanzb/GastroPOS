@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -15,6 +16,13 @@ interface RequestWithAuth {
   headers: Record<string, string | string[] | undefined>;
   user?: AuthenticatedUser;
 }
+
+const ACTIVE_BRANCH_HEADER = 'x-gastroia-branch-id';
+const CROSS_BRANCH_ROLES = new Set<AuthenticatedUser['role']>([
+  'OWNER',
+  'ADMIN',
+  'ACCOUNTANT',
+]);
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -40,13 +48,38 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid bearer token.');
     }
 
-    request.user = user;
+    const branchId = await this.resolveBranchContext(user, request.headers);
+    request.user = { ...user, branchId };
     this.tenantContext.set({
       tenantId: user.tenantId,
-      branchId: user.branchId,
+      branchId,
       actorUserId: user.id,
     });
     return true;
+  }
+
+  private async resolveBranchContext(
+    user: AuthenticatedUser,
+    headers: RequestWithAuth['headers'],
+  ): Promise<string | null> {
+    const requestedBranchId = firstHeader(headers[ACTIVE_BRANCH_HEADER])?.trim();
+    if (!requestedBranchId) {
+      return user.branchId;
+    }
+
+    const branchExists = await this.authRepository.branchExistsForTenant(
+      user.tenantId,
+      requestedBranchId,
+    );
+    if (!branchExists) {
+      throw new ForbiddenException('Invalid branch context.');
+    }
+
+    if (requestedBranchId === user.branchId || CROSS_BRANCH_ROLES.has(user.role)) {
+      return requestedBranchId;
+    }
+
+    throw new ForbiddenException('You do not have access to the requested branch.');
   }
 
   private async verifyToken(token: string): Promise<AccessTokenPayload> {
@@ -84,6 +117,10 @@ function extractBearerToken(
 
   const [type, token] = authorizationHeader.split(' ');
   return type === 'Bearer' && token ? token : null;
+}
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function isAccessTokenPayload(value: unknown): value is AccessTokenPayload {

@@ -23,6 +23,7 @@ import { PurchasesModule } from './modules/purchases/purchases.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SalesModule } from './modules/sales/sales.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
+import { TenancyModule } from './modules/tenancy/tenancy.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
     }),
     AuditModule,
     AuthModule,
+    TenancyModule,
     CashModule,
     CatalogModule,
     CustomersModule,
