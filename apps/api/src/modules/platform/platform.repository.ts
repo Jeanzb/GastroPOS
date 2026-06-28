@@ -366,6 +366,30 @@ export class PlatformRepository {
     });
   }
 
+  async archiveTenant(id: string): Promise<void> {
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.tenant.update({
+        where: { id },
+        data: {
+          isActive: false,
+          status: 'ARCHIVED',
+          archivedAt: now,
+          deletedAt: now,
+          suspensionReason: 'Archived from platform delete flow.',
+        },
+      }),
+      this.prisma.session.updateMany({
+        where: { tenantId: id, isActive: true },
+        data: { isActive: false, revokedAt: now },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { session: { tenantId: id }, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+    ]);
+  }
+
   async updateTenantPlan(id: string, planCode: 'BASIC') {
     const plan = await this.prisma.plan.findUnique({ where: { code: planCode } });
     if (!plan) {

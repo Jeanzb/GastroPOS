@@ -1,6 +1,7 @@
 export {
   useCreatePlatformBranch,
   useCreatePlatformTenant,
+  useDeletePlatformTenant,
   useDeleteTenantFeatureOverride,
   usePlatformAuth,
   usePlatformFeatures,

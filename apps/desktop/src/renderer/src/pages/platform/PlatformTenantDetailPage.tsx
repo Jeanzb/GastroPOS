@@ -1,9 +1,18 @@
 import type { ChangeEventHandler, ElementType, FormEvent } from 'react';
 import { useState } from 'react';
-import { useParams } from '@tanstack/react-router';
-import { CheckCircle2, Loader2, Plus, ShieldAlert, Store, Users } from 'lucide-react';
+import { useParams, useRouter } from '@tanstack/react-router';
+import { CheckCircle2, Loader2, Plus, ShieldAlert, Store, Trash2, Users } from 'lucide-react';
 import type { PlatformTenantDetailDto } from '@gastroai/contracts';
 import { PlatformShell, PlatformState, PlatformStatusBadge } from '@/components/platform';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,7 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCreatePlatformBranch, usePlatformTenant, useUpdateTenantStatus } from '@/hooks/platform';
+import { useCreatePlatformBranch, useDeletePlatformTenant, usePlatformTenant, useUpdateTenantStatus } from '@/hooks/platform';
 import { useAppToast } from '@/hooks/ui';
 import { BASIC_PLAN_CURRENCY, BASIC_PLAN_PRICE_AMOUNT, featureDescription, featureLabel } from '@/lib/platform-labels';
 import { formatMoney } from '@/lib/format';
@@ -42,14 +51,23 @@ const EMPTY_BRANCH_FORM = {
 };
 
 export function PlatformTenantDetailPage() {
+  const router = useRouter();
   const toast = useAppToast();
   const params = useParams({ strict: false }) as { tenantId: string };
   const tenantQuery = usePlatformTenant(params.tenantId);
   const createBranch = useCreatePlatformBranch(params.tenantId);
   const updateStatus = useUpdateTenantStatus(params.tenantId);
+  const deleteTenant = useDeletePlatformTenant(params.tenantId);
   const [isBranchDialogOpen, setIsBranchDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [branchForm, setBranchForm] = useState(EMPTY_BRANCH_FORM);
+  const [deletePhrase, setDeletePhrase] = useState('');
+  const [repeatedDeletePhrase, setRepeatedDeletePhrase] = useState('');
   const tenant = tenantQuery.data;
+  const expectedDeletePhrase = tenant ? tenantDeletePhrase(tenant.name) : '';
+  const canDeleteTenant =
+    normalizeConfirmationPhrase(deletePhrase) === expectedDeletePhrase &&
+    normalizeConfirmationPhrase(repeatedDeletePhrase) === expectedDeletePhrase;
 
   const handleBranchChange =
     (key: keyof typeof branchForm): ChangeEventHandler<HTMLInputElement> =>
@@ -87,6 +105,34 @@ export function PlatformTenantDetailPage() {
     }
   };
 
+  const handleDeleteTenant = async () => {
+    if (!tenant || !canDeleteTenant) {
+      return;
+    }
+    try {
+      await deleteTenant.mutateAsync({
+        confirmationPhrase: deletePhrase,
+        repeatedConfirmationPhrase: repeatedDeletePhrase,
+      });
+      toast.success('Restaurante eliminado', `${tenant.name} quedo archivado y fuera del directorio.`);
+      setIsDeleteDialogOpen(false);
+      setDeletePhrase('');
+      setRepeatedDeletePhrase('');
+      void router.navigate({ to: '/platform/tenants', replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo eliminar el restaurante.';
+      toast.error('Eliminacion rechazada', message);
+    }
+  };
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+    if (!open) {
+      setDeletePhrase('');
+      setRepeatedDeletePhrase('');
+    }
+  };
+
   return (
     <PlatformShell
       title={tenant?.name ?? 'Detalle restaurante'}
@@ -120,6 +166,16 @@ export function PlatformTenantDetailPage() {
               <div className="flex gap-2">
                 <Button
                   type="button"
+                  variant="destructive"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={deleteTenant.isPending}
+                  data-cy="platform-delete-tenant-open"
+                >
+                  <Trash2 className="size-4" />
+                  Eliminar
+                </Button>
+                <Button
+                  type="button"
                   variant="outline"
                   onClick={handleSuspendToggle}
                   disabled={updateStatus.isPending}
@@ -138,6 +194,20 @@ export function PlatformTenantDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          <DeleteTenantDialog
+            open={isDeleteDialogOpen}
+            tenantName={tenant.name}
+            expectedPhrase={expectedDeletePhrase}
+            confirmationPhrase={deletePhrase}
+            repeatedConfirmationPhrase={repeatedDeletePhrase}
+            canDelete={canDeleteTenant}
+            isDeleting={deleteTenant.isPending}
+            onOpenChange={handleDeleteDialogOpenChange}
+            onConfirmationPhraseChange={setDeletePhrase}
+            onRepeatedConfirmationPhraseChange={setRepeatedDeletePhrase}
+            onDelete={handleDeleteTenant}
+          />
 
           <Tabs defaultValue="branches" className="gap-5">
             <TabsList className="gap-5 border-b border-carbon/10">
@@ -162,6 +232,111 @@ export function PlatformTenantDetailPage() {
         </div>
       )}
     </PlatformShell>
+  );
+}
+
+function DeleteTenantDialog({
+  open,
+  tenantName,
+  expectedPhrase,
+  confirmationPhrase,
+  repeatedConfirmationPhrase,
+  canDelete,
+  isDeleting,
+  onOpenChange,
+  onConfirmationPhraseChange,
+  onRepeatedConfirmationPhraseChange,
+  onDelete,
+}: {
+  open: boolean;
+  tenantName: string;
+  expectedPhrase: string;
+  confirmationPhrase: string;
+  repeatedConfirmationPhrase: string;
+  canDelete: boolean;
+  isDeleting: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirmationPhraseChange: (value: string) => void;
+  onRepeatedConfirmationPhraseChange: (value: string) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Eliminar restaurante</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta accion archiva <strong>{tenantName}</strong>, lo saca del directorio y revoca sus sesiones activas.
+            Los datos operativos se conservan para auditoria.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-4">
+          <div className="rounded-lg border border-destructive/20 bg-danger-soft/70 p-4 text-sm text-destructive">
+            Escribe <code className="rounded bg-background/70 px-1.5 py-0.5 font-mono">{expectedPhrase}</code> dos veces para confirmar.
+          </div>
+          <ConfirmationField
+            id="delete-tenant-confirmation"
+            label="Primera confirmacion"
+            value={confirmationPhrase}
+            expectedPhrase={expectedPhrase}
+            onChange={onConfirmationPhraseChange}
+          />
+          <ConfirmationField
+            id="delete-tenant-repeat"
+            label="Segunda confirmacion"
+            value={repeatedConfirmationPhrase}
+            expectedPhrase={expectedPhrase}
+            onChange={onRepeatedConfirmationPhraseChange}
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={!canDelete || isDeleting}
+            onClick={onDelete}
+            data-cy="platform-delete-tenant-confirm"
+          >
+            {isDeleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            Eliminar restaurante
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function ConfirmationField({
+  id,
+  label,
+  value,
+  expectedPhrase,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  expectedPhrase: string;
+  onChange: (value: string) => void;
+}) {
+  const isDirty = value.length > 0;
+  const isValid = normalizeConfirmationPhrase(value) === expectedPhrase;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-invalid={isDirty && !isValid}
+        autoComplete="off"
+        data-cy={id}
+      />
+      {isDirty && !isValid ? (
+        <p className="text-xs font-medium text-destructive">La frase no coincide exactamente.</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -381,4 +556,12 @@ function TenantAvatar({ name }: { name: string }) {
       {letters}
     </span>
   );
+}
+
+function tenantDeletePhrase(tenantName: string): string {
+  return `delete ${tenantName.trim().toLowerCase()} tenant`;
+}
+
+function normalizeConfirmationPhrase(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }

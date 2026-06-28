@@ -4,6 +4,7 @@ import { PlatformService } from '@/services/platform';
 import type {
   CreatePlatformBranchRequest,
   CreatePlatformTenantRequest,
+  DeletePlatformTenantRequest,
   PlatformLoginRequest,
   UpdateTenantFeatureOverrideRequest,
   UpdateTenantPlanRequest,
@@ -115,6 +116,19 @@ export function useUpdateTenantPlan(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenants] });
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });
+    },
+  });
+}
+
+export function useDeletePlatformTenant(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: DeletePlatformTenantRequest) => PlatformService.deleteTenant(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenants] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformOverview] });
+      void queryClient.removeQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });
+      void queryClient.removeQueries({ queryKey: [QUERY_KEYS.platformTenantFeatures, id] });
     },
   });
 }

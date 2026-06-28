@@ -139,6 +139,11 @@ export interface UpdateTenantPlanRequest {
   planCode: 'BASIC';
 }
 
+export interface DeletePlatformTenantRequest {
+  confirmationPhrase: string;
+  repeatedConfirmationPhrase: string;
+}
+
 export interface UpdateTenantFeatureOverrideRequest {
   enabled: boolean;
   reason?: string | null;

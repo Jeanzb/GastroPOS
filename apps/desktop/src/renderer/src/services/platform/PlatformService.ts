@@ -2,6 +2,7 @@ import { platformApiClient } from '@/api';
 import type {
   CreatePlatformBranchRequest,
   CreatePlatformTenantRequest,
+  DeletePlatformTenantRequest,
   PlatformAuthResponse,
   PlatformFeatureDto,
   PlatformHealthDto,
@@ -58,6 +59,13 @@ export const PlatformService = {
 
   updateTenantPlan(id: string, payload: UpdateTenantPlanRequest) {
     return platformApiClient.patch<PlatformTenantDetailDto>(`/platform/tenants/${id}/plan`, payload);
+  },
+
+  deleteTenant(id: string, payload: DeletePlatformTenantRequest) {
+    return platformApiClient.request<void>(`/platform/tenants/${id}`, {
+      method: 'DELETE',
+      body: payload,
+    });
   },
 
   listPlans() {

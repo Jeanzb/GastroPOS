@@ -6,6 +6,7 @@ import type Redis from 'ioredis';
 import type {
   CreatePlatformBranchRequest,
   CreatePlatformTenantRequest,
+  DeletePlatformTenantRequest,
   PlatformAuthResponse,
   PlatformHealthCheckDto,
   PlatformHealthDto,
@@ -298,6 +299,38 @@ export class PlatformService {
     return toPlatformTenantDetailDto(tenant);
   }
 
+  async deleteTenant(
+    actor: AuthenticatedPlatformUser,
+    id: string,
+    input: DeletePlatformTenantRequest,
+  ): Promise<void> {
+    const tenant = await this.repository.findTenantById(id);
+    if (!tenant) {
+      throw tenantNotFound();
+    }
+
+    const expectedPhrase = tenantDeletePhrase(tenant.name);
+    if (
+      normalizeConfirmationPhrase(input.confirmationPhrase) !== expectedPhrase ||
+      normalizeConfirmationPhrase(input.repeatedConfirmationPhrase) !== expectedPhrase
+    ) {
+      throw invalidTenantDeleteConfirmation(expectedPhrase);
+    }
+
+    await this.repository.archiveTenant(id);
+    await this.tenantAccessCache.setTenantStatus(id, 'ARCHIVED');
+    await this.tenantAccessCache.invalidateTenantFeatures(id);
+    await this.auditService.tryRecord({
+      actorUserId: actor.id,
+      action: 'PLATFORM_TENANT_DELETED',
+      entityType: 'Tenant',
+      entityId: id,
+      before: { status: tenant.status, isActive: tenant.isActive, deletedAt: null },
+      after: { status: 'ARCHIVED', isActive: false },
+      metadata: { tenantName: tenant.name, confirmationPhrase: expectedPhrase },
+    });
+  }
+
   async listPlans(): Promise<PlanDto[]> {
     return (await this.repository.listPlans()).map(toPlanDto);
   }
@@ -495,6 +528,14 @@ function tenantFeatureNotFound(): ApplicationException {
   });
 }
 
+function invalidTenantDeleteConfirmation(expectedPhrase: string): ApplicationException {
+  return new ApplicationException(400, {
+    code: 'TENANT_DELETE_CONFIRMATION_MISMATCH',
+    message: 'Tenant delete confirmation does not match.',
+    details: { expectedPhrase },
+  });
+}
+
 function isPast(date: Date): boolean {
   return date.getTime() <= Date.now();
 }
@@ -506,6 +547,14 @@ function normalizeOptional(value?: string | null): string | null {
 
 function normalizeDocument(value: string): string {
   return value.replace(/[^0-9]/g, '');
+}
+
+function tenantDeletePhrase(tenantName: string): string {
+  return `delete ${tenantName.trim().toLowerCase()} tenant`;
+}
+
+function normalizeConfirmationPhrase(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function slugify(value: string): string {

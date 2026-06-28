@@ -8,10 +8,10 @@ import { usePlatformAuthStore } from '@/stores';
 import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
-  { to: '/platform', label: 'Estado', icon: LayoutDashboard },
-  { to: '/platform/tenants', label: 'Restaurantes', icon: Building2 },
-  { to: '/platform/features', label: 'Modulos', icon: SlidersHorizontal },
-  { to: '/platform/plans', label: 'Plan Basico', icon: Tags },
+  { to: '/platform', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/platform/tenants', label: 'Restaurantes', icon: Building2, exact: false },
+  { to: '/platform/features', label: 'Modulos', icon: SlidersHorizontal, exact: false },
+  { to: '/platform/plans', label: 'Plan Basico', icon: Tags, exact: false },
 ] as const;
 
 interface PlatformShellProps {
@@ -55,6 +55,7 @@ export function PlatformShell({ title, description, children }: PlatformShellPro
             <Link
               key={item.to}
               to={item.to}
+              activeOptions={{ exact: item.exact }}
               className={cn(
                 'motion-press flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/72 transition hover:bg-white/8 hover:text-white',
                 '[&.active]:bg-orange/18 [&.active]:text-white [&.active]:shadow-[inset_3px_0_0_#ff5a2c]',

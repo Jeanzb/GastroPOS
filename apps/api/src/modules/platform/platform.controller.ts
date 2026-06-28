@@ -28,6 +28,7 @@ import { PlatformLoginDto } from './dto/platform-login.dto';
 import { PlatformRefreshTokenDto } from './dto/platform-refresh-token.dto';
 import { CreatePlatformTenantDto } from './dto/create-platform-tenant.dto';
 import { CreatePlatformBranchDto } from './dto/create-platform-branch.dto';
+import { DeletePlatformTenantDto } from './dto/delete-platform-tenant.dto';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
 import { UpdateTenantPlanDto } from './dto/update-tenant-plan.dto';
 import { UpdateTenantFeatureOverrideDto } from './dto/update-tenant-feature-override.dto';
@@ -151,6 +152,19 @@ export class PlatformController {
     @Body() dto: UpdateTenantPlanDto,
   ): Promise<PlatformTenantDetailDto> {
     return this.platformService.updateTenantPlan(user, id, dto.planCode);
+  }
+
+  @Delete('tenants/:id')
+  @UseGuards(PlatformJwtAuthGuard, PlatformRolesGuard)
+  @RequirePlatformRoles('PLATFORM_OWNER')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  async deleteTenant(
+    @CurrentPlatformUser() user: AuthenticatedPlatformUser,
+    @Param('id') id: string,
+    @Body() dto: DeletePlatformTenantDto,
+  ): Promise<void> {
+    await this.platformService.deleteTenant(user, id, dto);
   }
 
   @Get('plans')
