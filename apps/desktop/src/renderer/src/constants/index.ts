@@ -3,6 +3,7 @@ export const API_BASE_URL =
 
 export const QUERY_KEYS = {
   currentUser: 'current-user',
+  branches: 'branches',
   categories: 'categories',
   products: 'products',
   fiscalProfile: 'fiscal-profile',

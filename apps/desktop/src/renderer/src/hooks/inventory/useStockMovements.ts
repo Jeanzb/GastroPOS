@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { OnChangeFn, SortingState } from '@tanstack/react-table';
 import { QUERY_KEYS } from '@/constants';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { InventoryService } from '@/services/inventory';
 import type {
   SortDirection,
@@ -36,6 +37,8 @@ function paramsToSorting(params: StockMovementListParams): SortingState {
 }
 
 export function useStockMovements() {
+  const activeBranch = useActiveBranch();
+  const activeBranchId = activeBranch?.id;
   const [params, setParams] = useState<StockMovementListParams>({
     page: 1,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -44,8 +47,12 @@ export function useStockMovements() {
   });
 
   const query = useQuery({
-    queryKey: [QUERY_KEYS.stockMovements, params],
-    queryFn: () => InventoryService.getMovements(params),
+    queryKey: [QUERY_KEYS.stockMovements, params, activeBranchId],
+    queryFn: () =>
+      InventoryService.getMovements({
+        ...params,
+        branchId: params.branchId ?? activeBranchId,
+      }),
     placeholderData: keepPreviousData,
   });
 

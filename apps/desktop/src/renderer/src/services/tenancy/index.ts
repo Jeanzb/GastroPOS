@@ -1,0 +1,1 @@
+export { TenancyService } from './TenancyService';

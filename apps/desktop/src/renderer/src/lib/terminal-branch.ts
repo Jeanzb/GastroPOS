@@ -1,4 +1,5 @@
 const TERMINAL_BRANCH_STORAGE_KEY = 'gastroai-terminal-branch';
+export const TERMINAL_BRANCH_CHANGED_EVENT = 'gastroai-terminal-branch-changed';
 
 export interface TerminalBranch {
   id: string;
@@ -23,4 +24,10 @@ export function getTerminalBranch(): TerminalBranch | null {
 
 export function setTerminalBranch(branch: TerminalBranch): void {
   window.localStorage.setItem(TERMINAL_BRANCH_STORAGE_KEY, JSON.stringify(branch));
+  window.dispatchEvent(new CustomEvent(TERMINAL_BRANCH_CHANGED_EVENT));
+}
+
+export function clearTerminalBranch(): void {
+  window.localStorage.removeItem(TERMINAL_BRANCH_STORAGE_KEY);
+  window.dispatchEvent(new CustomEvent(TERMINAL_BRANCH_CHANGED_EVENT));
 }

@@ -1,24 +1,31 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DEFAULT_PAGE_SIZE, QUERY_KEYS } from '@/constants';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { PurchaseService } from '@/services/purchases';
 import type { CreatePurchasePayload, PurchaseListParams } from '@/types/purchases';
 
 export function usePurchases() {
   const queryClient = useQueryClient();
+  const activeBranch = useActiveBranch();
+  const activeBranchId = activeBranch?.id;
   const [params, setParams] = useState<PurchaseListParams>({
     page: 1,
     pageSize: DEFAULT_PAGE_SIZE,
   });
 
   const listQuery = useQuery({
-    queryKey: [QUERY_KEYS.purchases, params],
-    queryFn: () => PurchaseService.getPurchases(params),
+    queryKey: [QUERY_KEYS.purchases, params, activeBranchId],
+    queryFn: () =>
+      PurchaseService.getPurchases({
+        ...params,
+        branchId: params.branchId ?? activeBranchId,
+      }),
   });
 
   const periodsQuery = useQuery({
-    queryKey: [QUERY_KEYS.purchasePeriods],
-    queryFn: () => PurchaseService.getPeriods(),
+    queryKey: [QUERY_KEYS.purchasePeriods, activeBranchId],
+    queryFn: () => PurchaseService.getPeriods(activeBranchId),
   });
 
   const setPeriod = (period: string) =>
@@ -30,7 +37,11 @@ export function usePurchases() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (payload: CreatePurchasePayload) => PurchaseService.createPurchase(payload),
+    mutationFn: (payload: CreatePurchasePayload) =>
+      PurchaseService.createPurchase({
+        ...payload,
+        branchId: payload.branchId ?? activeBranchId,
+      }),
     onSuccess: onMutationSuccess,
   });
 

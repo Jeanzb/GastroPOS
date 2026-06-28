@@ -3,6 +3,7 @@ import { MetricCard } from '@/components/operations';
 import { QUERY_KEYS } from '@/constants';
 import { useCashSession } from '@/hooks/cash';
 import { useReports } from '@/hooks/reports';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { InventoryService } from '@/services/inventory';
 import { formatMoney } from '@/lib/format';
 import type { MetricSummary } from '@/types/operations';
@@ -14,11 +15,22 @@ function renderMetricCard(metric: MetricSummary) {
 }
 
 export function DashboardOverview() {
+  const activeBranch = useActiveBranch();
+  const activeBranchId = activeBranch?.id;
   const reports = useReports();
   const cash = useCashSession();
   const lowStockQuery = useQuery({
-    queryKey: [QUERY_KEYS.inventoryItems, { lowStockOnly: true, page: 1, pageSize: 8 }],
-    queryFn: () => InventoryService.getItems({ lowStockOnly: true, page: 1, pageSize: 8 }),
+    queryKey: [
+      QUERY_KEYS.inventoryItems,
+      { lowStockOnly: true, page: 1, pageSize: 8, branchId: activeBranchId },
+    ],
+    queryFn: () =>
+      InventoryService.getItems({
+        lowStockOnly: true,
+        page: 1,
+        pageSize: 8,
+        branchId: activeBranchId,
+      }),
   });
   const summary = reports.summaryQuery.data;
   const currency = summary?.currency ?? 'COP';

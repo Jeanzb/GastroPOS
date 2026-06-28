@@ -43,6 +43,7 @@ import { QUERY_KEYS } from '@/constants';
 import { useCategories } from '@/hooks/catalog';
 import { useCashSession } from '@/hooks/cash';
 import { useDiningRoom, useSellableProducts, useTableAccount } from '@/hooks/operations';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { useAppToast } from '@/hooks/ui';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -210,6 +211,8 @@ export function PosWorkspace() {
   const activeTableId = useOrderStore((state) => state.activeTableId);
   const setActiveTableId = useOrderStore((state) => state.setActiveTableId);
   const user = useAuthStore((state) => state.user);
+  const activeBranch = useActiveBranch();
+  const activeBranchId = activeBranch?.id ?? user?.branchId ?? undefined;
   const [activeCategory, setActiveCategory] = useState<string>(ALL);
   const [search, setSearch] = useState('');
   const [command, setCommand] = useState<KitchenCommandDto | null>(null);
@@ -224,16 +227,16 @@ export function PosWorkspace() {
   const categoriesQuery = useCategories();
   const account = useTableAccount(activeTableId);
   const waitersQuery = useQuery({
-    queryKey: [QUERY_KEYS.employees, { role: 'WAITER', isActive: true, branchId: user?.branchId }],
+    queryKey: [QUERY_KEYS.employees, { role: 'WAITER', isActive: true, branchId: activeBranchId }],
     queryFn: () =>
       EmployeeService.getEmployees({
         page: 1,
         pageSize: 100,
         role: 'WAITER',
         isActive: true,
-        branchId: user?.branchId ?? undefined,
+        branchId: activeBranchId,
       }),
-    enabled: Boolean(user?.branchId),
+    enabled: Boolean(activeBranchId),
   });
 
   const zones = diningRoom.zonesQuery.data ?? [];

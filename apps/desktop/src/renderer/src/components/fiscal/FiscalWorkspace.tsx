@@ -52,22 +52,6 @@ const PROVIDER_TYPE_LABELS: Record<FiscalProviderType, string> = {
   API_PROVIDER: 'API fiscal',
 };
 
-function FiscalQueueRow({ item }: { item: FiscalQueueItem }) {
-  return (
-    <TableRow>
-      <TableCell className="font-medium">{item.document}</TableCell>
-      <TableCell>{item.customer}</TableCell>
-      <TableCell>
-        <StatusPill tone={item.tone}>{item.status}</StatusPill>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function renderFiscalQueueRow(item: FiscalQueueItem) {
-  return <FiscalQueueRow key={item.document} item={item} />;
-}
-
 function statusTone(status: FiscalProviderStatus | undefined) {
   if (status === 'CONNECTION_TESTED') {
     return 'green';
@@ -277,7 +261,17 @@ export function FiscalWorkspace() {
                       <TableHead>Estado</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>{FISCAL_QUEUE.map(renderFiscalQueueRow)}</TableBody>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="py-10 text-center text-sm text-muted-foreground"
+                      >
+                        Aun no hay documentos emitidos. Los comprobantes apareceran aqui cuando
+                        empieces a facturar.
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
                 </Table>
               </div>
             </CardContent>

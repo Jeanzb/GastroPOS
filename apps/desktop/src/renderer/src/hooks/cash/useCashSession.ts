@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/constants';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { CashService } from '@/services/cash';
 import type {
   CloseCashSessionPayload,
@@ -9,10 +10,12 @@ import type {
 
 export function useCashSession(zReportSessionId?: string | null) {
   const queryClient = useQueryClient();
+  const activeBranch = useActiveBranch();
+  const activeBranchId = activeBranch?.id;
 
   const activeSessionQuery = useQuery({
-    queryKey: [QUERY_KEYS.cashSession],
-    queryFn: () => CashService.getActiveSession(),
+    queryKey: [QUERY_KEYS.cashSession, activeBranchId],
+    queryFn: () => CashService.getActiveSession(activeBranchId),
   });
 
   const sessionId = activeSessionQuery.data?.id;
@@ -35,7 +38,11 @@ export function useCashSession(zReportSessionId?: string | null) {
   };
 
   const openMutation = useMutation({
-    mutationFn: (payload: OpenCashSessionPayload) => CashService.openSession(payload),
+    mutationFn: (payload: OpenCashSessionPayload) =>
+      CashService.openSession({
+        ...payload,
+        branchId: payload.branchId ?? activeBranchId,
+      }),
     onSuccess: invalidateCash,
   });
 

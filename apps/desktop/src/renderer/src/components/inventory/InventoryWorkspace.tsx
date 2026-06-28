@@ -15,6 +15,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProducts } from '@/hooks/catalog';
 import { useInventory, useStockMovements } from '@/hooks/inventory';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { useAppToast } from '@/hooks/ui';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,6 @@ import type {
   InventoryAdjustmentFormValues,
   InventoryItemFormValues,
 } from '@/schemas/inventory';
-import { useAuthStore } from '@/stores';
 import type { InventoryItemDto, StockMovementDto, StockMovementType } from '@/types/inventory';
 import { InventoryAdjustmentDialog } from './InventoryAdjustmentDialog';
 import { InventoryItemFormDialog } from './InventoryItemFormDialog';
@@ -170,7 +170,7 @@ function ItemRow({
 
 export function InventoryWorkspace() {
   const toast = useAppToast();
-  const user = useAuthStore((state) => state.user);
+  const activeBranch = useActiveBranch();
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItemDto | null>(null);
@@ -181,7 +181,7 @@ export function InventoryWorkspace() {
   const movementsPage = stockMovements.query.data;
   const movements = movementsPage?.data ?? [];
   const total = itemsQuery.data?.meta.total ?? items.length;
-  const activeBranchId = user?.branchId ?? null;
+  const activeBranchId = activeBranch?.id ?? null;
 
   const stats = useMemo(() => {
     const low = items.filter(isLow).length;

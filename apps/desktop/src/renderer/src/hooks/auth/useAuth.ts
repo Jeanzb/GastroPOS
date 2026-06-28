@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { AuthService } from '@/services/auth';
+import { clearTerminalBranch } from '@/lib/terminal-branch';
 import { useAuthStore } from '@/stores';
 import type { LoginRequest, StaffLoginRequest } from '@/types/auth';
 
@@ -14,17 +15,24 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: (payload: LoginRequest) => AuthService.login(payload),
-    onSuccess: (data) => setSession(data),
+    onSuccess: (data) => {
+      clearTerminalBranch();
+      setSession(data);
+    },
   });
 
   const staffLoginMutation = useMutation({
     mutationFn: (payload: StaffLoginRequest) => AuthService.staffLogin(payload),
-    onSuccess: (data) => setSession(data),
+    onSuccess: (data) => {
+      clearTerminalBranch();
+      setSession(data);
+    },
   });
 
   const logoutMutation = useMutation({
     mutationFn: () => AuthService.logout(),
     onSettled: async () => {
+      clearTerminalBranch();
       clear();
       queryClient.clear();
       await router.navigate({ to: '/login', replace: true });

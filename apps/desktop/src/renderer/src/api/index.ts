@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/constants';
 import { localizeApiError } from '@/lib/api-errors';
+import { getTerminalBranch } from '@/lib/terminal-branch';
 import { useAuthStore } from '@/stores/auth.store';
 import { usePlatformAuthStore } from '@/stores/platform-auth.store';
 import type { LoginResponse } from '@/types/auth';
@@ -140,6 +141,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
+      const activeBranch = shouldAttachActiveBranch(path) ? getTerminalBranch() : null;
+      if (activeBranch?.id) {
+        headers['X-GastroIA-Branch-Id'] = activeBranch.id;
+      }
     }
     return fetch(buildUrl(path, query), {
       method,
@@ -201,6 +206,10 @@ async function platformRequest<T>(path: string, options: RequestOptions = {}): P
     return undefined as T;
   }
   return (await response.json()) as T;
+}
+
+function shouldAttachActiveBranch(path: string): boolean {
+  return !path.startsWith('/branches') && !path.startsWith('/auth/');
 }
 
 export const apiClient = {

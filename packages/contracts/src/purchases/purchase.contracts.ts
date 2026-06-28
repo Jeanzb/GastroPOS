@@ -31,6 +31,7 @@ export interface PurchaseDto {
 export interface PurchaseListParams {
   page?: number;
   pageSize?: number;
+  branchId?: string;
   search?: string;
   status?: PurchaseStatus;
   supplierId?: string;

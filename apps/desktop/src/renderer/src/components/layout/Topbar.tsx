@@ -4,6 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { getAvailableRoleProfilesForRole } from '@gastroai/contracts';
 import { Button } from '@/components/ui/button';
 import { ROUTE_META } from '@/constants';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores';
 import type { RouteMeta } from '@/types/operations';
@@ -63,6 +64,7 @@ export function Topbar() {
     select: (state) => state.location.pathname,
   });
   const [now, setNow] = useState(() => new Date());
+  const terminalBranch = useActiveBranch();
   const user = useAuthStore((state) => state.user);
   const activeRole = useAuthStore((state) => state.activeRole);
   const setActiveRole = useAuthStore((state) => state.setActiveRole);
@@ -132,7 +134,9 @@ export function Topbar() {
         <Button variant="outline" asChild className="h-9 gap-2 rounded-lg px-3">
           <Link to="/sede">
             <span className="h-2.5 w-2.5 rounded-full bg-success" />
-            <span className="hidden text-sm font-semibold md:inline">Sede El Poblado</span>
+            <span className="hidden text-sm font-semibold md:inline">
+              {terminalBranch?.name ?? 'Elegir sede'}
+            </span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </Link>
         </Button>

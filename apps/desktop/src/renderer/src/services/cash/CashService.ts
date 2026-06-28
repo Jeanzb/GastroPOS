@@ -9,9 +9,12 @@ import type {
 } from '@/types/cash';
 
 export class CashService {
-  static async getActiveSession(): Promise<CashSessionDto | null> {
+  static async getActiveSession(branchId?: string): Promise<CashSessionDto | null> {
     try {
-      return await apiClient.get<CashSessionDto>('/cash-sessions/active');
+      return await apiClient.get<CashSessionDto>(
+        '/cash-sessions/active',
+        branchId ? { branchId } : undefined,
+      );
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         return null;

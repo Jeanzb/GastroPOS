@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '@/constants';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { DiningService } from '@/services/operations';
 import type {
   CreateDiningTableRequest,
@@ -11,18 +12,19 @@ import type {
   UpdateDiningZoneRequest,
 } from '@/types/dining';
 
-const diningZonesKey = [QUERY_KEYS.diningZones] as const;
-
 export function useDiningRoom() {
   const queryClient = useQueryClient();
+  const activeBranch = useActiveBranch();
+  const activeBranchId = activeBranch?.id;
+  const scopedDiningZonesKey = [QUERY_KEYS.diningZones, activeBranchId] as const;
 
   const zonesQuery = useQuery({
-    queryKey: diningZonesKey,
+    queryKey: scopedDiningZonesKey,
     queryFn: () => DiningService.getZones(),
   });
 
   const setZones = (updater: (zones: DiningZoneDto[]) => DiningZoneDto[]) => {
-    queryClient.setQueryData<DiningZoneDto[]>(diningZonesKey, (current) =>
+    queryClient.setQueryData<DiningZoneDto[]>(scopedDiningZonesKey, (current) =>
       updater(current ?? []),
     );
   };
