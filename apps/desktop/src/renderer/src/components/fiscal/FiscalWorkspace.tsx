@@ -20,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FISCAL_QUEUE } from '@/constants';
 import { useFiscalProfile } from '@/hooks/fiscal';
 import { formatDate } from '@/lib';
 import type { FiscalProfileFormValues } from '@/schemas/fiscal';
@@ -31,7 +30,6 @@ import type {
   FiscalProviderType,
   UpsertFiscalProfilePayload,
 } from '@/types/fiscal';
-import type { FiscalQueueItem } from '@/types/operations';
 import { FiscalProfileFormDialog } from './FiscalProfileFormDialog';
 
 const STATUS_LABELS: Record<FiscalProviderStatus, string> = {
