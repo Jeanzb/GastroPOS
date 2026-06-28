@@ -20,12 +20,13 @@ function tenantLogin(): Cypress.Chainable<TenantLoginResponse> {
       ownerEmail: string;
       ownerPassword: string;
       tenantSlug: string;
-    }>(['apiUrl', 'ownerEmail', 'ownerPassword', 'tenantSlug'])
-    .then(({ apiUrl, ownerEmail, ownerPassword, tenantSlug }) =>
+      tenantIdentifier: string;
+    }>(['apiUrl', 'ownerEmail', 'ownerPassword', 'tenantSlug', 'tenantIdentifier'])
+    .then(({ apiUrl, ownerEmail, ownerPassword, tenantSlug, tenantIdentifier }) =>
       cy.request<TenantLoginResponse>({
         method: 'POST',
         url: `${apiUrl}/auth/login`,
-        body: { email: ownerEmail, password: ownerPassword, tenantSlug },
+        body: { tenantIdentifier, email: ownerEmail, password: ownerPassword, tenantSlug },
       }),
     )
     .then(({ body }) => cy.wrap(body));

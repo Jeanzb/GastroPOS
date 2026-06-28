@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseColombianNit } from '@gastroai/contracts';
 
 export const supplierFormSchema = z.object({
   name: z
@@ -22,6 +23,27 @@ export const supplierFormSchema = z.object({
   email: z.union([z.string().trim().email('Correo invalido'), z.literal('')]).optional(),
   phone: z.string().trim().max(40).optional(),
   address: z.string().trim().max(200).optional(),
+}).superRefine((value, ctx) => {
+  if (value.documentType !== 'NIT') {
+    return;
+  }
+
+  const nit = parseColombianNit(value.documentNumber ?? '', value.verificationDigit);
+  if (!nit) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['documentNumber'],
+      message: 'Ingresa un NIT valido',
+    });
+    return;
+  }
+  if (!nit.isValid) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['verificationDigit'],
+      message: `El DV debe ser ${nit.expectedVerificationDigit}`,
+    });
+  }
 });
 
 export type SupplierFormValues = z.infer<typeof supplierFormSchema>;

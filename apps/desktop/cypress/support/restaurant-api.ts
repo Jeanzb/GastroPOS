@@ -8,6 +8,7 @@ export interface LoginResponse {
   tokens: {
     accessToken: string;
   };
+  branch?: BranchSummary;
 }
 
 export interface CashMovement {
@@ -17,6 +18,11 @@ export interface CashMovement {
 
 export interface DiningZone {
   id: string;
+}
+
+export interface BranchSummary {
+  id: string;
+  name: string;
 }
 
 export interface DiningTable {
@@ -55,23 +61,46 @@ export function apiLogin(): Cypress.Chainable<LoginResponse> {
       ownerEmail: string;
       ownerPassword: string;
       tenantSlug: string;
-    }>(['apiUrl', 'ownerEmail', 'ownerPassword', 'tenantSlug'])
-    .then(({ apiUrl, ownerEmail, ownerPassword, tenantSlug }) =>
-      cy.request<LoginResponse>({
-        method: 'POST',
-        url: `${apiUrl}/auth/login`,
-        body: {
-          email: ownerEmail,
-          password: ownerPassword,
-          tenantSlug,
-        },
-      }),
-    )
-    .then(({ body }) => cy.wrap(body));
+      tenantIdentifier: string;
+    }>(['apiUrl', 'ownerEmail', 'ownerPassword', 'tenantSlug', 'tenantIdentifier'])
+    .then(({ apiUrl, ownerEmail, ownerPassword, tenantSlug, tenantIdentifier }) =>
+      cy
+        .request<LoginResponse>({
+          method: 'POST',
+          url: `${apiUrl}/auth/login`,
+          body: {
+            tenantIdentifier,
+            email: ownerEmail,
+            password: ownerPassword,
+            tenantSlug,
+          },
+        })
+        .then(({ body }) =>
+          cy
+            .request<BranchSummary[]>({
+              method: 'GET',
+              url: `${apiUrl}/branches`,
+              headers: { Authorization: `Bearer ${body.tokens.accessToken}` },
+            })
+            .then(({ body: branches }) => {
+              expect(branches, 'available branches for API test setup').to.have.length.greaterThan(
+                0,
+              );
+              const userBranch = branches.find((branch) => branch.id === body.user.branchId);
+              return cy.wrap({ ...body, branch: userBranch ?? branches[0] });
+            }),
+        ),
+    );
 }
 
-export function authHeaders(auth: LoginResponse): { Authorization: string } {
-  return { Authorization: `Bearer ${auth.tokens.accessToken}` };
+export function authHeaders(auth: LoginResponse): {
+  Authorization: string;
+  'X-GastroIA-Branch-Id'?: string;
+} {
+  return {
+    Authorization: `Bearer ${auth.tokens.accessToken}`,
+    ...(auth.branch?.id ? { 'X-GastroIA-Branch-Id': auth.branch.id } : {}),
+  };
 }
 
 export function closeActiveCashSession(auth: LoginResponse): Cypress.Chainable<void> {

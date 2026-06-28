@@ -1,41 +1,11 @@
-// Colombian taxpayer document helpers.
-
 const NIT_WEIGHTS = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
 
-interface ColombianNitParts {
+export interface ColombianNitParts {
   number: string;
   verificationDigit: string;
   expectedVerificationDigit: string;
   formatted: string;
   isValid: boolean;
-}
-
-export type PersonType = 'JURIDICA' | 'NATURAL';
-export type DocumentType = 'NIT' | 'CC' | 'CE' | 'PAS';
-
-export const PERSON_TYPE_LABEL: Record<PersonType, string> = {
-  JURIDICA: 'Persona juridica',
-  NATURAL: 'Persona natural',
-};
-
-export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
-  NIT: 'NIT',
-  CC: 'Cedula de ciudadania',
-  CE: 'Cedula de extranjeria',
-  PAS: 'Pasaporte',
-};
-
-export const DOCUMENT_TYPES_BY_PERSON: Record<PersonType, DocumentType[]> = {
-  JURIDICA: ['NIT'],
-  NATURAL: ['CC', 'CE', 'PAS'],
-};
-
-export function requiresVerificationDigit(type: DocumentType): boolean {
-  return type === 'NIT';
-}
-
-export function isNumericDocument(type: DocumentType): boolean {
-  return type !== 'PAS';
 }
 
 export function computeNitVerificationDigit(nit: string): string | null {
@@ -83,24 +53,9 @@ export function parseColombianNit(
   };
 }
 
-function cleanNumber(type: DocumentType, raw: string): string {
-  return type === 'PAS'
-    ? raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
-    : raw.replace(/\D/g, '');
-}
-
-export function formatDocument(
-  type: DocumentType,
-  rawNumber: string,
-  verificationDigit?: string,
-): string | undefined {
-  const cleaned = cleanNumber(type, rawNumber);
-  if (!cleaned) {
-    return undefined;
-  }
-  if (type === 'NIT') {
-    const nit = parseColombianNit(cleaned, verificationDigit);
-    return nit ? `NIT ${nit.formatted}` : undefined;
-  }
-  return `${type} ${cleaned}`;
+export function normalizeColombianNit(
+  nit: string,
+  verificationDigit?: string | null,
+): string | null {
+  return parseColombianNit(nit, verificationDigit)?.formatted ?? null;
 }

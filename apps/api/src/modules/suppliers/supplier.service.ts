@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { PaginatedResult, SupplierDto } from '@gastroai/contracts';
+import { parseColombianNit } from '@gastroai/contracts';
 import type { Prisma } from '../../../generated/prisma';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
@@ -57,7 +58,7 @@ export class SupplierService {
 
     const created = await this.repository.create({
       name,
-      documentNumber: dto.documentNumber?.trim() || null,
+      documentNumber: normalizeSupplierDocument(dto.documentNumber, dto.documentVerificationDigit),
       email: dto.email?.trim() || null,
       phone: dto.phone?.trim() || null,
       address: dto.address?.trim() || null,
@@ -99,7 +100,9 @@ export class SupplierService {
     const updated = await this.repository.update(id, {
       name,
       documentNumber:
-        dto.documentNumber === undefined ? undefined : dto.documentNumber.trim() || null,
+        dto.documentNumber === undefined
+          ? undefined
+          : normalizeSupplierDocument(dto.documentNumber, dto.documentVerificationDigit),
       email: dto.email === undefined ? undefined : dto.email.trim() || null,
       phone: dto.phone === undefined ? undefined : dto.phone.trim() || null,
       address: dto.address === undefined ? undefined : dto.address.trim() || null,
@@ -156,6 +159,39 @@ function duplicateName(name: string): ApplicationException {
   return new ApplicationException(409, {
     code: ApiErrorCode.CONFLICT,
     message: `A supplier named "${name}" already exists.`,
+  });
+}
+
+function normalizeSupplierDocument(
+  value?: string,
+  verificationDigit?: string,
+): string | null {
+  const document = value?.trim();
+  if (!document) {
+    return null;
+  }
+
+  if (/^NIT\s*/i.test(document) || verificationDigit) {
+    const nit = parseColombianNit(document, verificationDigit);
+    if (!nit) {
+      throw invalidSupplierNit('Ingresa un NIT valido para el proveedor.');
+    }
+    if (!nit.isValid) {
+      throw invalidSupplierNit(
+        `El digito de verificacion del NIT del proveedor debe ser ${nit.expectedVerificationDigit}.`,
+      );
+    }
+    return `NIT ${nit.formatted}`;
+  }
+
+  return document;
+}
+
+function invalidSupplierNit(message: string): ApplicationException {
+  return new ApplicationException(400, {
+    code: 'INVALID_SUPPLIER_NIT',
+    message,
+    details: { fields: { documentVerificationDigit: message } },
   });
 }
 

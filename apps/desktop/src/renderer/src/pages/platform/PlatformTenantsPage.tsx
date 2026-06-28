@@ -1,7 +1,17 @@
 import type { ChangeEventHandler, ElementType, FormEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
-import { AlertCircle, Loader2, Plus, Search, ShieldAlert, Store, Warehouse } from 'lucide-react';
+import {
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Loader2,
+  Plus,
+  Search,
+  ShieldAlert,
+  Store,
+  Warehouse,
+} from 'lucide-react';
 import { ApiError } from '@/api';
 import { PlatformShell, PlatformState, PlatformStatusBadge } from '@/components/platform';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -29,6 +39,7 @@ import {
 } from '@/components/ui/table';
 import { useCreatePlatformTenant, usePlatformTenants, useUpdateTenantStatus } from '@/hooks/platform';
 import { useAppToast } from '@/hooks/ui';
+import { computeNitVerificationDigit, parseColombianNit } from '@/lib/co-document';
 import { BASIC_PLAN_CURRENCY, BASIC_PLAN_PRICE_AMOUNT } from '@/lib/platform-labels';
 import { formatMoney } from '@/lib/format';
 import type { PlatformTenantDto, TenantStatus } from '@gastroai/contracts';
@@ -36,6 +47,7 @@ import type { PlatformTenantDto, TenantStatus } from '@gastroai/contracts';
 const EMPTY_TENANT_FORM = {
   name: '',
   nit: '',
+  nitVerificationDigit: '',
   municipality: '',
   taxRegime: 'Responsable de IVA',
   fiscalResponsibility: 'Responsable de IVA',
@@ -54,6 +66,7 @@ type TenantFormErrors = Partial<Record<keyof TenantForm, string>>;
 const FIELD_LABELS: Record<keyof TenantForm, string> = {
   name: 'Nombre restaurante',
   nit: 'NIT',
+  nitVerificationDigit: 'DV',
   municipality: 'Ciudad principal',
   taxRegime: 'Regimen tributario',
   fiscalResponsibility: 'Responsabilidad fiscal',
@@ -107,8 +120,27 @@ export function PlatformTenantsPage() {
   const handleChange =
     (key: keyof typeof form): ChangeEventHandler<HTMLInputElement> =>
     (event) => {
+      if (key === 'nit') {
+        const value = event.target.value.replace(/\D/g, '').slice(0, 15);
+        setForm((current) => ({
+          ...current,
+          nit: value,
+          nitVerificationDigit: computeNitVerificationDigit(value) ?? '',
+        }));
+        setFormErrors((current) => ({
+          ...current,
+          nit: undefined,
+          nitVerificationDigit: undefined,
+        }));
+        return;
+      }
+
       const value =
-        key === 'branchCode' ? normalizeBranchCode(event.target.value) : event.target.value;
+        key === 'branchCode'
+          ? normalizeBranchCode(event.target.value)
+          : key === 'nitVerificationDigit'
+            ? event.target.value.replace(/\D/g, '').slice(0, 1)
+            : event.target.value;
       setForm((current) => ({ ...current, [key]: value }));
       setFormErrors((current) => ({ ...current, [key]: undefined }));
     };
@@ -278,6 +310,7 @@ export function PlatformTenantsPage() {
                         type="button"
                         variant="outline"
                         size="sm"
+                        data-cy="platform-tenant-status-action"
                         onClick={() =>
                           setSelectedTenantAction({
                             tenant,
@@ -372,22 +405,74 @@ function CreateTenantDialog({
           {Object.keys(errors).length > 0 ? <TenantFormErrorSummary errors={errors} /> : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Nombre restaurante" value={form.name} error={errors.name} onChange={onChange('name')} dataCy="platform-tenant-name" />
-            <Field label="NIT" value={form.nit} error={errors.nit} onChange={onChange('nit')} dataCy="platform-tenant-nit" />
-            <Field label="Ciudad principal" value={form.municipality} error={errors.municipality} onChange={onChange('municipality')} />
-            <Field label="Responsabilidad fiscal" value={form.fiscalResponsibility} error={errors.fiscalResponsibility} onChange={onChange('fiscalResponsibility')} />
+            <NitField
+              nit={form.nit}
+              verificationDigit={form.nitVerificationDigit}
+              nitError={errors.nit}
+              verificationDigitError={errors.nitVerificationDigit}
+              onNitChange={onChange('nit')}
+              onVerificationDigitChange={onChange('nitVerificationDigit')}
+            />
+            <Field
+              label="Ciudad principal"
+              value={form.municipality}
+              error={errors.municipality}
+              onChange={onChange('municipality')}
+              dataCy="platform-tenant-municipality"
+            />
+            <Field
+              label="Responsabilidad fiscal"
+              value={form.fiscalResponsibility}
+              error={errors.fiscalResponsibility}
+              onChange={onChange('fiscalResponsibility')}
+              dataCy="platform-tenant-fiscal-responsibility"
+            />
             <Field label="Correo owner" type="email" value={form.ownerEmail} error={errors.ownerEmail} onChange={onChange('ownerEmail')} dataCy="platform-tenant-owner-email" />
-            <Field label="Nombre owner" value={form.ownerFullName} error={errors.ownerFullName} onChange={onChange('ownerFullName')} />
-            <Field label="Password temporal" type="password" value={form.ownerTemporaryPassword} error={errors.ownerTemporaryPassword} onChange={onChange('ownerTemporaryPassword')} />
-            <Field label="Sede inicial" value={form.branchName} error={errors.branchName} onChange={onChange('branchName')} />
+            <Field
+              label="Nombre owner"
+              value={form.ownerFullName}
+              error={errors.ownerFullName}
+              onChange={onChange('ownerFullName')}
+              dataCy="platform-tenant-owner-name"
+            />
+            <PasswordField
+              label="Password temporal"
+              value={form.ownerTemporaryPassword}
+              error={errors.ownerTemporaryPassword}
+              onChange={onChange('ownerTemporaryPassword')}
+              dataCy="platform-tenant-owner-password"
+            />
+            <Field
+              label="Sede inicial"
+              value={form.branchName}
+              error={errors.branchName}
+              onChange={onChange('branchName')}
+              dataCy="platform-tenant-branch-name"
+            />
             <Field
               label="Codigo sede"
               value={form.branchCode}
               error={errors.branchCode}
               hint="Se guarda en mayusculas. Usa letras, numeros, - o _. Ej: TROPIKOSTA."
               onChange={onChange('branchCode')}
+              dataCy="platform-tenant-branch-code"
             />
-            <Field label="Direccion sede" value={form.branchAddress} error={errors.branchAddress} onChange={onChange('branchAddress')} required={false} />
-            <Field label="Telefono sede" value={form.branchPhone} error={errors.branchPhone} onChange={onChange('branchPhone')} required={false} />
+            <Field
+              label="Direccion sede"
+              value={form.branchAddress}
+              error={errors.branchAddress}
+              onChange={onChange('branchAddress')}
+              dataCy="platform-tenant-branch-address"
+              required={false}
+            />
+            <Field
+              label="Telefono sede"
+              value={form.branchPhone}
+              error={errors.branchPhone}
+              onChange={onChange('branchPhone')}
+              dataCy="platform-tenant-branch-phone"
+              required={false}
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting} data-cy="platform-tenant-submit">
@@ -398,6 +483,115 @@ function CreateTenantDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function NitField({
+  nit,
+  verificationDigit,
+  nitError,
+  verificationDigitError,
+  onNitChange,
+  onVerificationDigitChange,
+}: {
+  nit: string;
+  verificationDigit: string;
+  nitError?: string;
+  verificationDigitError?: string;
+  onNitChange: ChangeEventHandler<HTMLInputElement>;
+  onVerificationDigitChange: ChangeEventHandler<HTMLInputElement>;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="nit">NIT</Label>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <Input
+            id="nit"
+            inputMode="numeric"
+            value={nit}
+            onChange={onNitChange}
+            required
+            aria-invalid={Boolean(nitError)}
+            data-cy="platform-tenant-nit"
+            placeholder="900123456"
+          />
+          {nitError ? <p className="mt-2 text-xs font-medium text-destructive">{nitError}</p> : null}
+        </div>
+        <div className="w-16 shrink-0">
+          <Label htmlFor="nit-dv" className="sr-only">
+            Digito de verificacion
+          </Label>
+          <Input
+            id="nit-dv"
+            inputMode="numeric"
+            maxLength={1}
+            value={verificationDigit}
+            onChange={onVerificationDigitChange}
+            required
+            aria-invalid={Boolean(verificationDigitError)}
+            className="text-center font-bold"
+            data-cy="platform-tenant-nit-dv"
+            placeholder="DV"
+          />
+          {verificationDigitError ? (
+            <p className="mt-2 text-center text-xs font-medium text-destructive">
+              {verificationDigitError}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {!nitError && !verificationDigitError ? (
+        <p className="text-xs text-muted-foreground">
+          El DV se calcula automaticamente segun la formula DIAN.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  error,
+  onChange,
+  dataCy,
+}: {
+  label: string;
+  value: string;
+  error?: string;
+  onChange: ChangeEventHandler<HTMLInputElement>;
+  dataCy?: string;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+  const id = label.toLowerCase().replaceAll(' ', '-');
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Input
+          id={id}
+          type={isVisible ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          required
+          className="pr-11"
+          aria-invalid={Boolean(error)}
+          data-cy={dataCy}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-1 top-1/2 size-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          onClick={() => setIsVisible((current) => !current)}
+          aria-label={isVisible ? 'Ocultar password temporal' : 'Mostrar password temporal'}
+        >
+          {isVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </Button>
+      </div>
+      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
+    </div>
   );
 }
 
@@ -494,7 +688,13 @@ function validateTenantForm(input: TenantForm): TenantFormErrors {
     errors.ownerEmail = 'Ingresa un correo valido.';
   }
   if (input.nit.trim() && !/^[0-9.-]+$/.test(input.nit.trim())) {
-    errors.nit = 'El NIT solo puede tener numeros, puntos o guiones.';
+    errors.nit = 'El NIT solo puede tener numeros.';
+  }
+  const nit = parseColombianNit(input.nit, input.nitVerificationDigit);
+  if (input.nit.trim() && !nit) {
+    errors.nit = 'Ingresa un NIT valido.';
+  } else if (nit && !nit.isValid) {
+    errors.nitVerificationDigit = `Debe ser ${nit.expectedVerificationDigit}.`;
   }
   if (input.branchCode.trim() && !/^[A-Z0-9_-]+$/.test(input.branchCode.trim())) {
     errors.branchCode = 'Usa solo mayusculas, numeros, guion o guion bajo.';
@@ -567,7 +767,10 @@ function translateValidationMessage(field: keyof TenantForm, message: string): s
     return 'Ingresa un correo valido.';
   }
   if (field === 'nit' && /match|regular expression/i.test(message)) {
-    return 'El NIT solo puede tener numeros, puntos o guiones.';
+    return 'El NIT solo puede tener numeros.';
+  }
+  if (field === 'nitVerificationDigit' && /match|regular expression|digito|verification/i.test(message)) {
+    return 'Ingresa el digito de verificacion del NIT.';
   }
   if (/should not be empty|must be longer than or equal to 2/i.test(message)) {
     return `${FIELD_LABELS[field]} es obligatorio.`;

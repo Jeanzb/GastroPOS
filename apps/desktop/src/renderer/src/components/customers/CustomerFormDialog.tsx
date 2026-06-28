@@ -28,7 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { computeNitVerificationDigit } from '@/lib/co-document';
 import {
   CUSTOMER_DOCUMENT_TYPES,
   customerFormSchema,
@@ -58,9 +60,13 @@ const DOCUMENT_TYPE_LABELS: Record<
 };
 
 function getDefaultValues(customer?: CustomerDto): CustomerFormValues {
+  const rawNumber = customer?.documentNumber ?? '';
+  const isNit = customer?.documentType === 'NIT';
+  const nitMatch = isNit ? rawNumber.match(/^(\d+)-(\d)$/) : null;
   return {
     documentType: customer?.documentType ?? 'CC',
-    documentNumber: customer?.documentNumber ?? '',
+    documentNumber: nitMatch ? nitMatch[1] : rawNumber,
+    verificationDigit: nitMatch ? nitMatch[2] : '',
     name: customer?.name ?? '',
     email: customer?.email ?? '',
     phone: customer?.phone ?? '',
@@ -91,6 +97,9 @@ export function CustomerFormDialog({
     defaultValues: getDefaultValues(customer),
   });
   const mode = customer ? 'edit' : 'create';
+  const documentType = form.watch('documentType');
+  const verificationDigit = form.watch('verificationDigit') ?? '';
+  const isNit = documentType === 'NIT';
 
   useEffect(() => {
     if (open) {
@@ -143,10 +152,61 @@ export function CustomerFormDialog({
                 name="documentNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Numero de documento</FormLabel>
-                    <FormControl>
-                      <Input placeholder="900123456" {...field} />
-                    </FormControl>
+                    <div
+                      className={
+                        isNit
+                          ? 'grid grid-cols-[minmax(0,1fr)_56px] gap-x-2 gap-y-2'
+                          : 'grid gap-2'
+                      }
+                    >
+                      <FormLabel className={isNit ? 'self-end' : undefined}>
+                        Numero de documento
+                      </FormLabel>
+                      {isNit ? (
+                        <Label htmlFor="customer-verification-digit" className="justify-center">
+                          DV
+                        </Label>
+                      ) : null}
+                      <FormControl>
+                        <Input
+                          placeholder="900123456"
+                          value={field.value ?? ''}
+                          name={field.name}
+                          ref={field.ref}
+                          onBlur={field.onBlur}
+                          onChange={(event) => {
+                            const next = isNit
+                              ? event.target.value.replace(/\D/g, '')
+                              : event.target.value;
+                            field.onChange(next);
+                            if (isNit) {
+                              form.setValue(
+                                'verificationDigit',
+                                computeNitVerificationDigit(next) ?? '',
+                              );
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      {isNit ? (
+                        <div title="Digito de verificacion (editable)">
+                          <Input
+                            id="customer-verification-digit"
+                            className="nums text-center text-sm font-bold"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={verificationDigit}
+                            onChange={(event) =>
+                              form.setValue(
+                                'verificationDigit',
+                                event.target.value.replace(/\D/g, '').slice(0, 1),
+                                { shouldValidate: true },
+                              )
+                            }
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

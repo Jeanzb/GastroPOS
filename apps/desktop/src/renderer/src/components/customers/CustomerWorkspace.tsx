@@ -39,10 +39,19 @@ function normalizeOptional(value?: string): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function buildDocumentNumber(values: CustomerFormValues): string {
+  const number = values.documentNumber.trim();
+  const dv = values.verificationDigit?.trim();
+  if (values.documentType === 'NIT' && dv) {
+    return `${number}-${dv}`;
+  }
+  return number;
+}
+
 function toCustomerPayload(values: CustomerFormValues): CreateCustomerPayload {
   return {
     documentType: values.documentType,
-    documentNumber: values.documentNumber.trim(),
+    documentNumber: buildDocumentNumber(values),
     name: values.name.trim(),
     email: normalizeOptional(values.email),
     phone: normalizeOptional(values.phone),

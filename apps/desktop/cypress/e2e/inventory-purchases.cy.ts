@@ -38,7 +38,7 @@ describe('Inventory and purchases risk checks', () => {
       .its('status')
       .should('be.oneOf', [200, 201]);
 
-    cy.loginByApi('/inventory');
+    cy.loginByApi('/inventory', { presetBranch: true });
     cy.wait('@getInventoryItems').its('response.statusCode').should('eq', 200);
     cy.wait('@getInventoryCategories').its('response.body').should('have.length.greaterThan', 0);
     cy.wait('@getProducts').its('response.statusCode').should('eq', 200);
@@ -55,8 +55,9 @@ describe('Inventory and purchases risk checks', () => {
     cy.get('[data-cy="inventory-item-name"]').type(itemName);
     cy.get('[data-cy="inventory-item-product-link"]').click();
     cy.contains('[role="option"]', productName).click();
-    cy.get('[data-cy="inventory-item-unit-code"]').type('{selectall}KG');
-    cy.get('[data-cy="inventory-item-unit-name"]').type('{selectall}Kilogramo');
+    cy.get('[data-cy="inventory-item-unit-code"]').click();
+    cy.contains('[role="option"]', 'Kilogramo').click();
+    cy.get('body').type('{esc}');
     cy.get('[data-cy="inventory-item-initial-stock"]').type('{selectall}5');
     cy.get('[data-cy="inventory-item-initial-cost"]').type('{selectall}12000');
     cy.get('[data-cy="inventory-item-minimum-stock"]').type('{selectall}2');

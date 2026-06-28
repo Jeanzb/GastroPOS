@@ -20,6 +20,7 @@ export interface SupplierListParams {
 export interface CreateSupplierPayload {
   name: string;
   documentNumber?: string;
+  documentVerificationDigit?: string;
   email?: string;
   phone?: string;
   address?: string;

@@ -87,6 +87,40 @@ describe('SupplierService', () => {
     );
   });
 
+  it('normalizes a supplier NIT with verification digit', async () => {
+    repo.findByName.mockResolvedValue(null);
+    repo.create.mockResolvedValue(
+      supplier({
+        id: 'sup_2',
+        name: 'Carnes Andinas',
+        documentNumber: 'NIT 900123456-8',
+      }),
+    );
+
+    await service.create(ctx, {
+      name: 'Carnes Andinas',
+      documentNumber: '900123456',
+      documentVerificationDigit: '8',
+    });
+
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ documentNumber: 'NIT 900123456-8' }),
+    );
+  });
+
+  it('rejects a supplier NIT with an invalid verification digit', async () => {
+    repo.findByName.mockResolvedValue(null);
+
+    await expect(
+      service.create(ctx, {
+        name: 'Carnes Andinas',
+        documentNumber: '900123456',
+        documentVerificationDigit: '1',
+      }),
+    ).rejects.toBeInstanceOf(ApplicationException);
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
   it('returns 404 when the supplier does not exist', async () => {
     repo.findById.mockResolvedValue(null);
 

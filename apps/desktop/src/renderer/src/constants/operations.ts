@@ -14,16 +14,12 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     section: 'operation',
     icon: 'tables',
     requiredPermission: 'tables:view',
-    badge: '7',
-    badgeTone: 'orange',
   },
   {
     label: 'POS',
     path: '/pos',
     section: 'operation',
     icon: 'pos',
-    badge: '5',
-    badgeTone: 'green',
     requiredPermission: 'pos:view',
   },
   {
@@ -38,8 +34,6 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     path: '/cash',
     section: 'operation',
     icon: 'cash',
-    badge: 'Abierta',
-    badgeTone: 'green',
     requiredPermission: 'cash:view',
   },
   {

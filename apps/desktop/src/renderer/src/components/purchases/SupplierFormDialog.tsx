@@ -132,7 +132,7 @@ export function SupplierFormDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="JURIDICA">Persona jurídica</SelectItem>
+                          <SelectItem value="JURIDICA">Persona juridica</SelectItem>
                           <SelectItem value="NATURAL">Persona natural</SelectItem>
                         </SelectContent>
                       </Select>
@@ -201,7 +201,10 @@ export function SupplierFormDialog({
                           </FormControl>
                         </div>
                         {requiresVerificationDigit(documentType) ? (
-                          <div className="shrink-0 space-y-2" title="Dígito de verificación (editable)">
+                          <div
+                            className="shrink-0 space-y-2"
+                            title="Digito de verificacion (editable)"
+                          >
                             <FormLabel className="block text-center">DV</FormLabel>
                             <Input
                               data-cy="supplier-document-dv"

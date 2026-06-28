@@ -17,6 +17,11 @@ export const customerFormSchema = z.object({
     .trim()
     .min(1, 'El documento es obligatorio')
     .max(40, 'El documento es demasiado largo'),
+  verificationDigit: z
+    .string()
+    .trim()
+    .regex(/^\d?$/, 'DV invalido')
+    .optional(),
   name: z
     .string()
     .trim()

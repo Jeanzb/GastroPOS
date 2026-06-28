@@ -11,7 +11,6 @@ interface PlatformLoginResponse {
 interface PlatformTenantResponse {
   id: string;
   name: string;
-  slug: string;
   planCode: string | null;
   status: string;
 }
@@ -22,19 +21,31 @@ interface TenantLoginResponse {
   };
 }
 
+const NIT_WEIGHTS = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
+
 function appPath(path: string): string {
   return `/#${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function computeNitVerificationDigit(nit: string): string {
+  const digits = nit.replace(/\D/g, '').split('').reverse();
+  const sum = digits.reduce(
+    (total, digit, index) => total + Number(digit) * (NIT_WEIGHTS[index] ?? 0),
+    0,
+  );
+  const remainder = sum % 11;
+  return String(remainder < 2 ? remainder : 11 - remainder);
 }
 
 describe('SaaS platform', () => {
   it('creates a tenant and controls access -> tenant and feature guards block operations', () => {
     const stamp = `${Date.now()}-${Cypress._.random(1000, 9999)}`;
     const tenantName = `Cypress Restaurante ${stamp}`;
-    const tenantSlug = `cy-rest-${stamp}`;
     const ownerEmail = `owner-${stamp}@gastroia.test`;
+    const nit = `90${Cypress._.random(1000000, 9999999)}`;
+    const nitVerificationDigit = computeNitVerificationDigit(nit);
 
     cy.intercept('POST', '**/api/v1/platform/auth/login').as('platformLogin');
-    cy.intercept('GET', '**/api/v1/platform/overview').as('platformOverview');
     cy.intercept('GET', '**/api/v1/platform/tenants').as('platformTenants');
     cy.intercept('POST', '**/api/v1/platform/tenants').as('platformCreateTenant');
 
@@ -54,28 +65,31 @@ describe('SaaS platform', () => {
       .should((body: PlatformLoginResponse) => {
         expect(body.tokens.accessToken).to.be.a('string').and.not.be.empty;
       });
-    cy.wait('@platformOverview').its('response.statusCode').should('eq', 200);
-    cy.contains('Overview global').should('be.visible');
+    cy.location('hash').should('eq', '#/platform');
 
     cy.visit(appPath('/platform/tenants'));
     cy.wait('@platformTenants').its('response.statusCode').should('eq', 200);
-    cy.contains('Tenants').should('be.visible');
+    cy.get('[data-cy="platform-new-tenant"]').should('be.visible');
 
     cy.get('[data-cy="platform-new-tenant"]').click();
     cy.get('[data-cy="platform-tenant-form"]').should('be.visible');
     cy.get('[data-cy="platform-tenant-name"]').type(tenantName);
-    cy.get('[data-cy="platform-tenant-slug"]').type(tenantSlug);
+    cy.get('[data-cy="platform-tenant-nit"]').type(nit);
+    cy.get('[data-cy="platform-tenant-nit-dv"]').should('have.value', nitVerificationDigit);
+    cy.get('[data-cy="platform-tenant-municipality"]').type('Bogota');
+    cy.get('[data-cy="platform-tenant-fiscal-responsibility"]').type('Responsable de IVA');
     cy.get('[data-cy="platform-tenant-owner-email"]').type(ownerEmail);
     cy.get('[data-cy="platform-tenant-owner-name"]').type('Owner Cypress');
     cy.get('[data-cy="platform-tenant-owner-password"]').type('Temporal123!');
     cy.get('[data-cy="platform-tenant-branch-name"]').clear().type('Principal');
     cy.get('[data-cy="platform-tenant-branch-code"]').clear().type('MAIN');
+    cy.get('[data-cy="platform-tenant-branch-address"]').type('Cra 1 # 2-3');
+    cy.get('[data-cy="platform-tenant-branch-phone"]').type('3001234567');
     cy.get('[data-cy="platform-tenant-submit"]').click();
 
     cy.wait('@platformCreateTenant').then(({ response }) => {
       const tenant = response?.body as PlatformTenantResponse;
       expect(tenant.name).to.eq(tenantName);
-      expect(tenant.slug).to.eq(tenantSlug);
       expect(tenant.planCode).to.eq('BASIC');
       expect(tenant.status).to.eq('ACTIVE');
     });
@@ -97,9 +111,9 @@ describe('SaaS platform', () => {
         method: 'POST',
         url: `${apiUrl}/auth/login`,
         body: {
+          tenantIdentifier: tenantName,
           email: ownerEmail,
           password: 'Temporal123!',
-          tenantSlug,
         },
       }).then(({ body }) => {
         cy.request({
@@ -136,9 +150,9 @@ describe('SaaS platform', () => {
         method: 'POST',
         url: `${apiUrl}/auth/login`,
         body: {
+          tenantIdentifier: tenantName,
           email: ownerEmail,
           password: 'Temporal123!',
-          tenantSlug,
         },
       }).then(({ body }) => {
         cy.request({

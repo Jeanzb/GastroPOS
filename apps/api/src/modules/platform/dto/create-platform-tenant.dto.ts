@@ -12,6 +12,11 @@ export class CreatePlatformTenantDto {
   @Matches(/^[0-9.-]+$/)
   nit!: string;
 
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d$/)
+  nitVerificationDigit?: string;
+
   @IsString()
   @MinLength(2)
   @MaxLength(120)

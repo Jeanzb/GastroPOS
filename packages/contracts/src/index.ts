@@ -4,6 +4,7 @@ export * from './enums/platform-role';
 export * from './enums/tenant-status';
 export * from './common/api-error';
 export * from './common/pagination';
+export * from './common/colombian-nit';
 export * from './auth/auth.contracts';
 export * from './auth/permissions.contracts';
 export * from './tenancy/tenancy.contracts';

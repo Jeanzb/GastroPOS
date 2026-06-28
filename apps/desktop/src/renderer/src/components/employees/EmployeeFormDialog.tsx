@@ -100,7 +100,7 @@ export function EmployeeFormDialog({
                   <FormItem>
                     <FormLabel>Nombre completo</FormLabel>
                     <FormControl>
-                      <Input data-cy="employee-full-name" placeholder="Diego Granados" {...field} />
+                      <Input data-cy="employee-full-name" placeholder="Nombre del empleado" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -118,7 +118,7 @@ export function EmployeeFormDialog({
                         type="text"
                         autoCapitalize="none"
                         data-cy="employee-email"
-                        placeholder="jeanzb o mesero@gastroia.local"
+                        placeholder="usuario o correo del empleado"
                         {...field}
                       />
                     </FormControl>

@@ -18,6 +18,7 @@ import type {
   TenantFeatureOverrideDto,
   TenantStatus,
 } from '@gastroai/contracts';
+import { parseColombianNit } from '@gastroai/contracts';
 import { TenantAccessCacheService } from '../../common/access/tenant-access-cache.service';
 import { ApplicationException } from '../../common/errors/application.exception';
 import { REDIS_CLIENT } from '../../common/redis';
@@ -202,10 +203,11 @@ export class PlatformService {
     const passwordHash = await this.passwordHashing.hash(input.ownerTemporaryPassword);
     const slug = await this.generateInternalSlug(input.name);
     const fiscalResponsibility = normalizeOptional(input.fiscalResponsibility);
+    const nit = normalizeNitOrThrow(input.nit, input.nitVerificationDigit);
     const tenant = await this.repository.createTenant({
       name: input.name.trim(),
       slug,
-      nit: normalizeDocument(input.nit),
+      nit,
       municipality: input.municipality.trim(),
       taxRegime: normalizeOptional(input.taxRegime),
       fiscalResponsibilities: fiscalResponsibility ? [fiscalResponsibility] : [],
@@ -222,7 +224,7 @@ export class PlatformService {
       action: 'PLATFORM_TENANT_CREATED',
       entityType: 'Tenant',
       entityId: tenant.id,
-      metadata: { internalSlug: slug, plan: 'BASIC', nit: normalizeDocument(input.nit) },
+      metadata: { internalSlug: slug, plan: 'BASIC', nit },
     });
     return toPlatformTenantDetailDto(tenant);
   }
@@ -545,8 +547,23 @@ function normalizeOptional(value?: string | null): string | null {
   return normalized && normalized.length > 0 ? normalized : null;
 }
 
-function normalizeDocument(value: string): string {
-  return value.replace(/[^0-9]/g, '');
+function normalizeNitOrThrow(value: string, verificationDigit?: string): string {
+  const nit = parseColombianNit(value, verificationDigit);
+  if (!nit) {
+    throw invalidNit('Ingresa un NIT valido.');
+  }
+  if (!nit.isValid) {
+    throw invalidNit(`El digito de verificacion del NIT debe ser ${nit.expectedVerificationDigit}.`);
+  }
+  return nit.formatted;
+}
+
+function invalidNit(message: string): ApplicationException {
+  return new ApplicationException(400, {
+    code: 'INVALID_NIT',
+    message,
+    details: { fields: { nitVerificationDigit: message } },
+  });
 }
 
 function tenantDeletePhrase(tenantName: string): string {

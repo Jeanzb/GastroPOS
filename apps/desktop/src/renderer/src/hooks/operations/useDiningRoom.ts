@@ -21,6 +21,7 @@ export function useDiningRoom() {
   const zonesQuery = useQuery({
     queryKey: scopedDiningZonesKey,
     queryFn: () => DiningService.getZones(),
+    enabled: Boolean(activeBranchId),
   });
 
   const setZones = (updater: (zones: DiningZoneDto[]) => DiningZoneDto[]) => {

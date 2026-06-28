@@ -110,6 +110,7 @@ export interface PlatformOverviewDto {
 export interface CreatePlatformTenantRequest {
   name: string;
   nit: string;
+  nitVerificationDigit?: string;
   municipality: string;
   taxRegime?: string;
   fiscalResponsibility?: string;

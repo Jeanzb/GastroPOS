@@ -93,13 +93,16 @@ function toPurchasePayload(values: PurchaseFormValues) {
 }
 
 function toSupplierPayload(values: SupplierFormValues) {
+  const documentNumber = formatDocument(
+    values.documentType,
+    values.documentNumber ?? '',
+    values.verificationDigit,
+  );
   return {
     name: values.name.trim(),
-    documentNumber: formatDocument(
-      values.documentType,
-      values.documentNumber ?? '',
-      values.verificationDigit,
-    ),
+    documentNumber,
+    documentVerificationDigit:
+      values.documentType === 'NIT' ? normalizeOptional(values.verificationDigit) : undefined,
     email: normalizeOptional(values.email),
     phone: normalizeOptional(values.phone),
     address: normalizeOptional(values.address),

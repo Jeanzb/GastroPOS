@@ -40,7 +40,7 @@ describe('POS and cash register', () => {
           ),
       )
       .then(({ number: createdNumber }) => {
-        cy.intercept('GET', '**/api/v1/cash-sessions/active').as('getActiveCash');
+        cy.intercept('GET', '**/api/v1/cash-sessions/active*').as('getActiveCash');
         visitPreparedAccount(createdNumber);
 
         cy.get('[data-cy="pos-charge-open"]').click();
@@ -65,7 +65,7 @@ describe('POS and cash register', () => {
           ),
       )
       .then(({ number: createdNumber }) => {
-        cy.intercept('GET', '**/api/v1/cash-sessions/active').as('getActiveCash');
+        cy.intercept('GET', '**/api/v1/cash-sessions/active*').as('getActiveCash');
         cy.intercept('GET', '**/api/v1/table-accounts/*/command').as('getCommand');
         cy.intercept('POST', '**/api/v1/table-accounts/*/charge').as('chargeAccount');
 

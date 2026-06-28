@@ -16,6 +16,7 @@ export function useCashSession(zReportSessionId?: string | null) {
   const activeSessionQuery = useQuery({
     queryKey: [QUERY_KEYS.cashSession, activeBranchId],
     queryFn: () => CashService.getActiveSession(activeBranchId),
+    enabled: Boolean(activeBranchId),
   });
 
   const sessionId = activeSessionQuery.data?.id;

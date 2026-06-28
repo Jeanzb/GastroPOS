@@ -4,6 +4,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -20,6 +21,12 @@ export class CreateSupplierDto {
   @IsString()
   @MaxLength(40)
   documentNumber?: string;
+
+  @ApiPropertyOptional({ description: 'NIT verification digit (DV), when document is NIT.' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d$/)
+  documentVerificationDigit?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
