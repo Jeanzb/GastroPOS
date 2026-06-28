@@ -17,6 +17,7 @@ export function useAuth() {
     mutationFn: (payload: LoginRequest) => AuthService.login(payload),
     onSuccess: (data) => {
       clearTerminalBranch();
+      queryClient.clear();
       setSession(data);
     },
   });
@@ -25,6 +26,7 @@ export function useAuth() {
     mutationFn: (payload: StaffLoginRequest) => AuthService.staffLogin(payload),
     onSuccess: (data) => {
       clearTerminalBranch();
+      queryClient.clear();
       setSession(data);
     },
   });
