@@ -113,7 +113,7 @@ function OpenAccountForm({
         })}
         className="space-y-4"
       >
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {autoAssignWaiter ? (
             <div className="rounded-xl border border-border bg-muted/45 px-3 py-2.5">
               <p className="text-xs font-medium text-muted-foreground">Mesero asignado</p>
@@ -440,9 +440,12 @@ export function PosWorkspace() {
 
   return (
     <>
-      <div className="mx-auto flex h-full max-w-[1320px] gap-[18px]" data-cy="pos-page">
-        <section className="flex min-w-0 flex-1 flex-col">
-          <div className="mb-4 flex items-center gap-2.5">
+      <div
+        className="mx-auto flex min-h-[calc(100dvh-120px)] max-w-[1320px] flex-col gap-4 lg:h-full lg:flex-row lg:gap-[18px]"
+        data-cy="pos-page"
+      >
+        <section className="order-last flex min-w-0 flex-1 flex-col lg:order-none">
+          <div className="mb-4 flex flex-wrap items-center gap-2.5">
             <Link
               to="/tables"
               className="motion-press flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 hover:-translate-y-0.5 hover:border-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40"
@@ -459,7 +462,7 @@ export function PosWorkspace() {
                 {waiterLabel}
               </span>
             </div>
-            <div className="relative ml-auto w-[280px] shrink-0">
+            <div className="relative w-full sm:ml-auto sm:w-[280px] sm:shrink-0">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
@@ -494,7 +497,7 @@ export function PosWorkspace() {
 
           <div className="flex-1 overflow-y-auto pr-1">
             {productsQuery.isLoading ? (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]">
                 {Array.from({ length: 8 }, (_, index) => (
                   <Skeleton key={index} className="h-[104px] rounded-2xl" />
                 ))}
@@ -504,7 +507,7 @@ export function PosWorkspace() {
                 No hay productos en esta categoría.
               </div>
             ) : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-3">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]">
                 {visibleProducts.map((product) => (
                   <button
                     key={product.id}
@@ -530,7 +533,7 @@ export function PosWorkspace() {
           </div>
         </section>
 
-        <aside className="flex w-[380px] shrink-0 flex-col">
+        <aside className="order-first flex w-full shrink-0 flex-col lg:order-none lg:w-[380px]">
           <ComandaPanel
             account={currentAccount ?? null}
             tableNumber={table.number}

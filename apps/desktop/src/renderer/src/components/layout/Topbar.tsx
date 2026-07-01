@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Menu } from 'lucide-react';
 import { getAvailableRoleProfilesForRole } from '@gastroai/contracts';
 import { Button } from '@/components/ui/button';
 import { ROUTE_META } from '@/constants';
@@ -59,7 +59,7 @@ function getRoleProfiles(userRole?: UserRole, availableRoles?: RoleProfile[]): R
   return getAvailableRoleProfilesForRole(userRole ?? 'ADMIN');
 }
 
-export function Topbar() {
+export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -92,14 +92,27 @@ export function Topbar() {
   }, [selectedRole, availableRoles.length]);
 
   return (
-    <header className="flex h-[60px] shrink-0 items-center justify-between border-b border-border bg-background/95 px-7 shadow-sm shadow-carbon/5 backdrop-blur">
-      <div className="min-w-0">
+    <header className="responsive-safe-area flex min-h-[60px] shrink-0 items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-2 shadow-sm shadow-carbon/5 backdrop-blur md:px-6 lg:px-7">
+      <div className="flex min-w-0 items-center gap-2">
+        {onOpenNavigation ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="touch-target lg:hidden"
+            aria-label="Abrir navegacion"
+            onClick={onOpenNavigation}
+            data-cy="mobile-nav-open"
+          >
+            <Menu className="size-5" />
+          </Button>
+        ) : null}
         <h1 className="truncate text-lg font-bold tracking-normal text-foreground">
           {routeMeta.title}
         </h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         {user && availableRoles.length > 0 ? (
           <div
             ref={rolesRef}
@@ -131,7 +144,7 @@ export function Topbar() {
           </div>
         ) : null}
 
-        <Button variant="outline" asChild className="h-9 gap-2 rounded-lg px-3">
+        <Button variant="outline" asChild className="touch-target h-10 gap-2 rounded-lg px-3">
           <Link to="/sede">
             <span className="h-2.5 w-2.5 rounded-full bg-success" />
             <span className="hidden text-sm font-semibold md:inline">

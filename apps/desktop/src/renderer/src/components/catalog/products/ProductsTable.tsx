@@ -54,7 +54,12 @@ function ProductRow({
   const categoryName = product.categoryId ? categoryNames[product.categoryId] : undefined;
 
   return (
-    <div className={cn(GRID, 'border-b border-[#F2ECE3] px-[18px] py-[13px] transition-colors hover:bg-surface-quiet/50')}>
+    <div
+      className={cn(
+        GRID,
+        'min-w-[780px] border-b border-[#F2ECE3] px-[18px] py-[13px] transition-colors hover:bg-surface-quiet/50 md:min-w-0',
+      )}
+    >
       <div className="flex items-center gap-3">
         <span
           className="font-display flex size-[34px] shrink-0 items-center justify-center rounded-[9px] text-[13px] font-bold text-white"
@@ -89,10 +94,10 @@ function ProductRow({
         </DcChip>
       </div>
       <div className="flex justify-end gap-1">
-        <Button type="button" variant="ghost" size="icon-sm" title="Editar producto" onClick={() => onEdit(product)}>
+        <Button type="button" variant="ghost" size="icon" title="Editar producto" onClick={() => onEdit(product)}>
           <Pencil className="size-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon-sm" title="Eliminar producto" onClick={() => onDelete(product)}>
+        <Button type="button" variant="ghost" size="icon" title="Eliminar producto" onClick={() => onDelete(product)}>
           <Trash2 className="size-4" />
         </Button>
       </div>
@@ -102,8 +107,13 @@ function ProductRow({
 
 export function ProductsTable({ products, categoryNames, isLoading, onEdit, onDelete }: ProductsTableProps) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className={cn(GRID, 'border-b border-border bg-surface-quiet/60 px-[18px] py-3')}>
+    <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+      <div
+        className={cn(
+          GRID,
+          'min-w-[780px] border-b border-border bg-surface-quiet/60 px-[18px] py-3 md:min-w-0',
+        )}
+      >
         <span className={HEADER}>Producto</span>
         <span className={HEADER}>Categoria</span>
         <span className={cn(HEADER, 'text-right')}>Precio</span>

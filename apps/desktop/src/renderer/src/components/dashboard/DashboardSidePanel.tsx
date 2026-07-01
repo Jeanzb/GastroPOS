@@ -130,6 +130,17 @@ export function DashboardSidePanel({
             data={topProducts}
             isLoading={topProductsLoading}
             emptyMessage="Sin productos vendidos hoy."
+            mobileCard={(product) => (
+              <div className="rounded-xl border border-border bg-surface-raised p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 text-sm font-semibold">{product.name}</p>
+                  <span className="nums shrink-0 text-sm font-bold">x{product.quantity}</span>
+                </div>
+                <p className="nums mt-2 text-sm text-muted-foreground">
+                  {formatMoney(product.total, 'COP')}
+                </p>
+              </div>
+            )}
           />
         </CardContent>
       </Card>
@@ -150,6 +161,19 @@ export function DashboardSidePanel({
             data={lowStockItems}
             isLoading={lowStockLoading}
             emptyMessage="Sin alertas de inventario."
+            mobileCard={(item) => (
+              <div className="rounded-xl border border-border bg-surface-raised p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{item.name}</p>
+                    <p className="nums mt-1 text-[11px] text-muted-foreground">{item.sku}</p>
+                  </div>
+                  <span className="nums shrink-0 text-sm font-bold">
+                    {item.stockOnHand} {item.baseUnitCode}
+                  </span>
+                </div>
+              </div>
+            )}
           />
         </CardContent>
       </Card>

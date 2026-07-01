@@ -124,7 +124,7 @@ function PurchaseRowItem({
 
   return (
     <div
-      className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_0.8fr_auto] items-center gap-3 border-b border-[#F2ECE3] px-[18px] py-4 last:border-b-0"
+      className="grid min-w-[820px] grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_0.8fr_auto] items-center gap-3 border-b border-[#F2ECE3] px-[18px] py-4 last:border-b-0"
       data-cy="purchase-row"
     >
       <div className="min-w-0">
@@ -144,7 +144,7 @@ function PurchaseRowItem({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           title="Marcar recibida"
           data-cy="purchase-receive"
           disabled={!canMutate}
@@ -155,7 +155,7 @@ function PurchaseRowItem({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="icon"
           title="Cancelar compra"
           data-cy="purchase-cancel"
           disabled={!canMutate}
@@ -331,7 +331,7 @@ export function PurchasesWorkspace() {
             </CardHeader>
             <CardContent className="space-y-4 px-5">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative max-w-sm flex-1">
+                <div className="relative min-w-[220px] flex-1">
                   <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     data-cy="purchases-search"
@@ -346,7 +346,7 @@ export function PurchasesWorkspace() {
                   onValueChange={(value) => purchases.setPeriod(value)}
                   disabled={purchases.periodsQuery.isLoading}
                 >
-                  <SelectTrigger className="w-[210px]" data-cy="purchases-period">
+                  <SelectTrigger className="w-full sm:w-[210px]" data-cy="purchases-period">
                     <CalendarDays className="size-4 text-muted-foreground" />
                     <SelectValue placeholder="Mes" />
                   </SelectTrigger>
@@ -379,7 +379,7 @@ export function PurchasesWorkspace() {
                 </div>
               ) : null}
 
-              <div className="overflow-hidden rounded-2xl border border-border bg-surface-raised">
+              <div className="overflow-x-auto rounded-2xl border border-border bg-surface-raised">
                 {purchases.listQuery.isLoading
                   ? SKELETON_ROWS.map((row) => (
                       <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-4">

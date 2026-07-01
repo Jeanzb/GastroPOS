@@ -263,6 +263,7 @@ export function InventoryItemFormDialog({
                         step={1}
                         value={field.value}
                         onBlur={field.onBlur}
+                        onFocus={(event) => event.currentTarget.select()}
                         name={field.name}
                         ref={field.ref}
                         onChange={(event) => field.onChange(Number(event.target.value))}
@@ -308,6 +309,7 @@ export function InventoryItemFormDialog({
                         step={1}
                         value={field.value}
                         onBlur={field.onBlur}
+                        onFocus={(event) => event.currentTarget.select()}
                         name={field.name}
                         ref={field.ref}
                         onChange={(event) => field.onChange(Number(event.target.value))}

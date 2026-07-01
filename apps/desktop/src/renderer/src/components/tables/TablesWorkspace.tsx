@@ -90,10 +90,11 @@ function ZoneTabs({
   }, [activeId, tabs.length]);
 
   return (
-    <div
-      ref={ref}
-      className="relative flex items-center rounded-xl border border-border bg-surface-raised p-1"
-    >
+    <div className="w-full overflow-x-auto pb-1 sm:w-auto sm:pb-0">
+      <div
+        ref={ref}
+        className="relative flex w-max min-w-full items-center rounded-xl border border-border bg-surface-raised p-1 sm:min-w-0"
+      >
       {pill.ready ? (
         <span
           aria-hidden
@@ -110,7 +111,7 @@ function ZoneTabs({
             data-active={isActive}
             onClick={() => onSelect(tab.id)}
             className={cn(
-              'relative z-10 flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+              'relative z-10 flex min-h-11 items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
               isActive ? 'text-white' : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -121,6 +122,7 @@ function ZoneTabs({
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -136,7 +138,7 @@ function TableCard({ table, onOpen }: { table: DiningTableDto; onOpen: (table: D
       data-cy="dining-table-card"
       data-table-status={table.status}
       className={cn(
-        'group relative flex min-h-[156px] flex-col overflow-hidden rounded-[14px] border border-border bg-card text-left transition',
+        'group relative flex min-h-[148px] flex-col overflow-hidden rounded-[14px] border border-border bg-card text-left transition sm:min-h-[156px]',
         'hover:-translate-y-[3px] hover:border-orange/45 hover:shadow-md hover:shadow-carbon/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40',
       )}
     >
@@ -209,7 +211,7 @@ export function TablesWorkspace() {
         <h2 className="font-display text-[17px] font-bold tracking-tight">{zone.name}</h2>
         <StatusPill tone="neutral">{`${zone.tables.length} mesas - ${activeCount(zone.tables)} activas`}</StatusPill>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[13px]">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-[13px] sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         {zone.tables.map(renderTable)}
       </div>
     </section>
@@ -217,7 +219,7 @@ export function TablesWorkspace() {
 
   if (diningRoom.zonesQuery.isLoading) {
     return (
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[13px]">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-[13px] sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
         {Array.from({ length: 10 }, (_, index) => (
           <Skeleton key={index} className="h-[140px] rounded-2xl" />
         ))}

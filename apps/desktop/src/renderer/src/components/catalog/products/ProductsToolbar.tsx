@@ -15,8 +15,8 @@ export function ProductsToolbar({ search, onSearch, onCreate }: ProductsToolbarP
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-3">
-      <div className="relative w-[min(420px,100%)]">
+    <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+      <div className="relative w-full sm:w-[min(420px,100%)]">
         <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
@@ -25,7 +25,7 @@ export function ProductsToolbar({ search, onSearch, onCreate }: ProductsToolbarP
           className="pl-9"
         />
       </div>
-      <Button type="button" onClick={onCreate}>
+      <Button type="button" className="min-h-11 sm:min-h-9" onClick={onCreate}>
         <Plus className="h-4 w-4" />
         Nuevo producto
       </Button>

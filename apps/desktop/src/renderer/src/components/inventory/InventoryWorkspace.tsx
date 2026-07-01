@@ -131,7 +131,7 @@ function ItemRow({
     <div
       className={cn(
         GRID,
-        'border-b border-[#F2ECE3] px-[18px] py-[13px] transition-colors hover:bg-surface-quiet/50',
+        'min-w-[760px] border-b border-[#F2ECE3] px-[18px] py-[13px] transition-colors hover:bg-surface-quiet/50 md:min-w-0',
       )}
     >
       <div className="min-w-0">
@@ -157,7 +157,7 @@ function ItemRow({
           type="button"
           variant="outline"
           size="sm"
-          className="h-7 px-2 text-xs"
+          className="h-10 px-3 text-xs"
           data-cy="inventory-adjust-row"
           onClick={() => onAdjust(item)}
         >
@@ -286,9 +286,12 @@ export function InventoryWorkspace() {
               </div>
             </CardHeader>
             <CardContent className="px-5">
-              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="overflow-x-auto rounded-2xl border border-border bg-card">
                 <div
-                  className={cn(GRID, 'border-b border-border bg-surface-quiet/60 px-[18px] py-3')}
+                  className={cn(
+                    GRID,
+                    'min-w-[760px] border-b border-border bg-surface-quiet/60 px-[18px] py-3 md:min-w-0',
+                  )}
                 >
                   <span className={HEADER}>Insumo</span>
                   <span className={cn(HEADER, 'text-right')}>Stock</span>
@@ -327,7 +330,7 @@ export function InventoryWorkspace() {
                 <div>
                   <CardTitle>Kardex</CardTitle>
                   <CardDescription>
-                    Movimientos trazables con paginacion y filtros del lado del servidor
+                    Entradas, salidas y ajustes de stock por insumo, con fecha y saldo final.
                   </CardDescription>
                 </div>
                 <Select
@@ -339,7 +342,7 @@ export function InventoryWorkspace() {
                   }
                 >
                   <SelectTrigger
-                    className="w-[210px] bg-background"
+                    className="w-full bg-background sm:w-[210px]"
                     aria-label="Filtrar movimientos de Kardex"
                   >
                     <SelectValue placeholder="Filtrar movimiento" />

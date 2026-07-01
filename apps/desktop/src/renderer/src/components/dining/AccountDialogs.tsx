@@ -58,7 +58,7 @@ export function CommandDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" data-cy="pos-command-dialog">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md" data-cy="pos-command-dialog">
         <DialogHeader>
           <DialogTitle>Comanda mesa {command?.tableNumber}</DialogTitle>
         </DialogHeader>
@@ -82,11 +82,11 @@ export function CommandDialog({
           </div>
         ) : null}
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => window.print()}>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
             Imprimir
           </Button>
-          <Button type="button" onClick={() => onOpenChange(false)}>
+          <Button type="button" className="min-h-11" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
         </DialogFooter>
@@ -106,7 +106,7 @@ export function ReceiptDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" data-cy="pos-receipt-dialog">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md" data-cy="pos-receipt-dialog">
         <DialogHeader>
           <DialogTitle>Recibo mesa {receipt?.tableNumber}</DialogTitle>
         </DialogHeader>
@@ -155,11 +155,11 @@ export function ReceiptDialog({
           </div>
         ) : null}
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => window.print()}>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
             Imprimir
           </Button>
-          <Button type="button" onClick={() => onOpenChange(false)}>
+          <Button type="button" className="min-h-11" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
         </DialogFooter>
@@ -225,7 +225,7 @@ export function ChargeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl" data-cy="pos-charge-dialog">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl" data-cy="pos-charge-dialog">
         <DialogHeader>
           <DialogTitle>Cobrar mesa {account?.tableNumber}</DialogTitle>
         </DialogHeader>
@@ -402,10 +402,20 @@ export function ChargeDialog({
             ) : null}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => onOpenChange(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting} data-cy="pos-charge-submit">
+              <Button
+                type="submit"
+                className="min-h-11"
+                disabled={isSubmitting}
+                data-cy="pos-charge-submit"
+              >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Cobrar cuenta
               </Button>

@@ -101,7 +101,15 @@ function isActiveTable(table: DiningTableDto): boolean {
   return table.status === 'OCCUPIED' || table.status === 'PENDING_BILL';
 }
 
-function SidebarNavItem({ item, badge }: { item: NavigationItem; badge?: SidebarBadge }) {
+function SidebarNavItem({
+  item,
+  badge,
+  onNavigate,
+}: {
+  item: NavigationItem;
+  badge?: SidebarBadge;
+  onNavigate?: () => void;
+}) {
   const Icon = NAVIGATION_ICON_MAP[item.icon];
 
   return (
@@ -112,6 +120,7 @@ function SidebarNavItem({ item, badge }: { item: NavigationItem; badge?: Sidebar
       activeProps={{
         className: 'bg-sidebar-accent text-sidebar-foreground shadow-sm shadow-black/20',
       }}
+      onClick={onNavigate}
     >
       <span className="grid h-7 w-7 place-items-center rounded-md bg-white/[0.04] text-sidebar-foreground/70 group-hover:bg-orange/15 group-hover:text-orange-soft">
         <Icon className="h-4 w-4" />
@@ -138,10 +147,12 @@ function SidebarNavSection({
   label,
   items,
   badges,
+  onNavigate,
 }: {
   label: NavigationSection;
   items: NavigationItem[];
   badges: Record<string, SidebarBadge | undefined>;
+  onNavigate?: () => void;
 }) {
   if (items.length === 0) {
     return null;
@@ -154,14 +165,25 @@ function SidebarNavSection({
       </p>
       <div className="space-y-1">
         {items.map((item) => (
-          <SidebarNavItem key={item.path} item={item} badge={badges[item.path]} />
+          <SidebarNavItem
+            key={item.path}
+            item={item}
+            badge={badges[item.path]}
+            onNavigate={onNavigate}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-export function Sidebar() {
+export function Sidebar({
+  className,
+  onNavigate,
+}: {
+  className?: string;
+  onNavigate?: () => void;
+}) {
   const user = useAuthStore((state) => state.user);
   const activeRole = useAuthStore((state) => state.activeRole);
   const { logout, isLoggingOut } = useAuth();
@@ -212,18 +234,30 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="flex w-[268px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-carbon/20">
+    <aside
+      className={cn(
+        'flex w-[268px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl shadow-carbon/20',
+        className,
+      )}
+      aria-label="Navegacion principal"
+    >
       <div className="flex items-center gap-2.5 px-5 py-6">
         <LogoMark variant="dark" className="h-10 w-12 shrink-0" />
         <Wordmark className="text-xl text-sidebar-foreground" />
       </div>
 
       <nav className="flex-1 space-y-7 px-3 py-2">
-        <SidebarNavSection label="operation" items={visibleOperationItems} badges={sidebarBadges} />
+        <SidebarNavSection
+          label="operation"
+          items={visibleOperationItems}
+          badges={sidebarBadges}
+          onNavigate={onNavigate}
+        />
         <SidebarNavSection
           label="administration"
           items={visibleAdministrationItems}
           badges={sidebarBadges}
+          onNavigate={onNavigate}
         />
       </nav>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   type ColumnDef,
   type OnChangeFn,
@@ -47,6 +47,7 @@ interface DataTableProps<TData, TValue> {
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
   manualSorting?: boolean;
+  mobileCard?: (row: TData, index: number) => ReactNode;
 }
 
 const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9A9286]';
@@ -60,6 +61,7 @@ export function DataTable<TData, TValue>({
   sorting,
   onSortingChange,
   manualSorting = false,
+  mobileCard,
 }: DataTableProps<TData, TValue>) {
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
   const activeSorting = sorting ?? internalSorting;
@@ -80,98 +82,127 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow
-              key={headerGroup.id}
-              className="border-b border-border bg-surface-quiet/60 hover:bg-surface-quiet/60"
-            >
-              {headerGroup.headers.map((header) => {
-                const canSort = header.column.getCanSort();
-                const sorted = header.column.getIsSorted();
-                const ariaSort =
-                  sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none';
-
-                return (
-                  <TableHead
-                    key={header.id}
-                    aria-sort={canSort ? ariaSort : undefined}
-                    className={cn(
-                      'h-11 px-[18px]',
-                      HEADER,
-                      header.column.columnDef.meta?.headClassName,
-                    )}
-                  >
-                    {header.isPlaceholder ? null : canSort ? (
-                      <button
-                        type="button"
-                        onClick={header.column.getToggleSortingHandler()}
-                        aria-label={`Ordenar por ${String(header.column.columnDef.header)}`}
-                        className="inline-flex items-center gap-1 uppercase tracking-[0.06em] transition-colors hover:text-foreground"
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {sorted === 'asc' ? (
-                          <ArrowUp className="size-3" />
-                        ) : sorted === 'desc' ? (
-                          <ArrowDown className="size-3" />
-                        ) : (
-                          <ChevronsUpDown className="size-3 opacity-50" />
-                        )}
-                      </button>
-                    ) : (
-                      flexRender(header.column.columnDef.header, header.getContext())
-                    )}
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
+      {mobileCard ? (
+        <div className="grid gap-3 p-3 md:hidden">
           {isLoading
-            ? Array.from({ length: pagination?.pageSize ?? 8 }, (_, index) => (
-                <TableRow key={`skeleton-${index}`} className="border-b border-[#F2ECE3]">
-                  <TableCell colSpan={columns.length} className="px-[18px] py-[14px]">
-                    <Skeleton className="h-5 w-full" />
-                  </TableCell>
-                </TableRow>
+            ? Array.from({ length: Math.min(pagination?.pageSize ?? 4, 4) }, (_, index) => (
+                <div
+                  key={`mobile-skeleton-${index}`}
+                  className="rounded-xl border border-border bg-surface-raised p-4"
+                >
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="mt-3 h-4 w-full" />
+                  <Skeleton className="mt-2 h-4 w-1/2" />
+                </div>
               ))
             : null}
 
           {!isLoading && rows.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={columns.length}
-                className="px-[18px] py-12 text-center text-sm text-muted-foreground"
-              >
-                {emptyMessage}
-              </TableCell>
-            </TableRow>
+            <div className="rounded-xl border border-dashed border-border bg-surface-raised p-6 text-center text-sm text-muted-foreground">
+              {emptyMessage}
+            </div>
           ) : null}
 
           {!isLoading
-            ? rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="border-b border-[#F2ECE3] hover:bg-surface-quiet/40"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
+            ? rows.map((row, index) => <div key={row.id}>{mobileCard(row.original, index)}</div>)
+            : null}
+        </div>
+      ) : null}
+
+      <div className={cn(mobileCard && 'hidden md:block')}>
+        <Table className={!mobileCard ? 'min-w-[640px]' : undefined}>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow
+                key={headerGroup.id}
+                className="border-b border-border bg-surface-quiet/60 hover:bg-surface-quiet/60"
+              >
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  const sorted = header.column.getIsSorted();
+                  const ariaSort =
+                    sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : 'none';
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      aria-sort={canSort ? ariaSort : undefined}
                       className={cn(
-                        'px-[18px] py-[13px]',
-                        cell.column.columnDef.meta?.cellClassName,
+                        'h-11 px-[18px]',
+                        HEADER,
+                        header.column.columnDef.meta?.headClassName,
                       )}
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {header.isPlaceholder ? null : canSort ? (
+                        <button
+                          type="button"
+                          onClick={header.column.getToggleSortingHandler()}
+                          aria-label={`Ordenar por ${String(header.column.columnDef.header)}`}
+                          className="inline-flex min-h-11 items-center gap-1 uppercase tracking-[0.06em] transition-colors hover:text-foreground"
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {sorted === 'asc' ? (
+                            <ArrowUp className="size-3" />
+                          ) : sorted === 'desc' ? (
+                            <ArrowDown className="size-3" />
+                          ) : (
+                            <ChevronsUpDown className="size-3 opacity-50" />
+                          )}
+                        </button>
+                      ) : (
+                        flexRender(header.column.columnDef.header, header.getContext())
+                      )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {isLoading
+              ? Array.from({ length: pagination?.pageSize ?? 8 }, (_, index) => (
+                  <TableRow key={`skeleton-${index}`} className="border-b border-[#F2ECE3]">
+                    <TableCell colSpan={columns.length} className="px-[18px] py-[14px]">
+                      <Skeleton className="h-5 w-full" />
                     </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            : null}
-        </TableBody>
-      </Table>
+                  </TableRow>
+                ))
+              : null}
+
+            {!isLoading && rows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="px-[18px] py-12 text-center text-sm text-muted-foreground"
+                >
+                  {emptyMessage}
+                </TableCell>
+              </TableRow>
+            ) : null}
+
+            {!isLoading
+              ? rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="border-b border-[#F2ECE3] hover:bg-surface-quiet/40"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          'px-[18px] py-[13px]',
+                          cell.column.columnDef.meta?.cellClassName,
+                        )}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : null}
+          </TableBody>
+        </Table>
+      </div>
 
       {pagination ? (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-[18px] py-3">

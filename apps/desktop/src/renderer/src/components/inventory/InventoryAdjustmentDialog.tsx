@@ -124,6 +124,7 @@ export function InventoryAdjustmentDialog({
                         step={1}
                         value={field.value}
                         onBlur={field.onBlur}
+                        onFocus={(event) => event.currentTarget.select()}
                         name={field.name}
                         ref={field.ref}
                         onChange={(event) => field.onChange(Number(event.target.value))}
@@ -149,6 +150,7 @@ export function InventoryAdjustmentDialog({
                         data-cy="inventory-adjust-unit-cost"
                         value={field.value}
                         onBlur={field.onBlur}
+                        onFocus={(event) => event.currentTarget.select()}
                         name={field.name}
                         ref={field.ref}
                         onChange={(event) => field.onChange(Number(event.target.value))}

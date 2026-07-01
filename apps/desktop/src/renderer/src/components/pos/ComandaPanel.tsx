@@ -68,7 +68,7 @@ export function ComandaPanel({
     : { type: 'spring' as const, stiffness: 520, damping: 38, mass: 0.7 };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card">
+    <div className="flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card lg:min-h-0">
       <div className="h-2.5 bg-[repeating-linear-gradient(90deg,#1C1A17_0_7px,transparent_7px_14px)] opacity-90" />
 
       {!account ? (
@@ -216,11 +216,11 @@ export function ComandaPanel({
               />
             </div>
 
-            <div className="mt-4 flex gap-2.5">
+            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1"
+                className="min-h-11 flex-1"
                 disabled={isMutating || items.length === 0}
                 onClick={onCommand}
                 data-cy="pos-command"
@@ -234,7 +234,7 @@ export function ComandaPanel({
               >
                 <Button
                   type="button"
-                  className="w-full"
+                  className="min-h-11 w-full"
                   disabled={isMutating || items.length === 0}
                   onClick={onCharge}
                   data-cy="pos-charge-open"
