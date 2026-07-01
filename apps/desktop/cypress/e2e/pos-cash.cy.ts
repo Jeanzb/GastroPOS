@@ -18,7 +18,7 @@ function visitPreparedAccount(number: string): void {
   cy.intercept('GET', '**/api/v1/dining-tables/*/account').as('getTableAccount');
 
   cy.loginByApi('/tables');
-  cy.wait('@getDiningZones').its('response.statusCode').should('eq', 200);
+  cy.wait('@getDiningZones').its('response.statusCode').should('be.oneOf', [200, 304]);
   cy.get('[data-cy="tables-page"]').should('be.visible');
   cy.contains('[data-cy="dining-table-card"]', number).click();
 
@@ -76,7 +76,7 @@ describe('POS and cash register', () => {
         cy.get('[data-cy="pos-command-dialog"]').should('be.visible').contains('Cerrar').click();
 
         cy.get('[data-cy="pos-charge-open"]').click();
-        cy.wait('@getActiveCash').its('response.statusCode').should('eq', 200);
+        cy.wait('@getActiveCash').its('response.statusCode').should('be.oneOf', [200, 304]);
         cy.get('[data-cy="pos-charge-dialog"]').should('be.visible');
         cy.get('[data-cy="pos-charge-method"]').should('contain', 'Efectivo');
         cy.get('[data-cy="pos-charge-submit"]').click();

@@ -11,7 +11,8 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "cy:open": "cypress open --e2e",
-    "cy:run": "cypress run --e2e"
+    "cy:run": "cypress run --e2e",
+    "cy:run:responsive": "cypress run --e2e --spec cypress/e2e/responsive-layout.cy.ts"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.2.10",

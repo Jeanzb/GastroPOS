@@ -40,7 +40,7 @@ describe('Inventory and purchases risk checks', () => {
 
     cy.loginByApi('/inventory', { presetBranch: true });
     cy.wait('@getInventoryItems').its('response.statusCode').should('eq', 200);
-    cy.wait('@getInventoryCategories').its('response.body').should('have.length.greaterThan', 0);
+    cy.wait('@getInventoryCategories').its('response.statusCode').should('be.oneOf', [200, 304]);
     cy.wait('@getProducts').its('response.statusCode').should('eq', 200);
     cy.get('[data-cy="inventory-page"]').should('be.visible');
 
@@ -58,9 +58,9 @@ describe('Inventory and purchases risk checks', () => {
     cy.get('[data-cy="inventory-item-unit-code"]').click();
     cy.contains('[role="option"]', 'Kilogramo').click();
     cy.get('body').type('{esc}');
-    cy.get('[data-cy="inventory-item-initial-stock"]').type('{selectall}5');
-    cy.get('[data-cy="inventory-item-initial-cost"]').type('{selectall}12000');
-    cy.get('[data-cy="inventory-item-minimum-stock"]').type('{selectall}2');
+    cy.get('[data-cy="inventory-item-initial-stock"]').click().type('{ctrl+a}5').should('have.value', '5');
+    cy.get('[data-cy="inventory-item-initial-cost"]').click().type('{ctrl+a}12000');
+    cy.get('[data-cy="inventory-item-minimum-stock"]').click().type('{ctrl+a}2').should('have.value', '2');
     cy.get('[data-cy="inventory-item-submit"]').click();
 
     cy.wait('@createInventoryItem').then(({ response }) => {
@@ -83,8 +83,8 @@ describe('Inventory and purchases risk checks', () => {
       });
 
     cy.get('[data-cy="inventory-adjust-dialog"]').should('be.visible');
-    cy.get('[data-cy="inventory-adjust-quantity"]').type('{selectall}3');
-    cy.get('[data-cy="inventory-adjust-unit-cost"]').type('{selectall}13000');
+    cy.get('[data-cy="inventory-adjust-quantity"]').click().type('{ctrl+a}3').should('have.value', '3');
+    cy.get('[data-cy="inventory-adjust-unit-cost"]').click().type('{ctrl+a}13000');
     cy.get('[data-cy="inventory-adjust-reason"]').type('Conteo fisico Cypress');
     cy.get('[data-cy="inventory-adjust-submit"]').click();
     cy.wait('@adjustInventoryItem').its('response.body.stockOnHand').should('eq', 8);

@@ -1,5 +1,7 @@
 /// <reference types="cypress" />
 
+import { restoreTenantSession } from './auth-session';
+
 export interface LoginResponse {
   user: {
     id: string;
@@ -55,42 +57,18 @@ const CASH_MOVEMENT_SIGN: Record<CashMovement['type'], 1 | -1> = {
 };
 
 export function apiLogin(): Cypress.Chainable<LoginResponse> {
-  return cy
-    .env<{
-      apiUrl: string;
-      ownerEmail: string;
-      ownerPassword: string;
-      tenantSlug: string;
-      tenantIdentifier: string;
-    }>(['apiUrl', 'ownerEmail', 'ownerPassword', 'tenantSlug', 'tenantIdentifier'])
-    .then(({ apiUrl, ownerEmail, ownerPassword, tenantSlug, tenantIdentifier }) =>
-      cy
-        .request<LoginResponse>({
-          method: 'POST',
-          url: `${apiUrl}/auth/login`,
-          body: {
-            tenantIdentifier,
-            email: ownerEmail,
-            password: ownerPassword,
-            tenantSlug,
-          },
-        })
-        .then(({ body }) =>
-          cy
-            .request<BranchSummary[]>({
-              method: 'GET',
-              url: `${apiUrl}/branches`,
-              headers: { Authorization: `Bearer ${body.tokens.accessToken}` },
-            })
-            .then(({ body: branches }) => {
-              expect(branches, 'available branches for API test setup').to.have.length.greaterThan(
-                0,
-              );
-              const userBranch = branches.find((branch) => branch.id === body.user.branchId);
-              return cy.wrap({ ...body, branch: userBranch ?? branches[0] });
-            }),
-        ),
-    );
+  return restoreTenantSession('/login', { presetBranch: true }).then((session) =>
+    cy.wrap({
+      user: {
+        id: session.user.id,
+        branchId: session.user.branchId,
+      },
+      tokens: {
+        accessToken: session.tokens.accessToken,
+      },
+      branch: session.branch,
+    }),
+  );
 }
 
 export function authHeaders(auth: LoginResponse): {
