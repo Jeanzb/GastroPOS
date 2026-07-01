@@ -40,4 +40,4 @@ COPY --from=builder /app/packages/contracts/dist ./packages/contracts/dist
 
 EXPOSE 10000
 
-CMD ["/bin/sh", "-c", "set -e; ./node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma; bun apps/api/scripts/seed-if-empty.ts; exec node apps/api/dist/main.js"]
+CMD ["/bin/sh", "-c", "set -e; ./node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma; bun apps/api/scripts/seed-if-empty.ts; bun apps/api/scripts/sync-platform-owner.ts; exec node apps/api/dist/main.js"]

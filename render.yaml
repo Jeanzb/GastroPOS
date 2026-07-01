@@ -63,9 +63,11 @@ services:
       - key: SEED_OWNER_PASSWORD
         sync: false
       - key: SEED_PLATFORM_OWNER_EMAIL
-        value: platform@gastroai.local
+        value: jeanka20111@hotmail.com
       - key: SEED_PLATFORM_OWNER_PASSWORD
         sync: false
+      - key: SYNC_PLATFORM_OWNER_ON_STARTUP
+        value: "true"
 
   - type: web
     name: gastroia-web
