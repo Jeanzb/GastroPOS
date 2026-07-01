@@ -94,7 +94,7 @@ export function LoginForm() {
       <CardContent className="p-6 pt-0">
         {!isPinMode ? (
           <Form key="login-password" {...form}>
-            <form onSubmit={onSubmit} className="space-y-4">
+            <form onSubmit={onSubmit} className="space-y-4" autoComplete="off">
               <FormField
                 control={form.control}
                 name="tenantIdentifier"
@@ -105,7 +105,7 @@ export function LoginForm() {
                       <Input
                         type="text"
                         autoCapitalize="none"
-                        autoComplete="organization"
+                        autoComplete="off"
                         placeholder="GastroIA Demo o 900123456"
                         data-cy="login-tenant-identifier"
                         {...field}
@@ -127,7 +127,7 @@ export function LoginForm() {
                         type="text"
                         autoFocus
                         autoCapitalize="none"
-                        autoComplete="username"
+                        autoComplete="off"
                         placeholder="Usuario o correo"
                         {...field}
                       />
@@ -144,7 +144,12 @@ export function LoginForm() {
                   <FormItem>
                     <FormLabel>Contrasena</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="********" {...field} />
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Contrasena"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -169,7 +174,7 @@ export function LoginForm() {
           </Form>
         ) : (
           <Form key="login-staff" {...staffForm}>
-            <form onSubmit={onStaffSubmit} className="space-y-4">
+            <form onSubmit={onStaffSubmit} className="space-y-4" autoComplete="off">
               <FormField
                 control={staffForm.control}
                 name="commerce"

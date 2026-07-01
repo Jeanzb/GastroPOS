@@ -16,7 +16,7 @@ export function PlatformLoginPage() {
   const toast = useAppToast();
   const setSession = usePlatformAuthStore((state) => state.setSession);
   const { loginMutation } = usePlatformAuth();
-  const [email, setEmail] = useState('platform@gastroai.local');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -47,7 +47,12 @@ export function PlatformLoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={handleSubmit} data-cy="platform-login-form">
+          <form
+            className="space-y-4"
+            onSubmit={handleSubmit}
+            autoComplete="off"
+            data-cy="platform-login-form"
+          >
             <div className="space-y-2">
               <Label htmlFor="platform-email" className="text-white/70">
                 Correo
@@ -57,7 +62,8 @@ export function PlatformLoginPage() {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                autoComplete="username"
+                autoComplete="off"
+                placeholder="Correo de plataforma"
                 className="border-white/12 bg-white/7 text-white transition focus-visible:border-orange/50"
                 data-cy="platform-email"
                 required
@@ -72,7 +78,8 @@ export function PlatformLoginPage() {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
+                autoComplete="new-password"
+                placeholder="Contrasena"
                 className="border-white/12 bg-white/7 text-white transition focus-visible:border-orange/50"
                 data-cy="platform-password"
                 required
