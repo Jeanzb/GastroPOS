@@ -4,10 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
+  ArrowRight,
   Calculator,
   Loader2,
   Plus,
   Search,
+  ShoppingCart,
   UtensilsCrossed,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -38,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QUERY_KEYS } from '@/constants';
 import { useCategories } from '@/hooks/catalog';
@@ -115,7 +118,7 @@ function OpenAccountForm({
       >
         <div className="grid gap-3 sm:grid-cols-2">
           {autoAssignWaiter ? (
-            <div className="rounded-xl border border-border bg-muted/45 px-3 py-2.5">
+            <div className="rounded-xl border border-[#E7E0D6] bg-white px-3 py-2.5">
               <p className="text-xs font-medium text-muted-foreground">Mesero asignado</p>
               <p className="mt-1 truncate text-sm font-semibold">
                 {defaultWaiterName || 'Tu usuario'}
@@ -219,6 +222,9 @@ export function PosWorkspace() {
   const [receipt, setReceipt] = useState<ReceiptDto | null>(null);
   const [chargeOpen, setChargeOpen] = useState(false);
   const [cashRequiredOpen, setCashRequiredOpen] = useState(false);
+  const [openAccountDialogOpen, setOpenAccountDialogOpen] = useState(false);
+  const [comandaSheetOpen, setComandaSheetOpen] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<ProductDto | null>(null);
   const [shouldReturnToTablesAfterReceipt, setShouldReturnToTablesAfterReceipt] = useState(false);
 
   const diningRoom = useDiningRoom();
@@ -250,6 +256,8 @@ export function PosWorkspace() {
   const displayWaiterName = currentAccount?.waiterName ?? table?.waiterName ?? null;
   const waiterLabel = displayWaiterName ?? 'Sin mesero asignado';
   const currency = currentAccount?.currency ?? products[0]?.currency ?? 'COP';
+  const currentItemCount =
+    currentAccount?.items.reduce((total, item) => total + item.quantity, 0) ?? 0;
   const waiterOptions = useMemo(() => {
     const names = (waitersQuery.data?.data ?? []).map((employee) => employee.fullName);
     return Array.from(new Set(names.filter((name) => Boolean(name.trim()))));
@@ -283,11 +291,27 @@ export function PosWorkspace() {
 
   const handleOpenAccount = async (values: OpenTableAccountValues) => {
     try {
-      await account.openAccountMutation.mutateAsync(values);
+      const productToAdd = pendingProduct;
+      const openedAccount = await account.openAccountMutation.mutateAsync(values);
+      setOpenAccountDialogOpen(false);
+      setPendingProduct(null);
       appToast.success(
         'Cuenta abierta',
         table ? `Mesa ${table.number} lista para tomar pedido.` : undefined,
       );
+      if (productToAdd) {
+        try {
+          await account.addItemMutation.mutateAsync({
+            saleId: openedAccount.id,
+            payload: { productId: productToAdd.id, quantity: 1 },
+          });
+        } catch (error) {
+          appToast.error(
+            'No se pudo agregar el producto',
+            error instanceof Error ? error.message : 'La cuenta quedo abierta; intenta agregarlo de nuevo.',
+          );
+        }
+      }
     } catch (error) {
       appToast.error(
         'No se pudo abrir la cuenta',
@@ -298,7 +322,8 @@ export function PosWorkspace() {
 
   const handleAddProduct = async (product: ProductDto) => {
     if (!currentAccount) {
-      appToast.info('Abre la cuenta primero', 'Registra el mesero para tomar pedido.');
+      setPendingProduct(product);
+      setOpenAccountDialogOpen(true);
       return;
     }
     try {
@@ -419,6 +444,13 @@ export function PosWorkspace() {
     void navigate({ to: '/tables', replace: true });
   };
 
+  const handleOpenAccountDialogChange = (open: boolean) => {
+    setOpenAccountDialogOpen(open);
+    if (!open) {
+      setPendingProduct(null);
+    }
+  };
+
   if (!activeTableId || !table) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
@@ -441,40 +473,43 @@ export function PosWorkspace() {
   return (
     <>
       <div
-        className="mx-auto flex min-h-[calc(100dvh-120px)] max-w-[1320px] flex-col gap-4 lg:h-full lg:flex-row lg:gap-[18px]"
+        className="mx-auto grid min-h-[calc(100dvh-120px)] max-w-[1360px] gap-4 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-[18px]"
         data-cy="pos-page"
       >
-        <section className="order-last flex min-w-0 flex-1 flex-col lg:order-none">
-          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <section className="flex min-w-0 flex-col rounded-[26px] border border-[#E7E0D6] bg-[#FCFAF6] p-3 shadow-sm shadow-carbon/5 sm:p-4">
+          <div className="mb-4 rounded-[20px] border border-[#E7E0D6] bg-white p-3">
+            <div className="flex flex-wrap items-center gap-2.5">
             <Link
               to="/tables"
-              className="motion-press flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2 hover:-translate-y-0.5 hover:border-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40"
+              className="motion-press flex min-h-11 items-center gap-2.5 rounded-[14px] border border-[#E7E0D6] bg-[#F6F2EC] px-3 hover:-translate-y-0.5 hover:border-orange/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40"
               title="Volver a mesas"
             >
-              <span className="nums text-[11px] text-muted-foreground">MESA</span>
+              <span className="nums text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Mesa</span>
               <span className="font-display text-[17px] font-bold">{table.number}</span>
             </Link>
-            <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
-              <span className="flex size-6 items-center justify-center rounded-md bg-orange/15 text-[11px] font-bold text-[#B5491F]">
+            <div className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-[14px] border border-[#E7E0D6] bg-[#F6F2EC] px-3">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-[9px] bg-orange/15 text-[11px] font-bold text-[#B5491F]">
                 {displayWaiterName ? initials(displayWaiterName) : '--'}
               </span>
-              <span className="whitespace-nowrap text-[13px] font-semibold">
+              <span className="truncate text-[13px] font-semibold">
                 {waiterLabel}
               </span>
             </div>
-            <div className="relative w-full sm:ml-auto sm:w-[280px] sm:shrink-0">
+            <div className="relative w-full sm:ml-auto sm:w-[320px] sm:shrink-0">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar producto o código…"
-                className="pl-9"
+                className="h-11 rounded-[14px] border-[#E7E0D6] bg-[#FCFAF6] pl-9"
                 data-cy="pos-product-search"
               />
             </div>
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
+          </div>
+
+          <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-2">
             {categoryTabs.map((category) => {
               const isActive = category.id === activeCategory;
               return (
@@ -483,10 +518,10 @@ export function PosWorkspace() {
                   type="button"
                   onClick={() => setActiveCategory(category.id)}
                   className={cn(
-                    'rounded-full border px-4 py-2 text-[13.5px] font-semibold transition-colors',
+                    'min-h-10 shrink-0 rounded-full border px-4 text-[13.5px] font-semibold transition-colors',
                     isActive
-                      ? 'border-carbon bg-carbon text-white'
-                      : 'border-border bg-card text-foreground hover:border-carbon',
+                      ? 'border-carbon bg-carbon text-white shadow-sm'
+                      : 'border-[#E7E0D6] bg-white text-[#312C26] hover:border-carbon/50',
                   )}
                 >
                   {category.name}
@@ -495,19 +530,19 @@ export function PosWorkspace() {
             })}
           </div>
 
-          <div className="flex-1 overflow-y-auto pr-1">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-0">
             {productsQuery.isLoading ? (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]">
-                {Array.from({ length: 8 }, (_, index) => (
-                  <Skeleton key={index} className="h-[104px] rounded-2xl" />
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(142px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]">
+                {Array.from({ length: 1 }, (_, index) => (
+                  <Skeleton key={index} className="h-[118px] rounded-[18px]" />
                 ))}
               </div>
             ) : visibleProducts.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+              <div className="rounded-[20px] border border-dashed border-[#D8D0C5] bg-white p-10 text-center text-sm text-muted-foreground">
                 No hay productos en esta categoría.
               </div>
             ) : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(168px,1fr))]">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(142px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]">
                 {visibleProducts.map((product) => (
                   <button
                     key={product.id}
@@ -515,14 +550,14 @@ export function PosWorkspace() {
                     disabled={isMutating}
                     onClick={() => void handleAddProduct(product)}
                     data-cy="pos-product-card"
-                    className="flex min-h-[104px] flex-col gap-3.5 rounded-2xl border border-border bg-card p-[15px] text-left transition hover:-translate-y-0.5 hover:border-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 disabled:opacity-60"
+                    className="motion-press flex min-h-[118px] flex-col gap-3 rounded-[18px] border border-[#E7E0D6] bg-white p-4 text-left shadow-sm shadow-carbon/5 transition hover:-translate-y-0.5 hover:border-orange/60 hover:bg-[#FFF8F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 disabled:opacity-60"
                   >
-                    <span className="flex-1 text-[14.5px] font-semibold leading-tight">{product.name}</span>
-                    <span className="flex items-center justify-between">
-                      <span className="nums text-sm font-bold">
+                    <span className="flex-1 text-[14.5px] font-semibold leading-tight text-[#1C1A17]">{product.name}</span>
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="nums text-sm font-bold text-[#1C1A17]">
                         {formatMoney(product.priceAmount, product.currency)}
                       </span>
-                      <span className="flex size-[26px] items-center justify-center rounded-lg bg-orange/10 text-lg font-bold leading-none text-orange">
+                      <span className="grid size-8 place-items-center rounded-[11px] bg-[#FFF1EB] text-xl font-bold leading-none text-orange">
                         +
                       </span>
                     </span>
@@ -531,9 +566,58 @@ export function PosWorkspace() {
               </div>
             )}
           </div>
+
+          <div className="pointer-events-none fixed right-0 bottom-0 left-0 z-30 bg-gradient-to-t from-[#F6F2EC] from-60% to-transparent px-3 pb-4 pt-3 lg:hidden">
+            {currentAccount && currentItemCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setComandaSheetOpen(true)}
+                data-cy="pos-mobile-cart-bar"
+                className="motion-press pointer-events-auto flex w-full items-center gap-3 rounded-[18px] bg-carbon px-4 py-3 text-left text-white shadow-xl shadow-carbon/25"
+              >
+                <span className="nums grid size-11 shrink-0 place-items-center rounded-[13px] bg-orange font-display text-lg font-extrabold text-carbon">
+                  {currentItemCount}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="nums block text-xs text-white/55">Ver comanda</span>
+                  <span className="nums block text-xl font-bold">
+                    {formatMoney(currentAccount.grandTotal, currency)}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5 rounded-[12px] bg-orange px-4 py-2.5 text-sm font-bold text-carbon">
+                  Cuenta
+                  <ArrowRight className="size-4" />
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setComandaSheetOpen(true)}
+                data-cy="pos-mobile-cart-bar-empty"
+                className="motion-press pointer-events-auto flex w-full items-center gap-3 rounded-[18px] border border-dashed border-[#D8D0C5] bg-white p-4 text-left"
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-[#F6F2EC] text-[#B0A89C]">
+                  <ShoppingCart className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-semibold text-[#6B6359]">
+                    {currentAccount ? 'Comanda vacía' : 'Sin cuenta abierta'}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {currentAccount
+                      ? 'Toca un producto para empezar'
+                      : 'Toca aquí para abrir la cuenta'}
+                  </span>
+                </span>
+              </button>
+            )}
+          </div>
         </section>
 
-        <aside className="order-first flex w-full shrink-0 flex-col lg:order-none lg:w-[380px]">
+        <aside
+          id="pos-comanda"
+          className="hidden w-full shrink-0 flex-col scroll-mt-4 lg:sticky lg:top-4 lg:flex lg:self-start"
+        >
           <ComandaPanel
             account={currentAccount ?? null}
             tableNumber={table.number}
@@ -557,6 +641,89 @@ export function PosWorkspace() {
           />
         </aside>
       </div>
+
+      <Sheet open={comandaSheetOpen} onOpenChange={setComandaSheetOpen}>
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className="max-h-[88dvh] gap-0 overflow-hidden rounded-t-[26px] border-none bg-[#FCFAF6] p-0 lg:hidden"
+          data-cy="pos-comanda-sheet"
+        >
+          <SheetTitle className="sr-only">Comanda</SheetTitle>
+          <button
+            type="button"
+            aria-label="Cerrar comanda"
+            onClick={() => setComandaSheetOpen(false)}
+            className="flex shrink-0 justify-center py-2.5"
+          >
+            <span className="h-1.5 w-11 rounded-full bg-[#D8D0C5]" />
+          </button>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+            <ComandaPanel
+              account={currentAccount ?? null}
+              tableNumber={table.number}
+              waiterLabel={waiterLabel}
+              isMutating={isMutating}
+              isLoadingAccount={account.accountQuery.isLoading}
+              onQuantityChange={(itemId, quantity) => void handleQuantityChange(itemId, quantity)}
+              onCommand={() => void handleCommand()}
+              onCharge={() => void handleOpenChargeDialog()}
+              className="min-h-[300px]"
+              emptyState={
+                <OpenAccountForm
+                  table={table}
+                  defaultWaiterName={defaultWaiterName}
+                  waiterOptions={waiterOptions}
+                  autoAssignWaiter={isAuthenticatedWaiter}
+                  isSubmitting={isMutating}
+                  isLoadingWaiters={waitersQuery.isLoading}
+                  onSubmit={handleOpenAccount}
+                />
+              }
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Dialog open={openAccountDialogOpen} onOpenChange={handleOpenAccountDialogChange}>
+        <DialogContent className="max-w-[calc(100vw-24px)] rounded-[24px] border-[#E7E0D6] bg-[#FCFAF6] p-0 sm:max-w-md">
+          <div className="border-b border-[#E7E0D6] bg-white px-5 py-4">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-[14px] bg-orange/12 text-orange">
+                  <UtensilsCrossed className="size-5" />
+                </span>
+                <div className="min-w-0 text-left">
+                  <DialogTitle className="font-display text-xl">
+                    Asignar mesero
+                  </DialogTitle>
+                  <DialogDescription>
+                    Mesa {table.number}
+                    {pendingProduct ? ` - ${pendingProduct.name}` : ''}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+          <div className="px-5 py-5">
+            {!isAuthenticatedWaiter ? (
+              <p className="mb-4 rounded-xl border border-[#E7E0D6] bg-white px-3 py-2 text-sm text-[#6B6359]">
+                Escoge un mesero activo para abrir la cuenta. Luego podras agregar productos,
+                enviar comanda y cobrar.
+              </p>
+            ) : null}
+            <OpenAccountForm
+              table={table}
+              defaultWaiterName={defaultWaiterName}
+              waiterOptions={waiterOptions}
+              autoAssignWaiter={isAuthenticatedWaiter}
+              isSubmitting={isMutating}
+              isLoadingWaiters={waitersQuery.isLoading}
+              onSubmit={handleOpenAccount}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <CommandDialog command={command} open={Boolean(command)} onOpenChange={(open) => !open && setCommand(null)} />
       <ReceiptDialog

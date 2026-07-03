@@ -22,6 +22,7 @@ interface ComandaPanelProps {
   onQuantityChange: (itemId: string, quantity: number) => void;
   onCommand: () => void;
   onCharge: () => void;
+  className?: string;
 }
 
 function formatClock(value?: string): string {
@@ -41,6 +42,7 @@ export function ComandaPanel({
   onQuantityChange,
   onCommand,
   onCharge,
+  className,
 }: ComandaPanelProps) {
   const reduceMotion = useReducedMotion();
   // Visual-only overrides — they tune the on-screen comanda, not the persisted sale.
@@ -68,8 +70,13 @@ export function ComandaPanel({
     : { type: 'spring' as const, stiffness: 520, damping: 38, mass: 0.7 };
 
   return (
-    <div className="flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card lg:min-h-0">
-      <div className="h-2.5 bg-[repeating-linear-gradient(90deg,#1C1A17_0_7px,transparent_7px_14px)] opacity-90" />
+    <div
+      className={cn(
+        'flex min-h-[360px] flex-1 flex-col overflow-hidden rounded-[26px] border border-[#E7E0D6] bg-[#FCFAF6] shadow-sm shadow-carbon/5 lg:min-h-0',
+        className,
+      )}
+    >
+      <div className="h-1.5 bg-orange/80" />
 
       {!account ? (
         <div className="flex flex-1 flex-col overflow-y-auto px-5 py-5">
@@ -187,7 +194,7 @@ export function ComandaPanel({
             )}
           </div>
 
-          <div className="border-t border-dashed border-[#D8D0C5] bg-surface-raised px-5 pb-5 pt-4">
+          <div className="border-t border-dashed border-[#D8D0C5] bg-white px-5 pb-5 pt-4">
             <div className="mb-1.5 flex items-center justify-between text-[13px] text-[#6B6359]">
               <span>Subtotal</span>
               <AnimatedAmount
