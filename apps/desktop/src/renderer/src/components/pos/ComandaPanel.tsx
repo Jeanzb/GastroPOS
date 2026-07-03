@@ -65,9 +65,6 @@ export function ComandaPanel({
   }, [items, priceOverrides]);
 
   const currency = account?.currency ?? 'COP';
-  const transition = reduceMotion
-    ? { duration: 0 }
-    : { type: 'spring' as const, stiffness: 520, damping: 38, mass: 0.7 };
 
   return (
     <div
@@ -97,19 +94,16 @@ export function ComandaPanel({
                   Abierta
                 </span>
               </div>
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span
-                  key={totals.units}
-                  initial={reduceMotion ? false : { scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={reduceMotion ? undefined : { scale: 0.5, opacity: 0 }}
-                  transition={transition}
-                  className="nums grid size-6 place-items-center rounded-full bg-orange text-[11px] font-bold text-white"
-                  aria-label={`${totals.units} unidades`}
-                >
-                  {totals.units}
-                </motion.span>
-              </AnimatePresence>
+              <span
+                key={totals.units}
+                className={cn(
+                  'nums grid size-6 place-items-center rounded-full bg-orange text-[11px] font-bold text-white',
+                  !reduceMotion && 'pos-pop-badge',
+                )}
+                aria-label={`${totals.units} unidades`}
+              >
+                {totals.units}
+              </span>
             </div>
 
             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -138,10 +132,10 @@ export function ComandaPanel({
                       key={item.id}
                       layout
                       data-cy="pos-order-item"
-                      initial={reduceMotion ? false : { opacity: 0, height: 0, y: -6 }}
-                      animate={{ opacity: 1, height: 'auto', y: 0 }}
-                      exit={reduceMotion ? undefined : { opacity: 0, height: 0, y: -6 }}
-                      transition={transition}
+                      initial={reduceMotion ? false : { opacity: 0, height: 0, x: 14 }}
+                      animate={{ opacity: 1, height: 'auto', x: 0 }}
+                      exit={reduceMotion ? undefined : { opacity: 0, height: 0, x: 0 }}
+                      transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden border-b border-dashed border-[#ECE6DD]"
                     >
                       <div className="flex items-center gap-3 py-3">
@@ -237,11 +231,11 @@ export function ComandaPanel({
               </Button>
               <motion.div
                 className="flex-[1.4]"
-                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.98 }}
               >
                 <Button
                   type="button"
-                  className="min-h-11 w-full"
+                  className="min-h-11 w-full active:bg-[#E8451A] active:text-white"
                   disabled={isMutating || items.length === 0}
                   onClick={onCharge}
                   data-cy="pos-charge-open"
@@ -289,23 +283,14 @@ function Stepper({
         aria-label={`Restar ${name}`}
         onClick={onDec}
         whileTap={reduceMotion ? undefined : { scale: 0.85 }}
-        className="grid h-[30px] w-7 place-items-center bg-surface-quiet text-[#6B6359] disabled:opacity-50"
+        className="grid h-[30px] w-7 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
       >
         <Minus className="size-3.5" />
       </motion.button>
-      <span className="nums w-7 overflow-hidden text-center text-sm font-bold">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.span
-            key={quantity}
-            initial={reduceMotion ? false : { y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={reduceMotion ? undefined : { y: -10, opacity: 0 }}
-            transition={{ duration: 0.16 }}
-            className="block"
-          >
-            {quantity}
-          </motion.span>
-        </AnimatePresence>
+      <span className="nums w-7 text-center text-sm font-bold">
+        <span key={quantity} className={cn('block', !reduceMotion && 'pos-pop-qty')}>
+          {quantity}
+        </span>
       </span>
       <motion.button
         type="button"
@@ -313,7 +298,7 @@ function Stepper({
         aria-label={`Sumar ${name}`}
         onClick={onInc}
         whileTap={reduceMotion ? undefined : { scale: 0.85 }}
-        className="grid h-[30px] w-7 place-items-center bg-surface-quiet text-[#6B6359] disabled:opacity-50"
+        className="grid h-[30px] w-7 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
       >
         <Plus className="size-3.5" />
       </motion.button>
@@ -333,19 +318,10 @@ function AnimatedAmount({
   className?: string;
 }) {
   return (
-    <span className={cn('relative inline-block overflow-hidden', className)}>
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={value}
-          initial={reduceMotion ? false : { y: 12, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={reduceMotion ? undefined : { y: -12, opacity: 0 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="block"
-        >
-          {formatMoney(value, currency)}
-        </motion.span>
-      </AnimatePresence>
+    <span className={cn('relative inline-block', className)}>
+      <span key={value} className={cn('block', !reduceMotion && 'pos-pop-soft')}>
+        {formatMoney(value, currency)}
+      </span>
     </span>
   );
 }

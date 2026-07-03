@@ -427,6 +427,91 @@
   }
 }
 
+/* POS mobile comanda animations — key-remount driven pops */
+.pos-pop-badge {
+  animation: pos-pop-badge 0.4s cubic-bezier(0.34, 1.5, 0.5, 1) both;
+}
+
+.pos-pop-soft {
+  display: inline-block;
+  animation: pos-pop-soft 0.3s ease-out both;
+}
+
+.pos-pop-qty {
+  animation: pos-pop-qty 0.34s cubic-bezier(0.34, 1.5, 0.5, 1) both;
+}
+
+@keyframes pos-pop-badge {
+  0% {
+    transform: scale(0) rotate(-12deg);
+  }
+
+  60% {
+    transform: scale(1.28) rotate(0deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes pos-pop-soft {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.09);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes pos-pop-qty {
+  0% {
+    transform: scale(1);
+  }
+
+  55% {
+    transform: scale(1.22);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Bottom sheet slide: overrides tw-animate slide-in-from-bottom timing */
+.pos-sheet[data-state='open'] {
+  animation: pos-sheet-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+}
+
+.pos-sheet[data-state='closed'] {
+  animation: pos-sheet-out 0.28s cubic-bezier(0.4, 0, 1, 1) both !important;
+}
+
+@keyframes pos-sheet-in {
+  from {
+    transform: translateY(102%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pos-sheet-out {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(102%);
+  }
+}
+
 @keyframes dc-view-in {
   from {
     opacity: 0;

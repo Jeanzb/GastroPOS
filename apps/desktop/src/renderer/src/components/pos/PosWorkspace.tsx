@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
@@ -419,6 +420,13 @@ export function PosWorkspace() {
         return;
       }
 
+      if (comandaSheetOpen) {
+        setComandaSheetOpen(false);
+        appToast.success('Cuenta solicitada', `Mesa ${table?.number ?? ''} · enviada a caja`.trim(), {
+          duration: 2600,
+        });
+      }
+
       setChargeOpen(true);
     } catch (error) {
       appToast.error(
@@ -568,49 +576,67 @@ export function PosWorkspace() {
           </div>
 
           <div className="pointer-events-none fixed right-0 bottom-0 left-0 z-30 bg-gradient-to-t from-[#F6F2EC] from-60% to-transparent px-3 pb-4 pt-3 lg:hidden">
-            {currentAccount && currentItemCount > 0 ? (
-              <button
-                type="button"
-                onClick={() => setComandaSheetOpen(true)}
-                data-cy="pos-mobile-cart-bar"
-                className="motion-press pointer-events-auto flex w-full items-center gap-3 rounded-[18px] bg-carbon px-4 py-3 text-left text-white shadow-xl shadow-carbon/25"
-              >
-                <span className="nums grid size-11 shrink-0 place-items-center rounded-[13px] bg-orange font-display text-lg font-extrabold text-carbon">
-                  {currentItemCount}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="nums block text-xs text-white/55">Ver comanda</span>
-                  <span className="nums block text-xl font-bold">
-                    {formatMoney(currentAccount.grandTotal, currency)}
+            <AnimatePresence mode="wait" initial={false}>
+              {currentAccount && currentItemCount > 0 ? (
+                <motion.button
+                  key="filled"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  type="button"
+                  onClick={() => setComandaSheetOpen(true)}
+                  data-cy="pos-mobile-cart-bar"
+                  className="motion-press pointer-events-auto flex w-full items-center gap-3 rounded-[18px] bg-carbon px-4 py-3 text-left text-white shadow-xl shadow-carbon/25"
+                >
+                  <span
+                    key={`badge-${currentItemCount}`}
+                    className="pos-pop-badge nums grid size-11 shrink-0 place-items-center rounded-[13px] bg-orange font-display text-lg font-extrabold text-carbon"
+                  >
+                    {currentItemCount}
                   </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-1.5 rounded-[12px] bg-orange px-4 py-2.5 text-sm font-bold text-carbon">
-                  Cuenta
-                  <ArrowRight className="size-4" />
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setComandaSheetOpen(true)}
-                data-cy="pos-mobile-cart-bar-empty"
-                className="motion-press pointer-events-auto flex w-full items-center gap-3 rounded-[18px] border border-dashed border-[#D8D0C5] bg-white p-4 text-left"
-              >
-                <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-[#F6F2EC] text-[#B0A89C]">
-                  <ShoppingCart className="size-5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13.5px] font-semibold text-[#6B6359]">
-                    {currentAccount ? 'Comanda vacía' : 'Sin cuenta abierta'}
+                  <span className="min-w-0 flex-1">
+                    <span className="nums block text-xs text-white/55">Ver comanda</span>
+                    <span
+                      key={`total-${currentAccount.grandTotal}`}
+                      className="pos-pop-soft nums block text-xl font-bold"
+                    >
+                      {formatMoney(currentAccount.grandTotal, currency)}
+                    </span>
                   </span>
-                  <span className="block text-xs text-muted-foreground">
-                    {currentAccount
-                      ? 'Toca un producto para empezar'
-                      : 'Toca aquí para abrir la cuenta'}
+                  <span className="flex shrink-0 items-center gap-1.5 rounded-[12px] bg-orange px-4 py-2.5 text-sm font-bold text-carbon">
+                    Cuenta
+                    <ArrowRight className="size-4" />
                   </span>
-                </span>
-              </button>
-            )}
+                </motion.button>
+              ) : (
+                <motion.button
+                  key="empty"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  type="button"
+                  onClick={() => setComandaSheetOpen(true)}
+                  data-cy="pos-mobile-cart-bar-empty"
+                  className="motion-press pointer-events-auto flex w-full items-center gap-3 rounded-[18px] border border-dashed border-[#D8D0C5] bg-white p-4 text-left"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-[#F6F2EC] text-[#B0A89C]">
+                    <ShoppingCart className="size-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-semibold text-[#6B6359]">
+                      {currentAccount ? 'Comanda vacía' : 'Sin cuenta abierta'}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {currentAccount
+                        ? 'Toca un producto para empezar'
+                        : 'Toca aquí para abrir la cuenta'}
+                    </span>
+                  </span>
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </section>
 
@@ -646,7 +672,7 @@ export function PosWorkspace() {
         <SheetContent
           side="bottom"
           showCloseButton={false}
-          className="max-h-[88dvh] gap-0 overflow-hidden rounded-t-[26px] border-none bg-[#FCFAF6] p-0 lg:hidden"
+          className="pos-sheet max-h-[88dvh] gap-0 overflow-hidden rounded-t-[26px] border-none bg-[#FCFAF6] p-0 lg:hidden"
           data-cy="pos-comanda-sheet"
         >
           <SheetTitle className="sr-only">Comanda</SheetTitle>
