@@ -485,6 +485,7 @@ export function PosWorkspace() {
         data-cy="pos-page"
       >
         <section className="flex min-w-0 flex-col rounded-[26px] border border-[#E7E0D6] bg-[#FCFAF6] p-3 shadow-sm shadow-carbon/5 sm:p-4">
+          <div className="max-lg:sticky max-lg:top-0 max-lg:z-20 max-lg:-mx-3 max-lg:-mt-3 max-lg:rounded-t-[26px] max-lg:bg-[#FCFAF6] max-lg:px-3 max-lg:pt-3 max-lg:pb-3 max-lg:shadow-[0_10px_18px_-14px_rgba(28,26,23,0.25)] sm:max-lg:-mx-4 sm:max-lg:-mt-4 sm:max-lg:px-4 sm:max-lg:pt-4">
           <div className="mb-4 rounded-[20px] border border-[#E7E0D6] bg-white p-3">
             <div className="flex flex-wrap items-center gap-2.5">
             <Link
@@ -517,7 +518,7 @@ export function PosWorkspace() {
 
           </div>
 
-          <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-2">
+          <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-2 max-lg:mb-0">
             {categoryTabs.map((category) => {
               const isActive = category.id === activeCategory;
               return (
@@ -536,6 +537,7 @@ export function PosWorkspace() {
                 </button>
               );
             })}
+          </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-0">
