@@ -25,7 +25,7 @@ import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { EmployeePinDialog } from './EmployeePinDialog';
 
 const EMPTY_EMPLOYEES: EmployeeDto[] = [];
-const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
+const SKELETON_ROWS = [0];
 
 const ROLE_META: Record<UserRole, { label: string; tone: DcChipTone }> = {
   OWNER: { label: 'Owner', tone: 'ink' },
@@ -88,7 +88,7 @@ function EmployeeCard({
 
   return (
     <div
-      className="motion-press rounded-2xl border border-border bg-card p-[18px] hover:-translate-y-0.5 hover:border-orange/35 hover:shadow-md"
+      className="motion-press min-w-0 max-w-full overflow-hidden rounded-2xl border border-border bg-card p-[18px] hover:-translate-y-0.5 hover:border-orange/35 hover:shadow-md"
       data-cy="employee-card"
     >
       <div className="flex items-start justify-between gap-4">
@@ -122,15 +122,17 @@ function EmployeeCard({
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-[12px] text-[#6B6359]">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <span className="inline-flex min-w-0 items-center gap-2 text-[12px] text-[#6B6359]">
           <span
-            className="size-2 rounded-full"
+            className="size-2 shrink-0 rounded-full"
             style={{ background: employee.isActive ? '#14865A' : '#B0A89C' }}
           />
-          {employee.isActive ? 'Acceso activo' : 'Acceso suspendido'}
+          <span className="truncate">
+            {employee.isActive ? 'Acceso activo' : 'Acceso suspendido'}
+          </span>
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             type="button"
             variant="outline"
