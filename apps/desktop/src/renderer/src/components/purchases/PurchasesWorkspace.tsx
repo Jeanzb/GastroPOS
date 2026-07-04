@@ -46,7 +46,7 @@ type PurchaseAction = { type: 'receive' | 'cancel'; purchase: PurchaseDto };
 
 const EMPTY_PURCHASES: PurchaseDto[] = [];
 const EMPTY_SUPPLIERS: SupplierDto[] = [];
-const SKELETON_ROWS = [0, 1, 2, 3, 4];
+const SKELETON_ROWS = [0];
 
 function formatPeriodLabel(period?: string): string {
   if (!period) {
@@ -168,6 +168,79 @@ function PurchaseRowItem({
   );
 }
 
+function PurchaseCard({
+  purchase,
+  onReceive,
+  onCancel,
+}: {
+  purchase: PurchaseDto;
+  onReceive: (purchase: PurchaseDto) => void;
+  onCancel: (purchase: PurchaseDto) => void;
+}) {
+  const status = STATUS_META[purchase.status];
+  const canMutate = purchase.status === 'DRAFT';
+  const firstItem = purchase.items[0]?.name ?? 'Sin items';
+
+  return (
+    <div
+      className="rounded-2xl border border-border bg-surface-raised p-4 shadow-sm"
+      data-cy="purchase-mobile-card"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground">{purchase.supplierName}</p>
+          <p className="mt-1 truncate text-[12px] text-muted-foreground">{firstItem}</p>
+        </div>
+        <DcChip tone={status.tone}>{status.label}</DcChip>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-background px-3 py-3">
+        <div className="min-w-0">
+          <p className="text-[11px] text-muted-foreground">Documento</p>
+          <p className="nums mt-1 truncate text-[12.5px] font-semibold">
+            {purchase.reference ?? 'Sin doc.'}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] text-muted-foreground">Total</p>
+          <p className="nums mt-1 text-[13px] font-bold">
+            {formatMoney(purchase.total, purchase.currency)}
+          </p>
+        </div>
+        <div className="col-span-2 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          <CalendarDays className="size-3.5" />
+          {formatDate(purchase.createdAt)}
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          data-cy="purchase-receive"
+          disabled={!canMutate}
+          onClick={() => onReceive(purchase)}
+        >
+          <CheckCircle2 className="size-4" />
+          Recibir
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 text-destructive"
+          data-cy="purchase-cancel"
+          disabled={!canMutate}
+          onClick={() => onCancel(purchase)}
+        >
+          <XCircle className="size-4" />
+          Cancelar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function SupplierSpend({ name, value, percent }: { name: string; value: number; percent: number }) {
   return (
     <div className="space-y-2">
@@ -226,7 +299,10 @@ export function PurchasesWorkspace() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
     const max = Math.max(...rows.map((row) => row.value), 1);
-    return rows.map((row) => ({ ...row, percent: Math.max(8, Math.round((row.value / max) * 100)) }));
+    return rows.map((row) => ({
+      ...row,
+      percent: Math.max(8, Math.round((row.value / max) * 100)),
+    }));
   }, [purchaseList]);
 
   const isSavingPurchase = purchases.createMutation.isPending;
@@ -258,7 +334,10 @@ export function PurchasesWorkspace() {
   const onSubmitSupplier = async (values: SupplierFormValues) => {
     try {
       await suppliers.createMutation.mutateAsync(toSupplierPayload(values));
-      appToast.success('Proveedor creado', `${values.name.trim()} ya esta disponible para compras.`);
+      appToast.success(
+        'Proveedor creado',
+        `${values.name.trim()} ya esta disponible para compras.`,
+      );
     } catch (error) {
       appToast.error(
         'No se pudo crear el proveedor',
@@ -279,7 +358,10 @@ export function PurchasesWorkspace() {
         appToast.success('Compra recibida', `${pendingAction.purchase.supplierName} actualizada.`);
       } else {
         await purchases.cancelMutation.mutateAsync(pendingAction.purchase.id);
-        appToast.warning('Compra cancelada', `${pendingAction.purchase.reference ?? 'Documento'} no seguira activa.`);
+        appToast.warning(
+          'Compra cancelada',
+          `${pendingAction.purchase.reference ?? 'Documento'} no seguira activa.`,
+        );
       }
       setPendingAction(undefined);
     } catch (error) {
@@ -295,9 +377,23 @@ export function PurchasesWorkspace() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]" data-cy="purchases-page">
         <section className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <KpiCard label="Compras del mes" value={formatMoney(monthTotal, 'COP')} hint={monthLabel} />
-            <KpiCard label="Por recibir" value={formatMoney(pending, 'COP')} hint="Compras en borrador" accent="warning" />
-            <KpiCard label="Recibidas" value={received} hint="Confirmadas en operación" accent="success" />
+            <KpiCard
+              label="Compras del mes"
+              value={formatMoney(monthTotal, 'COP')}
+              hint={monthLabel}
+            />
+            <KpiCard
+              label="Por recibir"
+              value={formatMoney(pending, 'COP')}
+              hint="Compras en borrador"
+              accent="warning"
+            />
+            <KpiCard
+              label="Recibidas"
+              value={received}
+              hint="Confirmadas en operación"
+              accent="success"
+            />
             <KpiCard label="Proveedores" value={supplierCount} hint="Activos para compras" />
           </div>
 
@@ -306,7 +402,9 @@ export function PurchasesWorkspace() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <CardTitle>Compras y proveedores</CardTitle>
-                  <CardDescription>Documentos reales de compra conectados al backend</CardDescription>
+                  <CardDescription>
+                    Documentos reales de compra conectados al backend
+                  </CardDescription>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -331,7 +429,7 @@ export function PurchasesWorkspace() {
             </CardHeader>
             <CardContent className="space-y-4 px-5">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-[220px] flex-1">
+                <div className="relative min-w-0 flex-1 basis-full sm:basis-auto">
                   <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     data-cy="purchases-search"
@@ -363,7 +461,7 @@ export function PurchasesWorkspace() {
 
               {!isCurrentPeriod ? (
                 <div
-                  className="flex items-center justify-between rounded-xl border border-orange/25 bg-orange/[0.05] px-4 py-2.5 text-[12.5px] text-[#8A5326]"
+                  className="flex flex-col gap-2 rounded-xl border border-orange/25 bg-orange/[0.05] px-4 py-2.5 text-[12.5px] text-[#8A5326] sm:flex-row sm:items-center sm:justify-between"
                   data-cy="purchases-history-banner"
                 >
                   <span>
@@ -379,31 +477,66 @@ export function PurchasesWorkspace() {
                 </div>
               ) : null}
 
-              <div className="overflow-x-auto rounded-2xl border border-border bg-surface-raised">
-                {purchases.listQuery.isLoading
-                  ? SKELETON_ROWS.map((row) => (
-                      <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-4">
-                        <Skeleton className="h-7 w-full" />
-                      </div>
-                    ))
-                  : null}
+              <div className="overflow-hidden rounded-2xl border border-border bg-surface-raised">
+                <div className="grid gap-3 p-3 md:hidden">
+                  {purchases.listQuery.isLoading
+                    ? SKELETON_ROWS.map((row) => (
+                        <div key={row} className="rounded-2xl border border-border bg-card p-4">
+                          <Skeleton className="h-5 w-2/3" />
+                          <Skeleton className="mt-3 h-4 w-full" />
+                          <Skeleton className="mt-2 h-4 w-1/2" />
+                        </div>
+                      ))
+                    : null}
 
-                {!purchases.listQuery.isLoading && purchaseList.length === 0 ? (
-                  <div className="px-[18px] py-12 text-center text-sm text-muted-foreground">
-                    No hay compras registradas. Crea un proveedor y luego registra una compra.
-                  </div>
-                ) : null}
+                  {!purchases.listQuery.isLoading && purchaseList.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">
+                      No hay compras registradas. Crea un proveedor y luego registra una compra.
+                    </div>
+                  ) : null}
 
-                {!purchases.listQuery.isLoading
-                  ? purchaseList.map((purchase) => (
-                      <PurchaseRowItem
-                        key={purchase.id}
-                        purchase={purchase}
-                        onReceive={(item) => setPendingAction({ type: 'receive', purchase: item })}
-                        onCancel={(item) => setPendingAction({ type: 'cancel', purchase: item })}
-                      />
-                    ))
-                  : null}
+                  {!purchases.listQuery.isLoading
+                    ? purchaseList.map((purchase) => (
+                        <PurchaseCard
+                          key={purchase.id}
+                          purchase={purchase}
+                          onReceive={(item) =>
+                            setPendingAction({ type: 'receive', purchase: item })
+                          }
+                          onCancel={(item) => setPendingAction({ type: 'cancel', purchase: item })}
+                        />
+                      ))
+                    : null}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
+                  {purchases.listQuery.isLoading
+                    ? SKELETON_ROWS.map((row) => (
+                        <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-4">
+                          <Skeleton className="h-7 w-full" />
+                        </div>
+                      ))
+                    : null}
+
+                  {!purchases.listQuery.isLoading && purchaseList.length === 0 ? (
+                    <div className="px-[18px] py-12 text-center text-sm text-muted-foreground">
+                      No hay compras registradas. Crea un proveedor y luego registra una compra.
+                    </div>
+                  ) : null}
+
+                  {!purchases.listQuery.isLoading
+                    ? purchaseList.map((purchase) => (
+                        <PurchaseRowItem
+                          key={purchase.id}
+                          purchase={purchase}
+                          onReceive={(item) =>
+                            setPendingAction({ type: 'receive', purchase: item })
+                          }
+                          onCancel={(item) => setPendingAction({ type: 'cancel', purchase: item })}
+                        />
+                      ))
+                    : null}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -415,7 +548,9 @@ export function PurchasesWorkspace() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <CardTitle>Control de costos</CardTitle>
-                  <CardDescription className="text-white/55">Proveedores con mayor gasto</CardDescription>
+                  <CardDescription className="text-white/55">
+                    Proveedores con mayor gasto
+                  </CardDescription>
                 </div>
                 <span className="grid size-10 place-items-center rounded-xl bg-white/8 text-orange">
                   <ReceiptText className="size-5" />
@@ -424,9 +559,7 @@ export function PurchasesWorkspace() {
             </CardHeader>
             <CardContent className="space-y-4 px-5">
               {supplierSpend.length > 0 ? (
-                supplierSpend.map((supplier) => (
-                  <SupplierSpend key={supplier.name} {...supplier} />
-                ))
+                supplierSpend.map((supplier) => <SupplierSpend key={supplier.name} {...supplier} />)
               ) : (
                 <p className="text-sm text-white/55">Sin compras activas todavia.</p>
               )}
@@ -451,7 +584,10 @@ export function PurchasesWorkspace() {
         onSubmit={onSubmitSupplier}
       />
 
-      <AlertDialog open={Boolean(pendingAction)} onOpenChange={(open) => !open && setPendingAction(undefined)}>
+      <AlertDialog
+        open={Boolean(pendingAction)}
+        onOpenChange={(open) => !open && setPendingAction(undefined)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
