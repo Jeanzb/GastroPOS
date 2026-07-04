@@ -20,6 +20,7 @@ import type {
 
 const EMPTY_CATEGORIES: ProductCategoryDto[] = [];
 const EMPTY_PRODUCTS: ProductDto[] = [];
+const PRODUCTS_PAGE_SIZE = 100;
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) {
@@ -72,13 +73,14 @@ function buildCategoryNames(categories: ProductCategoryDto[]): Record<string, st
 export function ProductsPage() {
   const appToast = useAppToast();
   const categories = useCategories();
-  const products = useProducts();
+  const products = useProducts({ pageSize: PRODUCTS_PAGE_SIZE });
   const inventory = useInventory();
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductDto>();
   const [productToDelete, setProductToDelete] = useState<ProductDto>();
   const categoryList = categories.listQuery.data?.data ?? EMPTY_CATEGORIES;
   const productList = products.listQuery.data?.data ?? EMPTY_PRODUCTS;
+  const productMeta = products.listQuery.data?.meta;
   const inventoryItems = inventory.itemsQuery.data?.data ?? [];
   const categoryNames = useMemo(() => buildCategoryNames(categoryList), [categoryList]);
   const isCategorySaving =
@@ -241,6 +243,16 @@ export function ProductsPage() {
               products={productList}
               categoryNames={categoryNames}
               isLoading={products.listQuery.isLoading}
+              page={productMeta?.page ?? products.params.page ?? 1}
+              pageCount={productMeta?.totalPages ?? 1}
+              pageSize={productMeta?.pageSize ?? products.params.pageSize ?? PRODUCTS_PAGE_SIZE}
+              total={productMeta?.total ?? productList.length}
+              onPageChange={(page) =>
+                products.setParams((prev) => ({
+                  ...prev,
+                  page,
+                }))
+              }
               onEdit={onEditProduct}
               onDelete={onDeleteProduct}
             />
