@@ -220,7 +220,7 @@ export function TablesWorkspace() {
   if (diningRoom.zonesQuery.isLoading) {
     return (
       <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-[13px] sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
-        {Array.from({ length: 10 }, (_, index) => (
+        {Array.from({ length: 1 }, (_, index) => (
           <Skeleton key={index} className="h-[140px] rounded-2xl" />
         ))}
       </div>

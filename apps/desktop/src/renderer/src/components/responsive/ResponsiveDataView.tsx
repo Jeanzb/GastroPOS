@@ -27,7 +27,7 @@ export function ResponsiveDataView<TData>({
       <div className="hidden md:block">{table}</div>
       <div className="grid gap-3 md:hidden">
         {isLoading
-          ? Array.from({ length: 4 }, (_, index) => (
+          ? Array.from({ length: 1 }, (_, index) => (
               <Card key={`responsive-card-skeleton-${index}`} className="p-4">
                 <Skeleton className="h-5 w-2/3" />
                 <Skeleton className="mt-3 h-4 w-full" />

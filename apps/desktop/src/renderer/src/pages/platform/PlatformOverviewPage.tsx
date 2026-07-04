@@ -53,7 +53,7 @@ export function PlatformOverviewPage() {
       description="Salud de plataforma, clientes activos y alertas operativas."
     >
       {overviewQuery.isLoading ? (
-        <PlatformCardSkeleton count={4} />
+        <PlatformCardSkeleton />
       ) : overviewQuery.isError ? (
         <PlatformState
           title="No se pudo cargar"
@@ -107,8 +107,6 @@ export function PlatformOverviewPage() {
           <CardContent>
             {tenantsQuery.isLoading ? (
               <div className="space-y-3">
-                <Skeleton className="h-12 rounded-lg" />
-                <Skeleton className="h-12 rounded-lg" />
                 <Skeleton className="h-12 rounded-lg" />
               </div>
             ) : tenants.length ? (

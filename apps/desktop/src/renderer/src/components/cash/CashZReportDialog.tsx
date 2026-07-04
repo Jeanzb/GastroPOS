@@ -90,8 +90,6 @@ export function CashZReportDialog({
 
         {isLoading ? (
           <div className="space-y-3" data-cy="cash-z-report-loading">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-32 w-full" />
             <Skeleton className="h-40 w-full" />
           </div>
         ) : null}

@@ -374,7 +374,7 @@ export function BranchSelector() {
 function BranchGridSkeleton() {
   return (
     <div className="grid gap-[18px] md:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, index) => (
+      {Array.from({ length: 1 }).map((_, index) => (
         <Card key={index} className="min-h-[208px] rounded-2xl border-border bg-card p-[22px]">
           <div className="flex items-start justify-between gap-4">
             <Skeleton className="size-[42px] rounded-xl" />

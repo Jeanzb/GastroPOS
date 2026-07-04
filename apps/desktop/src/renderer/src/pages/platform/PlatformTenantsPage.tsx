@@ -250,8 +250,6 @@ export function PlatformTenantsPage() {
           {tenantsQuery.isLoading ? (
             <div className="space-y-3 p-5">
               <Skeleton className="h-14 rounded-lg" />
-              <Skeleton className="h-14 rounded-lg" />
-              <Skeleton className="h-14 rounded-lg" />
             </div>
           ) : tenantsQuery.isError ? (
             <div className="p-5">

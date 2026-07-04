@@ -20,7 +20,7 @@ interface CategoriesPanelProps {
   onDelete: (id: string) => Promise<void>;
 }
 
-const CATEGORY_SKELETON_ROWS = [0, 1, 2, 3];
+const CATEGORY_SKELETON_ROWS = [0];
 const CATEGORY_DOTS = ['#2F8F6B', '#C9892B', '#FF5A2C', '#7C746A', '#14865A', '#B5491F'];
 
 function categoryDot(category: ProductCategoryDto, index: number): string {

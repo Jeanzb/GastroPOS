@@ -29,11 +29,6 @@ function formatRange(summary: SalesSummaryDto): string {
 function ReportsSkeleton() {
   return (
     <div className="space-y-4" data-cy="reports-loading">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((item) => (
-          <Skeleton key={item} className="h-[118px] rounded-xl" />
-        ))}
-      </div>
       <Skeleton className="h-[380px] rounded-xl" />
     </div>
   );

@@ -85,7 +85,7 @@ export function DataTable<TData, TValue>({
       {mobileCard ? (
         <div className="grid gap-3 p-3 md:hidden">
           {isLoading
-            ? Array.from({ length: Math.min(pagination?.pageSize ?? 4, 4) }, (_, index) => (
+            ? Array.from({ length: 1 }, (_, index) => (
                 <div
                   key={`mobile-skeleton-${index}`}
                   className="rounded-xl border border-border bg-surface-raised p-4"
@@ -160,7 +160,7 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {isLoading
-              ? Array.from({ length: pagination?.pageSize ?? 8 }, (_, index) => (
+              ? Array.from({ length: 1 }, (_, index) => (
                   <TableRow key={`skeleton-${index}`} className="border-b border-[#F2ECE3]">
                     <TableCell colSpan={columns.length} className="px-[18px] py-[14px]">
                       <Skeleton className="h-5 w-full" />

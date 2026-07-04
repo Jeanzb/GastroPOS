@@ -135,12 +135,10 @@ export function PlatformState({
   );
 }
 
-export function PlatformCardSkeleton({ count = 3 }: { count?: number }) {
+export function PlatformCardSkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      {Array.from({ length: count }).map((_, index) => (
-        <Skeleton key={index} className="h-36 rounded-xl bg-carbon/8" />
-      ))}
+      <Skeleton className="h-36 rounded-xl bg-carbon/8" />
     </div>
   );
 }

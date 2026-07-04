@@ -121,8 +121,6 @@ function ReadinessSkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-24 w-full" />
     </div>
   );
 }

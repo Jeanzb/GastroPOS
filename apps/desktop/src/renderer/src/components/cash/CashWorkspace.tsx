@@ -243,8 +243,6 @@ export function CashWorkspace() {
               {isLoading ? (
                 <div className="grid gap-4 md:grid-cols-3">
                   <Skeleton className="h-28 w-full" />
-                  <Skeleton className="h-28 w-full" />
-                  <Skeleton className="h-28 w-full" />
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-3">
@@ -277,7 +275,7 @@ export function CashWorkspace() {
               <CardDescription>Cada movimiento queda auditado por usuario y sede</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 px-5">
-              {isLoading ? [0, 1, 2].map(renderSkeletonRow) : null}
+              {isLoading ? [0].map(renderSkeletonRow) : null}
               {!isLoading && !session ? (
                 <div className="rounded-lg border border-dashed border-border bg-background px-4 py-10 text-center text-sm text-muted-foreground">
                   Abre una caja para registrar movimientos del turno.

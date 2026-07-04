@@ -309,7 +309,6 @@ export function FloorWorkspace() {
     return (
       <div className="space-y-4">
         <Skeleton className="h-44 rounded-xl" />
-        <Skeleton className="h-44 rounded-xl" />
       </div>
     );
   }
