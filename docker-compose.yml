@@ -13,26 +13,56 @@ services:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: ${POSTGRES_MEMORY_LIMIT:-1024}M
+        reservations:
+          cpus: '1'
+          memory: 512M
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-gastroai} -d ${POSTGRES_DB:-gastroai}']
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    logging:
+      driver: ${LOG_DRIVER:-json-file}
+      options:
+        max-size: ${LOG_MAX_SIZE:-50m}
+        max-file: ${LOG_MAX_FILE:-5}
+        labels: 'com.gastroai.service=postgres'
 
   redis:
     image: redis:7-alpine
     container_name: gastroai-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory ${REDIS_MEMORY_LIMIT:-512}mb --maxmemory-policy noeviction --save 900 1 --save 300 10
     ports:
       - '${REDIS_PORT:-6379}:6379'
     volumes:
       - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: ${REDIS_MEMORY_LIMIT:-512}M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
+    logging:
+      driver: ${LOG_DRIVER:-json-file}
+      options:
+        max-size: ${LOG_MAX_SIZE:-50m}
+        max-file: ${LOG_MAX_FILE:-5}
+        labels: 'com.gastroai.service=redis'
 
 volumes:
   postgres-data:
