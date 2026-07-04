@@ -71,6 +71,8 @@ export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) 
   const routeMeta = getRouteMeta(pathname);
   const availableRoles = getRoleProfiles(user?.role, user?.availableRoles);
   const selectedRole = user ? (activeRole ?? availableRoles[0]?.role ?? user.role) : null;
+  const isWaiterProfile = selectedRole === 'WAITER' || user?.role === 'WAITER';
+  const hideBranchSelectorOnMobile = pathname === '/pos' || isWaiterProfile;
   const rolesRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
 
@@ -144,7 +146,14 @@ export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) 
           </div>
         ) : null}
 
-        <Button variant="outline" asChild className="touch-target h-10 gap-2 rounded-lg px-3">
+        <Button
+          variant="outline"
+          asChild
+          className={cn(
+            'touch-target h-10 gap-2 rounded-lg px-3',
+            hideBranchSelectorOnMobile ? 'hidden md:inline-flex' : null,
+          )}
+        >
           <Link to="/sede">
             <span className="h-2.5 w-2.5 rounded-full bg-success" />
             <span className="hidden text-sm font-semibold md:inline">
