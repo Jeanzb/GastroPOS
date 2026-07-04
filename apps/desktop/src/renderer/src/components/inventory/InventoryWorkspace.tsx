@@ -19,10 +19,7 @@ import { useActiveBranch } from '@/hooks/tenancy';
 import { useAppToast } from '@/hooks/ui';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type {
-  InventoryAdjustmentFormValues,
-  InventoryItemFormValues,
-} from '@/schemas/inventory';
+import type { InventoryAdjustmentFormValues, InventoryItemFormValues } from '@/schemas/inventory';
 import type { InventoryItemDto, StockMovementDto, StockMovementType } from '@/types/inventory';
 import { InventoryAdjustmentDialog } from './InventoryAdjustmentDialog';
 import { InventoryItemFormDialog } from './InventoryItemFormDialog';
@@ -168,6 +165,113 @@ function ItemRow({
   );
 }
 
+function InventoryItemCard({
+  item,
+  onAdjust,
+}: {
+  item: InventoryItemDto;
+  onAdjust: (item: InventoryItemDto) => void;
+}) {
+  const status = stockStatus(item);
+
+  return (
+    <div
+      className="rounded-2xl border border-border bg-surface-raised p-4 shadow-sm"
+      data-cy="inventory-mobile-card"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground">{item.name}</p>
+          <p className="nums mt-0.5 truncate text-[11.5px] text-muted-foreground">
+            SKU inv. {item.sku} - {item.baseUnitCode}
+          </p>
+        </div>
+        <DcChip tone={status.tone}>{status.label}</DcChip>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-background px-3 py-3">
+        <div>
+          <p className="text-[11px] text-muted-foreground">Stock</p>
+          <p className="nums mt-1 text-[13px] font-bold">
+            {item.stockOnHand} {item.baseUnitCode}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">Minimo</p>
+          <p className="nums mt-1 text-[13px] font-bold">{item.minimumStock}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] text-muted-foreground">Costo</p>
+          <p className="nums mt-1 text-[13px] font-bold">{formatMoney(item.averageCost, 'COP')}</p>
+        </div>
+      </div>
+
+      {item.productName ? (
+        <p className="mt-3 truncate rounded-lg border border-border bg-background px-3 py-2 text-[12px] text-muted-foreground">
+          Producto: {item.productName}
+        </p>
+      ) : null}
+
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-4 min-h-11 w-full"
+        data-cy="inventory-adjust-row"
+        onClick={() => onAdjust(item)}
+      >
+        Ajustar stock
+      </Button>
+    </div>
+  );
+}
+
+function MovementCard(movement: StockMovementDto) {
+  const meta = MOVEMENT_META[movement.type];
+  const signed = meta.sign * movement.quantity;
+
+  return (
+    <div
+      className="rounded-2xl border border-border bg-surface-raised p-4 shadow-sm"
+      data-cy="movement-mobile-card"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-foreground">{movement.inventoryItemName}</p>
+          <p className="nums mt-0.5 truncate text-[11.5px] text-muted-foreground">
+            {formatDateTime(movement.createdAt)}
+          </p>
+        </div>
+        <DcChip tone={meta.sign < 0 ? 'warning' : 'success'}>{meta.label}</DcChip>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-background px-3 py-3">
+        <div>
+          <p className="text-[11px] text-muted-foreground">Cantidad</p>
+          <p
+            className={cn(
+              'nums mt-1 text-[13px] font-bold',
+              meta.sign < 0 ? 'text-[#C0431A]' : 'text-success',
+            )}
+          >
+            {signed > 0 ? '+' : ''}
+            {signed}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">Stock final</p>
+          <p className="nums mt-1 text-[13px] font-bold">{movement.stockAfter}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] text-muted-foreground">Costo</p>
+          <p className="nums mt-1 text-[13px] font-bold">
+            {movement.totalCost === null ? '-' : formatMoney(movement.totalCost, 'COP')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function InventoryWorkspace() {
   const toast = useAppToast();
   const activeBranch = useActiveBranch();
@@ -249,7 +353,12 @@ export function InventoryWorkspace() {
         <section className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <KpiCard label="Insumos" value={total} hint="Registrados en inventario" />
-            <KpiCard label="Bajo minimo" value={stats.low} hint="Requieren compra" accent="warning" />
+            <KpiCard
+              label="Bajo minimo"
+              value={stats.low}
+              hint="Requieren compra"
+              accent="warning"
+            />
             <KpiCard label="Agotados" value={stats.out} hint="Sin existencias" accent="danger" />
             <KpiCard
               label="Valor de inventario"
@@ -286,39 +395,66 @@ export function InventoryWorkspace() {
               </div>
             </CardHeader>
             <CardContent className="px-5">
-              <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-                <div
-                  className={cn(
-                    GRID,
-                    'min-w-[760px] border-b border-border bg-surface-quiet/60 px-[18px] py-3 md:min-w-0',
-                  )}
-                >
-                  <span className={HEADER}>Insumo</span>
-                  <span className={cn(HEADER, 'text-right')}>Stock</span>
-                  <span className={cn(HEADER, 'text-right')}>Minimo</span>
-                  <span className={cn(HEADER, 'text-right')}>Costo prom.</span>
-                  <span className={cn(HEADER, 'text-right')}>Estado</span>
-                </div>
-                <div className="max-h-[calc(100vh-360px)] overflow-y-auto">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="grid gap-3 p-3 md:hidden">
                   {itemsQuery.isLoading
-                    ? [0, 1, 2, 3, 4].map((row) => (
-                        <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-[15px]">
-                          <Skeleton className="h-6 w-full" />
+                    ? [0].map((row) => (
+                        <div
+                          key={row}
+                          className="rounded-2xl border border-border bg-surface-raised p-4"
+                        >
+                          <Skeleton className="h-5 w-2/3" />
+                          <Skeleton className="mt-3 h-4 w-full" />
+                          <Skeleton className="mt-2 h-4 w-1/2" />
                         </div>
                       ))
                     : null}
                   {!itemsQuery.isLoading && items.length === 0 ? (
-                    <div className="px-[18px] py-12 text-center text-sm text-muted-foreground">
+                    <div className="rounded-2xl border border-dashed border-border bg-surface-raised px-5 py-10 text-center text-sm text-muted-foreground">
                       Aun no hay insumos en inventario. Crea el primero o recibe una compra.
                     </div>
                   ) : null}
                   {!itemsQuery.isLoading
                     ? items.map((item) => (
-                        <div key={item.id} data-cy="inventory-item-row">
-                          <ItemRow item={item} onAdjust={openAdjustment} />
-                        </div>
+                        <InventoryItemCard key={item.id} item={item} onAdjust={openAdjustment} />
                       ))
                     : null}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
+                  <div
+                    className={cn(
+                      GRID,
+                      'min-w-[760px] border-b border-border bg-surface-quiet/60 px-[18px] py-3 md:min-w-0',
+                    )}
+                  >
+                    <span className={HEADER}>Insumo</span>
+                    <span className={cn(HEADER, 'text-right')}>Stock</span>
+                    <span className={cn(HEADER, 'text-right')}>Minimo</span>
+                    <span className={cn(HEADER, 'text-right')}>Costo prom.</span>
+                    <span className={cn(HEADER, 'text-right')}>Estado</span>
+                  </div>
+                  <div className="max-h-[calc(100vh-360px)] overflow-y-auto">
+                    {itemsQuery.isLoading
+                      ? [0].map((row) => (
+                          <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-[15px]">
+                            <Skeleton className="h-6 w-full" />
+                          </div>
+                        ))
+                      : null}
+                    {!itemsQuery.isLoading && items.length === 0 ? (
+                      <div className="px-[18px] py-12 text-center text-sm text-muted-foreground">
+                        Aun no hay insumos en inventario. Crea el primero o recibe una compra.
+                      </div>
+                    ) : null}
+                    {!itemsQuery.isLoading
+                      ? items.map((item) => (
+                          <div key={item.id} data-cy="inventory-item-row">
+                            <ItemRow item={item} onAdjust={openAdjustment} />
+                          </div>
+                        ))
+                      : null}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -367,6 +503,7 @@ export function InventoryWorkspace() {
                 sorting={stockMovements.sorting}
                 onSortingChange={stockMovements.setSorting}
                 manualSorting
+                mobileCard={MovementCard}
                 pagination={
                   movementsPage
                     ? {
@@ -404,7 +541,7 @@ export function InventoryWorkspace() {
             </CardHeader>
             <CardContent className="space-y-3 px-5">
               {itemsQuery.isLoading ? (
-                [0, 1, 2].map((row) => <Skeleton key={row} className="h-14 w-full bg-white/10" />)
+                [0].map((row) => <Skeleton key={row} className="h-14 w-full bg-white/10" />)
               ) : lowItems.length === 0 ? (
                 <p className="text-sm text-white/55">
                   Todo el inventario esta por encima del minimo.
