@@ -97,13 +97,16 @@ function OpenAccountForm({
     defaultValues: { waiterName: defaultWaiterName, guestCount: table.seats, customerName: '' },
   });
 
+  // Reset only when the actual table changes; resetting on every `table`
+  // object identity change (zones refetch) would wipe what the user typed.
   useEffect(() => {
     form.reset({
       waiterName: table.waiterName ?? defaultWaiterName,
       guestCount: table.seats,
       customerName: table.reservationName ?? '',
     });
-  }, [defaultWaiterName, form, table]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, table.id]);
 
   return (
     <Form {...form}>
