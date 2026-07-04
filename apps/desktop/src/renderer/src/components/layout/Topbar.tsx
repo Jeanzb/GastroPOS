@@ -123,7 +123,7 @@ export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) 
             {pill.ready ? (
               <span
                 aria-hidden
-                className="absolute top-1 bottom-1 left-0 rounded-md bg-carbon shadow-sm ease-[cubic-bezier(.34,1.38,.46,1)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
+                className="absolute top-1 bottom-1 left-0 rounded-md bg-carbon shadow-sm ease-[var(--motion-pop)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
                 style={{ width: pill.width, transform: `translateX(${pill.left}px)` }}
               />
             ) : null}

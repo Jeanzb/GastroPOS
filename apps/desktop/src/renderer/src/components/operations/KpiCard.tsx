@@ -12,8 +12,8 @@ interface KpiCardProps {
 const ACCENT_VALUE: Record<NonNullable<KpiCardProps['accent']>, string> = {
   default: 'text-foreground',
   success: 'text-success',
-  warning: 'text-[#9A6A1C]',
-  danger: 'text-[#C0431A]',
+  warning: 'text-warning-strong',
+  danger: 'text-danger-strong',
 };
 
 export function KpiCard({ label, value, hint, accent = 'default', className }: KpiCardProps) {
@@ -28,7 +28,7 @@ export function KpiCard({ label, value, hint, accent = 'default', className }: K
       <p className={cn('nums mt-[7px] text-[25px] font-bold leading-none', ACCENT_VALUE[accent])}>
         {value}
       </p>
-      {hint ? <p className="mt-[6px] text-[11.5px] text-[#9A9286]">{hint}</p> : null}
+      {hint ? <p className="mt-[6px] text-[11.5px] text-[#6B6359]">{hint}</p> : null}
     </div>
   );
 }

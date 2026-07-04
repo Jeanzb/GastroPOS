@@ -43,7 +43,7 @@ function swatchColor(id: string): string {
   return SWATCHES[hash];
 }
 
-const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9A9286]';
+const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]';
 
 function ProductRow({
   product,
@@ -74,7 +74,7 @@ function ProductRow({
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{product.name}</p>
-          <p className="nums truncate text-[11px] text-[#9A9286]">
+          <p className="nums truncate text-[11px] text-[#6B6359]">
             {product.sku ?? 'Sin SKU'}
             {product.inventoryLink ? ` · Inv. ${product.inventoryLink.sku}` : ''}
           </p>
@@ -103,6 +103,7 @@ function ProductRow({
           type="button"
           variant="ghost"
           size="icon"
+          className="hit-area"
           title="Editar producto"
           onClick={() => onEdit(product)}
         >
@@ -112,6 +113,7 @@ function ProductRow({
           type="button"
           variant="ghost"
           size="icon"
+          className="hit-area"
           title="Eliminar producto"
           onClick={() => onDelete(product)}
         >
@@ -256,7 +258,7 @@ export function ProductsTable({
           : null}
       </div>
 
-      <div className="hidden overflow-x-auto md:block">
+      <div className="scrollbar-none hidden overflow-x-auto md:block">
         <div
           className={cn(
             GRID,
@@ -270,7 +272,7 @@ export function ProductsTable({
           <span className={cn(HEADER, 'text-right')}>Acciones</span>
         </div>
 
-        <div className="max-h-[min(560px,calc(100vh-330px))] min-h-[320px] overflow-y-auto">
+        <div className="scrollbar-none max-h-[min(560px,calc(100vh-330px))] min-h-[320px] overflow-y-auto">
           {isLoading
             ? SKELETON_ROWS.map((row) => (
                 <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-[15px]">

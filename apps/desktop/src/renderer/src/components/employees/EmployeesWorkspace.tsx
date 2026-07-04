@@ -148,7 +148,7 @@ function EmployeeCard({
             type="button"
             variant="outline"
             data-cy="employee-toggle-access"
-            className={employee.isActive ? 'text-[#C0431A]' : 'text-success'}
+            className={employee.isActive ? 'text-danger-strong' : 'text-success'}
             onClick={() => onToggle(employee)}
           >
             {employee.isActive ? 'Suspender' : 'Activar'}
@@ -158,7 +158,7 @@ function EmployeeCard({
             variant="outline"
             size="icon"
             data-cy="employee-delete"
-            className="text-[#C0431A]"
+            className="hit-area text-danger-strong"
             title="Eliminar empleado"
             onClick={() => onDelete(employee)}
           >
@@ -368,7 +368,7 @@ export function EmployeesWorkspace() {
       >
         <AlertDialogContent data-cy="employee-delete-dialog">
           <AlertDialogHeader>
-            <AlertDialogMedia className="bg-[#FBEAE4] text-[#C0431A]">
+            <AlertDialogMedia className="bg-[#FBEAE4] text-danger-strong">
               <Trash2 />
             </AlertDialogMedia>
             <AlertDialogTitle>Eliminar a {deleteTarget?.fullName}?</AlertDialogTitle>
@@ -383,7 +383,7 @@ export function EmployeesWorkspace() {
             </AlertDialogCancel>
             <AlertDialogAction
               data-cy="employee-delete-confirm"
-              className="bg-[#C0431A] text-white hover:bg-[#A5380F]"
+              className="bg-danger-strong text-white hover:bg-[#A5380F]"
               disabled={employees.deleteMutation.isPending}
               onClick={(event) => {
                 event.preventDefault();

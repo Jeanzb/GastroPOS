@@ -90,7 +90,7 @@ function ZoneTabs({
   }, [activeId, tabs.length]);
 
   return (
-    <div className="w-full overflow-x-auto pb-1 sm:w-auto sm:pb-0">
+    <div className="scrollbar-none w-full overflow-x-auto pb-1 sm:w-auto sm:pb-0">
       <div
         ref={ref}
         className="relative flex w-max min-w-full items-center rounded-xl border border-border bg-surface-raised p-1 sm:min-w-0"
@@ -98,7 +98,7 @@ function ZoneTabs({
       {pill.ready ? (
         <span
           aria-hidden
-          className="absolute top-1 bottom-1 left-0 rounded-lg bg-carbon shadow-sm ease-[cubic-bezier(.34,1.38,.46,1)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
+          className="absolute top-1 bottom-1 left-0 rounded-lg bg-carbon shadow-sm ease-[var(--motion-pop)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
           style={{ width: pill.width, transform: `translateX(${pill.left}px)` }}
         />
       ) : null}
@@ -111,7 +111,7 @@ function ZoneTabs({
             data-active={isActive}
             onClick={() => onSelect(tab.id)}
             className={cn(
-              'relative z-10 flex min-h-11 items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+              'motion-press relative z-10 flex min-h-11 items-center gap-2 rounded-lg px-3.5 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
               isActive ? 'text-white' : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -146,7 +146,7 @@ function TableCard({ table, onOpen }: { table: DiningTableDto; onOpen: (table: D
       <div className="flex flex-1 flex-col p-[15px]">
         <div className="flex items-start justify-between">
           <div>
-            <p className="nums text-[10px] uppercase tracking-[0.06em] text-muted-foreground">Mesa</p>
+            <p className="nums text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Mesa</p>
             <p className="font-display mt-0.5 text-3xl font-bold leading-none">{table.number}</p>
           </div>
           <span className="nums flex items-center gap-1 text-xs font-bold text-muted-foreground">
@@ -159,8 +159,8 @@ function TableCard({ table, onOpen }: { table: DiningTableDto; onOpen: (table: D
             className={cn(
               'nums inline-flex h-6 items-center gap-1.5 rounded-[7px] px-2 text-[11px] font-bold',
               status.tone === 'green' && 'bg-success-soft text-success',
-              status.tone === 'red' && 'bg-danger-soft text-[#C0431A]',
-              status.tone === 'amber' && 'bg-warning-soft text-[#9A6A1C]',
+              status.tone === 'red' && 'bg-danger-soft text-danger-strong',
+              status.tone === 'amber' && 'bg-warning-soft text-warning-strong',
               status.tone === 'neutral' && 'bg-surface-quiet text-[#6B6359]',
             )}
           >

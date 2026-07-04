@@ -74,7 +74,7 @@ function CustomerRow({
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-foreground">{customer.name}</p>
-          <p className="truncate text-[11.5px] text-[#9A9286]">
+          <p className="truncate text-[11.5px] text-[#6B6359]">
             {initials(customer.name)} · {isCompany ? 'Empresa' : 'Persona'}
           </p>
         </div>
@@ -87,7 +87,7 @@ function CustomerRow({
       </div>
       <div className="min-w-0">
         <p className="truncate text-[13px] text-foreground">{customer.email ?? 'Sin correo'}</p>
-        <p className="nums truncate text-[11.5px] text-[#9A9286]">
+        <p className="nums truncate text-[11.5px] text-[#6B6359]">
           {customer.phone ?? 'Sin teléfono'}
         </p>
       </div>
@@ -101,6 +101,7 @@ function CustomerRow({
           type="button"
           variant="ghost"
           size="icon-sm"
+          className="hit-area"
           title="Editar cliente"
           onClick={() => onEdit(customer)}
         >
@@ -110,6 +111,7 @@ function CustomerRow({
           type="button"
           variant="ghost"
           size="icon-sm"
+          className="hit-area"
           title="Eliminar cliente"
           onClick={() => onDelete(customer)}
         >
@@ -231,29 +233,29 @@ export function CustomersTable({ customers, isLoading, onEdit, onDelete }: Custo
           : null}
       </div>
 
-      <div className="hidden overflow-x-auto md:block">
+      <div className="scrollbar-none hidden overflow-x-auto md:block">
         <div
           className={cn(
             GRID,
             'min-w-[860px] border-b border-border bg-surface-quiet/60 px-[18px] py-3 lg:min-w-0',
           )}
         >
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9A9286]">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]">
             Cliente
           </span>
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9A9286]">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]">
             Documento
           </span>
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9A9286]">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]">
             Regimen
           </span>
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9A9286]">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]">
             Contacto
           </span>
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9A9286]">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]">
             Estado
           </span>
-          <span className="text-right text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#9A9286]">
+          <span className="text-right text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]">
             Acciones
           </span>
         </div>

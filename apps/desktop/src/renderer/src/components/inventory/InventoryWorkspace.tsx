@@ -25,7 +25,7 @@ import { InventoryAdjustmentDialog } from './InventoryAdjustmentDialog';
 import { InventoryItemFormDialog } from './InventoryItemFormDialog';
 
 const GRID = 'grid grid-cols-[1.6fr_0.8fr_0.7fr_0.9fr_1fr] items-center gap-3';
-const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9A9286]';
+const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]';
 const ALL_MOVEMENTS = 'ALL';
 
 const MOVEMENT_META: Record<StockMovementType, { label: string; sign: 1 | -1 }> = {
@@ -50,7 +50,7 @@ const movementColumns: ColumnDef<StockMovementDto>[] = [
     cell: ({ row }) => (
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">{row.original.inventoryItemName}</p>
-        <p className="nums truncate text-[11px] text-[#9A9286]">
+        <p className="nums truncate text-[11px] text-[#6B6359]">
           {formatDateTime(row.original.createdAt)}
         </p>
       </div>
@@ -75,7 +75,7 @@ const movementColumns: ColumnDef<StockMovementDto>[] = [
         <span
           className={cn(
             'nums text-sm font-bold',
-            meta.sign < 0 ? 'text-[#C0431A]' : 'text-success',
+            meta.sign < 0 ? 'text-danger-strong' : 'text-success',
           )}
         >
           {signed > 0 ? '+' : ''}
@@ -133,7 +133,7 @@ function ItemRow({
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold">{item.name}</p>
-        <p className="nums truncate text-[11px] text-[#9A9286]">
+        <p className="nums truncate text-[11px] text-[#6B6359]">
           SKU inv. {item.sku} · {item.baseUnitCode}
           {item.productSku ? ` · SKU producto ${item.productSku}` : ''}
         </p>
@@ -250,7 +250,7 @@ function MovementCard(movement: StockMovementDto) {
           <p
             className={cn(
               'nums mt-1 text-[13px] font-bold',
-              meta.sign < 0 ? 'text-[#C0431A]' : 'text-success',
+              meta.sign < 0 ? 'text-danger-strong' : 'text-success',
             )}
           >
             {signed > 0 ? '+' : ''}
@@ -421,7 +421,7 @@ export function InventoryWorkspace() {
                     : null}
                 </div>
 
-                <div className="hidden overflow-x-auto md:block">
+                <div className="scrollbar-none hidden overflow-x-auto md:block">
                   <div
                     className={cn(
                       GRID,
@@ -434,7 +434,7 @@ export function InventoryWorkspace() {
                     <span className={cn(HEADER, 'text-right')}>Costo prom.</span>
                     <span className={cn(HEADER, 'text-right')}>Estado</span>
                   </div>
-                  <div className="max-h-[calc(100vh-360px)] overflow-y-auto">
+                  <div className="scrollbar-none max-h-[calc(100vh-360px)] overflow-y-auto">
                     {itemsQuery.isLoading
                       ? [0].map((row) => (
                           <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-[15px]">

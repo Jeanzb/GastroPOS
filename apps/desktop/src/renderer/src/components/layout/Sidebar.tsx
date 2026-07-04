@@ -160,7 +160,7 @@ function SidebarNavSection({
 
   return (
     <section className="space-y-2">
-      <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/38">
+      <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/38">
         {SECTION_LABELS[label]}
       </p>
       <div className="space-y-1">

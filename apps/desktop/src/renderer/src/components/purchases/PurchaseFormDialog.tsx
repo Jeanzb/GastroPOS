@@ -195,7 +195,7 @@ export function PurchaseFormDialog({
               </div>
 
               <div className="overflow-hidden rounded-xl border border-border">
-                <div className="grid grid-cols-[1fr_72px_120px_110px_36px] items-center gap-2 border-b border-border bg-surface-quiet px-3 py-2 text-[11px] font-bold uppercase tracking-[0.05em] text-muted-foreground">
+                <div className="grid grid-cols-[1fr_72px_120px_110px_36px] items-center gap-2 border-b border-border bg-surface-quiet px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
                   <span>Insumo</span>
                   <span className="text-center">Cant.</span>
                   <span className="text-right">Costo unit.</span>
@@ -282,7 +282,7 @@ export function PurchaseFormDialog({
                         data-cy="purchase-item-remove"
                         disabled={fields.length === 1}
                         onClick={() => remove(index)}
-                        className="mt-1.5 grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-quiet hover:text-[#C0431A] disabled:opacity-40"
+                        className="mt-1.5 grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-quiet hover:text-danger-strong disabled:opacity-40"
                       >
                         <Trash2 className="size-4" />
                       </button>

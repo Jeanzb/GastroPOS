@@ -69,6 +69,7 @@ function CategoryRow({
           type="button"
           variant="ghost"
           size="icon-sm"
+          className="hit-area"
           title="Editar categoria"
           onClick={onEditClick}
         >
@@ -78,6 +79,7 @@ function CategoryRow({
           type="button"
           variant="ghost"
           size="icon-sm"
+          className="hit-area"
           title="Eliminar categoria"
           onClick={onDeleteClick}
         >

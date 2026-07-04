@@ -14,7 +14,7 @@ const TREND_STYLES = {
   },
   down: {
     icon: ArrowDownRight,
-    className: 'bg-warning-soft text-[#9A6A1C]',
+    className: 'bg-warning-soft text-warning-strong',
   },
   neutral: {
     icon: ArrowRight,

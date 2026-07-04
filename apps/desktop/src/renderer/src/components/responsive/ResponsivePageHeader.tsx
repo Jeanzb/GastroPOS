@@ -25,7 +25,7 @@ export function ResponsivePageHeader({
     >
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             {eyebrow}
           </p>
         ) : null}

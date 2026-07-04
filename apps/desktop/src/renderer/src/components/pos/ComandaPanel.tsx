@@ -175,7 +175,7 @@ export function ComandaPanel({
                             type="button"
                             disabled={isMutating}
                             onClick={() => onQuantityChange(item.id, 0)}
-                            className="-mr-1.5 min-h-8 rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:text-[#C0431A] active:bg-[#FBEAE4] disabled:opacity-50"
+                            className="-mr-1.5 min-h-8 rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:text-danger-strong active:bg-[#FBEAE4] disabled:opacity-50"
                           >
                             Quitar
                           </button>

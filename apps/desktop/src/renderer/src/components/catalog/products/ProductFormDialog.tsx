@@ -760,7 +760,7 @@ export function ProductFormDialog({
                         }, 0);
                         return (
                           <div className="mt-3 flex items-center justify-between rounded-lg border border-dashed border-border bg-surface-muted px-4 py-2.5">
-                            <span className="text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                            <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                               Costo estimado del plato
                             </span>
                             <span className="nums text-sm font-bold" data-cy="recipe-cost">

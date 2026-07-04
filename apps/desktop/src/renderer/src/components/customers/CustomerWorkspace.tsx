@@ -175,7 +175,7 @@ export function CustomerWorkspace() {
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-[18px] py-4">
             <div>
               <h2 className="font-display text-[18px] font-bold tracking-tight">Directorio de clientes</h2>
-              <p className="text-[12.5px] text-[#9A9286]">Régimen fiscal y contacto por cliente</p>
+              <p className="text-[12.5px] text-[#6B6359]">Régimen fiscal y contacto por cliente</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="relative w-64">

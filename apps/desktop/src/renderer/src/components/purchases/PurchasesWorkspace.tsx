@@ -145,6 +145,7 @@ function PurchaseRowItem({
           type="button"
           variant="ghost"
           size="icon"
+          className="hit-area"
           title="Marcar recibida"
           data-cy="purchase-receive"
           disabled={!canMutate}
@@ -156,6 +157,7 @@ function PurchaseRowItem({
           type="button"
           variant="ghost"
           size="icon"
+          className="hit-area"
           title="Cancelar compra"
           data-cy="purchase-cancel"
           disabled={!canMutate}
@@ -509,7 +511,7 @@ export function PurchasesWorkspace() {
                     : null}
                 </div>
 
-                <div className="hidden overflow-x-auto md:block">
+                <div className="scrollbar-none hidden overflow-x-auto md:block">
                   {purchases.listQuery.isLoading
                     ? SKELETON_ROWS.map((row) => (
                         <div key={row} className="border-b border-[#F2ECE3] px-[18px] py-4">

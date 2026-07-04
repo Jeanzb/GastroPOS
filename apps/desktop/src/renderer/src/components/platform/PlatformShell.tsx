@@ -162,7 +162,7 @@ export function PlatformShell({ title, description, children }: PlatformShellPro
               <Menu className="size-5" />
             </Button>
             <div className="platform-motion-in min-w-0 flex-1">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-carbon/45">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-carbon/45">
                 <ShieldCheck className="size-4 text-orange" />
                 Administracion SaaS
               </div>

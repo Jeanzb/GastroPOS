@@ -50,7 +50,7 @@ interface DataTableProps<TData, TValue> {
   mobileCard?: (row: TData, index: number) => ReactNode;
 }
 
-const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9A9286]';
+const HEADER = 'text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#6B6359]';
 
 export function DataTable<TData, TValue>({
   columns,
@@ -138,7 +138,7 @@ export function DataTable<TData, TValue>({
                           type="button"
                           onClick={header.column.getToggleSortingHandler()}
                           aria-label={`Ordenar por ${String(header.column.columnDef.header)}`}
-                          className="inline-flex min-h-11 items-center gap-1 uppercase tracking-[0.06em] transition-colors hover:text-foreground"
+                          className="inline-flex min-h-11 items-center gap-1 uppercase tracking-[0.08em] transition-colors hover:text-foreground"
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {sorted === 'asc' ? (

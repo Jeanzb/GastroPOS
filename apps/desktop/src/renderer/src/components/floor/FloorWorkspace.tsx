@@ -240,7 +240,7 @@ export function FloorWorkspace() {
         <X className="h-4 w-4" />
       </button>
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Mesa
         </p>
         <InlineEdit

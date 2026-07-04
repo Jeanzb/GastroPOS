@@ -157,7 +157,7 @@ function SingleBranchStart({
   return (
     <section className="mx-auto w-full max-w-[980px]">
       <div className="mb-8 text-center">
-        <p className="nums text-[11px] uppercase tracking-[0.18em] text-[#9A9286]">
+        <p className="nums text-[11px] uppercase tracking-[0.18em] text-[#6B6359]">
           Restaurante activo
         </p>
         <h1 className="mt-2 font-display text-[32px] font-bold tracking-tight">
@@ -215,7 +215,7 @@ function SingleBranchStart({
         <Card className="rounded-2xl border-border bg-[#1C1A17] p-6 text-white shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="nums text-[11px] uppercase tracking-[0.14em] text-white/45">
+              <p className="nums text-[11px] uppercase tracking-[0.18em] text-white/45">
                 Estado antes de empezar
               </p>
               <h2 className="mt-2 font-display text-[20px] font-bold">Contexto operativo</h2>
@@ -316,7 +316,7 @@ export function BranchSelector() {
         ) : (
           <section className="w-full max-w-[870px]">
           <div className="mb-8 text-center">
-            <p className="nums text-[11px] uppercase tracking-[0.18em] text-[#9A9286]">
+            <p className="nums text-[11px] uppercase tracking-[0.18em] text-[#6B6359]">
               Restaurante activo
             </p>
             <h1 className="mt-2 font-display text-[30px] font-bold tracking-tight">
