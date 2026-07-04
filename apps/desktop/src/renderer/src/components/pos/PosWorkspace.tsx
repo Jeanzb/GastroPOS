@@ -580,7 +580,7 @@ export function PosWorkspace() {
             )}
           </div>
 
-          <div className="pointer-events-none fixed right-0 bottom-0 left-0 z-30 bg-gradient-to-t from-[#F6F2EC] from-60% to-transparent px-3 pb-4 pt-3 lg:hidden">
+          <div className="pointer-events-none fixed right-0 bottom-0 left-0 z-30 bg-gradient-to-t from-[#F6F2EC] from-60% to-transparent px-3 pt-3 pb-[max(16px,env(safe-area-inset-bottom))] lg:hidden">
             <AnimatePresence mode="wait" initial={false}>
               {currentAccount && currentItemCount > 0 ? (
                 <motion.button
