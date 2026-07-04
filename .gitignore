@@ -56,3 +56,5 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 apps/desktop/ds-compiled.css
+apps/desktop/cypress/screenshots/
+apps/desktop/cypress/videos/

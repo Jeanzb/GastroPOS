@@ -5,6 +5,10 @@ export default defineConfig({
     baseUrl: process.env.CYPRESS_BASE_URL ?? 'http://localhost:5173',
     specPattern: 'cypress/e2e/**/*.cy.ts',
     supportFile: 'cypress/support/e2e.ts',
+    // App desktop-first: el layout de escritorio empieza en lg (1024px).
+    // El default de Cypress (1000px) caia en el layout movil y rompia los specs.
+    viewportWidth: 1366,
+    viewportHeight: 768,
     defaultCommandTimeout: 10_000,
     requestTimeout: 10_000,
     responseTimeout: 20_000,

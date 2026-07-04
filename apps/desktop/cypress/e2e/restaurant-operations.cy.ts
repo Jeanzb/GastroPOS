@@ -285,11 +285,11 @@ describe('Restaurant operations', () => {
       .and('have.value', 'Generacion automatica');
     cy.get('[data-cy="inventory-item-category"]').click();
     cy.get('[role="option"]').first().click();
-    cy.get('body').type('{esc}');
+    cy.get('[role="listbox"]').should('not.exist');
     cy.get('[data-cy="inventory-item-name"]').type(itemName);
     cy.get('[data-cy="inventory-item-unit-code"]').click();
     cy.contains('[role="option"]', 'Kilogramo').click();
-    cy.get('body').type('{esc}');
+    cy.get('[role="listbox"]').should('not.exist');
     cy.get('[data-cy="inventory-item-initial-stock"]').click().type('{ctrl+a}5').should('have.value', '5');
     cy.get('[data-cy="inventory-item-initial-cost"]').click().type('{ctrl+a}12000');
     cy.get('[data-cy="inventory-item-minimum-stock"]').click().type('{ctrl+a}2').should('have.value', '2');
@@ -321,7 +321,7 @@ describe('Restaurant operations', () => {
 
     cy.contains('[data-cy="inventory-item-row"]', itemName).scrollIntoView().should('contain', '8 KG');
     cy.wait('@getStockMovements');
-    cy.contains(itemName).should('be.visible');
+    cy.contains('table', itemName).should('be.visible');
   });
 
   it('creates and suspends an employee -> access state updates in the card', () => {
