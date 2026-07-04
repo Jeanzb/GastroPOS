@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,6 +62,40 @@ import type { ProductDto } from '@/types/catalog';
 import type { DiningTableDto, KitchenCommandDto, ReceiptDto } from '@/types/dining';
 
 const ALL = 'all';
+
+/* Memoizado: el grid puede tener 200+ productos y no debe re-renderizar
+   completo en cada tecla del buscador ni en cada mutacion de la comanda. */
+const ProductCardButton = memo(function ProductCardButton({
+  product,
+  disabled,
+  onAdd,
+}: {
+  product: ProductDto;
+  disabled: boolean;
+  onAdd: (product: ProductDto) => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onAdd(product)}
+      data-cy="pos-product-card"
+      className="motion-press flex min-h-[118px] flex-col gap-3 rounded-[18px] border border-[#E7E0D6] bg-white p-4 text-left shadow-sm shadow-carbon/5 transition hover:-translate-y-0.5 hover:border-orange/60 hover:bg-[#FFF8F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 disabled:opacity-60"
+    >
+      <span className="line-clamp-2 min-h-[36px] flex-1 text-[14.5px] font-semibold leading-tight text-[#1C1A17]">
+        {product.name}
+      </span>
+      <span className="flex items-center justify-between gap-2">
+        <span className="nums text-sm font-bold text-[#1C1A17]">
+          {formatMoney(product.priceAmount, product.currency)}
+        </span>
+        <span className="grid size-8 place-items-center rounded-[11px] bg-[#FFF1EB] text-xl font-bold leading-none text-orange">
+          +
+        </span>
+      </span>
+    </button>
+  );
+});
 
 function initials(name: string): string {
   return (
@@ -269,24 +303,27 @@ export function PosWorkspace() {
   const isAuthenticatedWaiter = user?.role === 'WAITER';
   const defaultWaiterName = isAuthenticatedWaiter ? user.fullName : table?.waiterName ?? '';
 
+  // Las mutaciones de items (add/update/remove) son optimistas y no bloquean
+  // la toma de pedido; solo bloquean los flujos que cambian el estado de la cuenta.
   const isMutating =
     account.openAccountMutation.isPending ||
-    account.addItemMutation.isPending ||
-    account.updateItemMutation.isPending ||
-    account.removeItemMutation.isPending ||
     account.commandMutation.isPending ||
     account.receiptMutation.isPending ||
     account.chargeMutation.isPending ||
     cash.activeSessionQuery.isFetching;
 
-  const visibleProducts = products.filter((product) => {
-    const matchesCategory = activeCategory === ALL || product.categoryId === activeCategory;
-    const matchesSearch =
-      !search.trim() ||
-      product.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-      (product.sku ?? '').toLowerCase().includes(search.trim().toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const deferredSearch = useDeferredValue(search);
+  const visibleProducts = useMemo(() => {
+    const term = deferredSearch.trim().toLowerCase();
+    return products.filter((product) => {
+      const matchesCategory = activeCategory === ALL || product.categoryId === activeCategory;
+      const matchesSearch =
+        !term ||
+        product.name.toLowerCase().includes(term) ||
+        (product.sku ?? '').toLowerCase().includes(term);
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, activeCategory, deferredSearch]);
 
   const categoryTabs = [
     { id: ALL, name: 'Todos' },
@@ -308,6 +345,7 @@ export function PosWorkspace() {
           await account.addItemMutation.mutateAsync({
             saleId: openedAccount.id,
             payload: { productId: productToAdd.id, quantity: 1 },
+            product: { name: productToAdd.name, unitPriceAmount: productToAdd.priceAmount },
           });
         } catch (error) {
           appToast.error(
@@ -324,24 +362,29 @@ export function PosWorkspace() {
     }
   };
 
-  const handleAddProduct = async (product: ProductDto) => {
-    if (!currentAccount) {
-      setPendingProduct(product);
-      setOpenAccountDialogOpen(true);
-      return;
-    }
-    try {
-      await account.addItemMutation.mutateAsync({
-        saleId: currentAccount.id,
-        payload: { productId: product.id, quantity: 1 },
-      });
-    } catch (error) {
-      appToast.error(
-        'No se pudo agregar el producto',
-        error instanceof Error ? error.message : 'Intenta nuevamente.',
-      );
-    }
-  };
+  const addItemMutateAsync = account.addItemMutation.mutateAsync;
+  const handleAddProduct = useCallback(
+    async (product: ProductDto) => {
+      if (!currentAccount) {
+        setPendingProduct(product);
+        setOpenAccountDialogOpen(true);
+        return;
+      }
+      try {
+        await addItemMutateAsync({
+          saleId: currentAccount.id,
+          payload: { productId: product.id, quantity: 1 },
+          product: { name: product.name, unitPriceAmount: product.priceAmount },
+        });
+      } catch (error) {
+        appToast.error(
+          'No se pudo agregar el producto',
+          error instanceof Error ? error.message : 'Intenta nuevamente.',
+        );
+      }
+    },
+    [currentAccount, addItemMutateAsync, appToast],
+  );
 
   const handleQuantityChange = async (itemId: string, quantity: number) => {
     if (!currentAccount) {
@@ -530,7 +573,7 @@ export function PosWorkspace() {
                   type="button"
                   onClick={() => setActiveCategory(category.id)}
                   className={cn(
-                    'min-h-10 shrink-0 rounded-full border px-4 text-[13.5px] font-semibold transition-colors',
+                    'motion-press min-h-10 shrink-0 rounded-full border px-4 text-[13.5px] font-semibold',
                     isActive
                       ? 'border-carbon bg-carbon text-white shadow-sm'
                       : 'border-[#E7E0D6] bg-white text-[#312C26] hover:border-carbon/50',
@@ -550,6 +593,26 @@ export function PosWorkspace() {
                   <Skeleton key={index} className="h-[118px] rounded-[18px]" />
                 ))}
               </div>
+            ) : productsQuery.isError ? (
+              <div
+                className="rounded-[20px] border border-destructive/25 bg-danger-soft p-8 text-center"
+                data-cy="pos-products-error"
+              >
+                <p className="text-sm font-semibold text-destructive">
+                  No se pudo cargar el menú.
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Revisa la conexión e intenta de nuevo.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 min-h-11"
+                  onClick={() => void productsQuery.refetch()}
+                >
+                  Reintentar
+                </Button>
+              </div>
             ) : visibleProducts.length === 0 ? (
               <div className="rounded-[20px] border border-dashed border-[#D8D0C5] bg-white p-10 text-center text-sm text-muted-foreground">
                 No hay productos en esta categoría.
@@ -557,24 +620,12 @@ export function PosWorkspace() {
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(142px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]">
                 {visibleProducts.map((product) => (
-                  <button
+                  <ProductCardButton
                     key={product.id}
-                    type="button"
+                    product={product}
                     disabled={isMutating}
-                    onClick={() => void handleAddProduct(product)}
-                    data-cy="pos-product-card"
-                    className="motion-press flex min-h-[118px] flex-col gap-3 rounded-[18px] border border-[#E7E0D6] bg-white p-4 text-left shadow-sm shadow-carbon/5 transition hover:-translate-y-0.5 hover:border-orange/60 hover:bg-[#FFF8F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 disabled:opacity-60"
-                  >
-                    <span className="line-clamp-2 min-h-[36px] flex-1 text-[14.5px] font-semibold leading-tight text-[#1C1A17]">{product.name}</span>
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="nums text-sm font-bold text-[#1C1A17]">
-                        {formatMoney(product.priceAmount, product.currency)}
-                      </span>
-                      <span className="grid size-8 place-items-center rounded-[11px] bg-[#FFF1EB] text-xl font-bold leading-none text-orange">
-                        +
-                      </span>
-                    </span>
-                  </button>
+                    onAdd={handleAddProduct}
+                  />
                 ))}
               </div>
             )}

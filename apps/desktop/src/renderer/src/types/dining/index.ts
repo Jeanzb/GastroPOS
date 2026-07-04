@@ -8,6 +8,7 @@ export type {
   OpenTableAccountRequest,
   ReceiptDto,
   TableAccountDto,
+  TableAccountItemDto,
   TablePaymentMethod,
   AddTableAccountItemRequest,
   ChargeTableAccountRequest,
