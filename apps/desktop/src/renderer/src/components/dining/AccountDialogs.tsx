@@ -28,6 +28,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import {
+  PrintTicket,
+  TicketDivider,
+  TicketHeader,
+  TicketRow,
+} from '@/components/print/PrintTicket';
+import { useActiveBranch } from '@/hooks/tenancy';
 import { formatMoney } from '@/lib/format';
 import {
   chargeTableAccountSchema,
@@ -56,8 +63,28 @@ export function CommandDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const branch = useActiveBranch();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {open && command ? (
+        <PrintTicket>
+          <TicketHeader
+            branchName={branch?.name}
+            title={`Comanda mesa ${command.tableNumber}`}
+            lines={[
+              command.waiterName ? `Mesero: ${command.waiterName}` : null,
+              new Date(command.createdAt).toLocaleString('es-CO'),
+            ]}
+          />
+          <TicketDivider />
+          {command.items.map((item) => (
+            <TicketRow key={item.id} label={item.name} value={`x${item.quantity}`} />
+          ))}
+          <TicketDivider />
+          <TicketRow strong label="Total unidades" value={command.totalItems} />
+        </PrintTicket>
+      ) : null}
       <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md" data-cy="pos-command-dialog">
         <DialogHeader>
           <DialogTitle>Comanda mesa {command?.tableNumber}</DialogTitle>
@@ -104,8 +131,68 @@ export function ReceiptDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const branch = useActiveBranch();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {open && receipt ? (
+        <PrintTicket>
+          <TicketHeader
+            branchName={branch?.name}
+            title={`Recibo mesa ${receipt.tableNumber}`}
+            lines={[
+              new Date(receipt.closedAt ?? Date.now()).toLocaleString('es-CO'),
+              `Venta ${receipt.saleId.slice(-8).toUpperCase()}`,
+            ]}
+          />
+          <TicketDivider />
+          {receipt.items.map((item) => (
+            <div key={item.id} className="print-ticket-block">
+              <TicketRow
+                label={item.name}
+                value={formatMoney(item.lineTotal, receipt.currency)}
+              />
+              <p className="print-ticket-meta">
+                {item.quantity} x {formatMoney(item.unitPriceAmount, receipt.currency)}
+              </p>
+            </div>
+          ))}
+          <TicketDivider />
+          <TicketRow label="Subtotal" value={formatMoney(receipt.subtotal, receipt.currency)} />
+          {receipt.discountTotal > 0 ? (
+            <TicketRow
+              label="Descuentos"
+              value={`-${formatMoney(receipt.discountTotal, receipt.currency)}`}
+            />
+          ) : null}
+          <TicketRow label="Impuestos" value={formatMoney(receipt.taxTotal, receipt.currency)} />
+          <TicketRow strong label="Total" value={formatMoney(receipt.total, receipt.currency)} />
+          {receipt.paymentMethod ? (
+            <TicketRow label="Pago" value={PAYMENT_LABELS[receipt.paymentMethod]} />
+          ) : null}
+          {receipt.invoice ? (
+            <>
+              <TicketDivider />
+              <div className="print-ticket-block">
+                <TicketRow strong label="Factura electronica" value="" />
+                <TicketRow label="Cliente" value={receipt.invoice.customerName} />
+                <TicketRow
+                  label="Borrador"
+                  value={receipt.invoice.id.slice(-8).toUpperCase()}
+                />
+                {/* Bloque DIAN: NIT, resolucion, CUFE y QR se imprimen aqui
+                    cuando el facturador emita el documento definitivo. */}
+                <p className="print-ticket-meta">CUFE: pendiente de emision DIAN</p>
+              </div>
+            </>
+          ) : null}
+          <p className="print-ticket-note">
+            {receipt.invoice
+              ? 'Representacion en tramite ante DIAN.'
+              : 'Documento no fiscal. No es factura electronica de venta.'}
+          </p>
+        </PrintTicket>
+      ) : null}
       <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-md" data-cy="pos-receipt-dialog">
         <DialogHeader>
           <DialogTitle>Recibo mesa {receipt?.tableNumber}</DialogTitle>

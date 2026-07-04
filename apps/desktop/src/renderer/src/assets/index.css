@@ -587,3 +587,103 @@
     transform: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Impresion de tickets (rollo 58/80mm)
+ * La app nunca se imprime tal cual: solo se imprime el nodo `.print-ticket`
+ * que cada dialogo monta como hijo directo de <body> (ver PrintTicket.tsx).
+ * ------------------------------------------------------------------------- */
+
+.print-ticket {
+  display: none;
+}
+
+@page {
+  size: 80mm auto;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    width: 80mm;
+    margin: 0;
+    background: #fff !important;
+  }
+
+  body > *:not(.print-ticket) {
+    display: none !important;
+  }
+
+  .print-ticket {
+    display: block;
+    width: 72mm;
+    margin: 0 auto;
+    padding: 4mm 0 8mm;
+    background: #fff;
+    color: #000;
+    font-family: 'Spline Sans Mono Variable', ui-monospace, monospace;
+    font-size: 10.5px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-ticket-header {
+    text-align: center;
+  }
+
+  .print-ticket-brand {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .print-ticket-title {
+    margin-top: 1mm;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .print-ticket-meta {
+    font-size: 9.5px;
+  }
+
+  .print-ticket-divider {
+    margin: 2.5mm 0;
+    border-top: 1px dashed #000;
+  }
+
+  .print-ticket-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 3mm;
+  }
+
+  .print-ticket-row-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .print-ticket-row-value {
+    flex-shrink: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .print-ticket-strong {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .print-ticket-note {
+    margin-top: 2mm;
+    text-align: center;
+    font-size: 9px;
+  }
+
+  .print-ticket-block {
+    margin-top: 2mm;
+  }
+}

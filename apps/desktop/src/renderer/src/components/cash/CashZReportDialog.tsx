@@ -9,6 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  PrintTicket,
+  TicketDivider,
+  TicketHeader,
+  TicketRow,
+} from '@/components/print/PrintTicket';
 import { formatDateTime, formatMoney, formatOperationalDate } from '@/lib';
 import type { CashMovementType, CashZReportDto, CashZReportPaymentMethod } from '@/types/cash';
 
@@ -74,6 +80,82 @@ export function CashZReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {open && report ? (
+        <PrintTicket>
+          <TicketHeader
+            branchName={report.branchName}
+            title="Reporte Z"
+            lines={[
+              `${formatDateTime(report.openedAt, report.timezone)} - ${formatDateTime(report.closedAt, report.timezone)}`,
+              `Dia operativo ${formatOperationalDate(report.operationalDate)}`,
+              `Sesion #${report.id.slice(-6).toUpperCase()}`,
+            ]}
+          />
+          <TicketDivider />
+          <TicketRow
+            label="Base inicial"
+            value={formatMoney(report.openingBalance, report.currency)}
+          />
+          <TicketRow
+            label="Efectivo esperado"
+            value={formatMoney(report.cashExpectedAmount, report.currency)}
+          />
+          <TicketRow
+            label="Contado"
+            value={formatMoney(report.countedAmount ?? 0, report.currency)}
+          />
+          <TicketRow
+            strong
+            label="Diferencia"
+            value={formatMoney(report.difference ?? 0, report.currency)}
+          />
+          <TicketDivider />
+          <TicketRow label="Ventas" value={formatMoney(report.totalSales, report.currency)} />
+          <TicketRow
+            label="Bancarizado"
+            value={formatMoney(report.bankedExpectedAmount, report.currency)}
+          />
+          <TicketRow
+            label="Total controlado"
+            value={formatMoney(report.totalExpectedAmount, report.currency)}
+          />
+          <TicketRow label="Tickets" value={report.ticketCount} />
+          <TicketRow
+            label="Ticket promedio"
+            value={formatMoney(report.averageTicket, report.currency)}
+          />
+          <TicketRow label="Facturas solicitadas" value={report.invoicedCount} />
+          {report.paymentsByMethod.length > 0 ? (
+            <>
+              <TicketDivider />
+              <TicketRow strong label="Pagos por metodo" value="" />
+              {report.paymentsByMethod.map((method) => (
+                <TicketRow
+                  key={method.method}
+                  label={`${METHOD_LABELS[method.method]} (${method.count})`}
+                  value={formatMoney(method.amount, report.currency)}
+                />
+              ))}
+            </>
+          ) : null}
+          {report.movements.length > 0 ? (
+            <>
+              <TicketDivider />
+              <TicketRow strong label="Movimientos manuales" value="" />
+              {report.movements.map((movement) => (
+                <TicketRow
+                  key={movement.id}
+                  label={MOVEMENT_LABELS[movement.type]}
+                  value={formatMoney(movement.signedAmount, report.currency)}
+                />
+              ))}
+            </>
+          ) : null}
+          <p className="print-ticket-note">
+            Cierre operativo de caja. No reemplaza certificacion fiscal DIAN.
+          </p>
+        </PrintTicket>
+      ) : null}
       <DialogContent
         className="max-h-[92vh] overflow-y-auto sm:max-w-3xl"
         data-cy="cash-z-report-dialog"
@@ -112,7 +194,7 @@ export function CashZReportDialog({
             <section className="rounded-xl border border-border bg-carbon p-5 text-white">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+                  <p className="text-xs uppercase tracking-[0.18em] text-white/45">
                     {report.branchCode}
                   </p>
                   <h3 className="mt-1 font-display text-2xl font-bold">{report.branchName}</h3>
