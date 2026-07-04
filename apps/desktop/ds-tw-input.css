@@ -1,0 +1,17 @@
+/* Design-sync Tailwind compile input — produces a static stylesheet for cssEntry.
+   Pulls the app's real tokens/theme via index.css, then scans the UI layer and
+   authored previews so every utility those use is emitted. Not used by the app. */
+@import "./src/renderer/src/assets/index.css";
+
+@source "./src/renderer/src/components/ui/**/*.{ts,tsx}";
+@source "../../.design-sync/previews/**/*.tsx";
+
+/* Safelist the documented semantic-token vocabulary so a design agent's
+   generated classes resolve against the shipped static stylesheet (the design
+   env does not run Tailwind). Layout utilities come from the scanned sources. */
+@source inline("{bg,text,border,ring}-{background,foreground,card,card-foreground,popover,popover-foreground,primary,primary-foreground,secondary,secondary-foreground,muted,muted-foreground,accent,accent-foreground,destructive,destructive-foreground,border,input,ring,success,success-foreground,success-soft,warning,warning-foreground,warning-soft,danger-soft,surface-raised,surface-quiet,orange,orange-soft,carbon,cream}");
+@source inline("hover:{bg,text,border}-{primary,secondary,accent,muted,surface-raised,surface-quiet}");
+@source inline("{bg,text}-{primary,secondary,destructive,success,warning,orange}/{10,20,40,80,90}");
+@source inline("font-{display,sans,mono}");
+@source inline("rounded-{sm,md,lg,xl,2xl,full}");
+@source inline("shadow-{2xs,xs,sm,md,lg,xl,2xl}");
