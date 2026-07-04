@@ -175,7 +175,7 @@ export function ComandaPanel({
                             type="button"
                             disabled={isMutating}
                             onClick={() => onQuantityChange(item.id, 0)}
-                            className="text-[11px] text-muted-foreground transition-colors hover:text-[#C0431A] disabled:opacity-50"
+                            className="-mr-1.5 min-h-8 rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:text-[#C0431A] active:bg-[#FBEAE4] disabled:opacity-50"
                           >
                             Quitar
                           </button>
@@ -283,11 +283,11 @@ function Stepper({
         aria-label={`Restar ${name}`}
         onClick={onDec}
         whileTap={reduceMotion ? undefined : { scale: 0.85 }}
-        className="grid h-[30px] w-7 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
+        className="grid h-10 w-9 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
       >
-        <Minus className="size-3.5" />
+        <Minus className="size-4" />
       </motion.button>
-      <span className="nums w-7 text-center text-sm font-bold">
+      <span className="nums w-8 text-center text-sm font-bold">
         <span key={quantity} className={cn('block', !reduceMotion && 'pos-pop-qty')}>
           {quantity}
         </span>
@@ -298,9 +298,9 @@ function Stepper({
         aria-label={`Sumar ${name}`}
         onClick={onInc}
         whileTap={reduceMotion ? undefined : { scale: 0.85 }}
-        className="grid h-[30px] w-7 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
+        className="grid h-10 w-9 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
       >
-        <Plus className="size-3.5" />
+        <Plus className="size-4" />
       </motion.button>
     </div>
   );
