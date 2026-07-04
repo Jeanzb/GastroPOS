@@ -481,11 +481,11 @@ export function PosWorkspace() {
   return (
     <>
       <div
-        className="mx-auto grid min-h-[calc(100dvh-120px)] max-w-[1360px] gap-4 lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-[18px]"
+        className="mx-auto grid min-h-[calc(100dvh-120px)] max-w-[1360px] gap-4 max-lg:h-[calc(100dvh-152px)] max-lg:min-h-0 sm:max-lg:h-[calc(100dvh-156px)] lg:grid-cols-[minmax(0,1fr)_390px] lg:gap-[18px]"
         data-cy="pos-page"
       >
-        <section className="flex min-w-0 flex-col rounded-[26px] border border-[#E7E0D6] bg-[#FCFAF6] p-3 shadow-sm shadow-carbon/5 sm:p-4">
-          <div className="max-lg:sticky max-lg:top-0 max-lg:z-20 max-lg:-mx-3 max-lg:-mt-3 max-lg:rounded-t-[26px] max-lg:bg-[#FCFAF6] max-lg:px-3 max-lg:pt-3 max-lg:pb-3 max-lg:shadow-[0_10px_18px_-14px_rgba(28,26,23,0.25)] sm:max-lg:-mx-4 sm:max-lg:-mt-4 sm:max-lg:px-4 sm:max-lg:pt-4">
+        <section className="flex min-w-0 flex-col rounded-[26px] border border-[#E7E0D6] bg-[#FCFAF6] p-3 shadow-sm shadow-carbon/5 max-lg:min-h-0 max-lg:overflow-hidden max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none sm:p-4">
+          <div className="max-lg:sticky max-lg:top-0 max-lg:z-20 max-lg:-mx-3 max-lg:-mt-3 max-lg:bg-background max-lg:px-3 max-lg:pt-3 max-lg:pb-1 sm:max-lg:-mx-4 sm:max-lg:-mt-4 sm:max-lg:px-4 sm:max-lg:pt-4">
           <div className="mb-4 rounded-[20px] border border-[#E7E0D6] bg-white p-3">
             <div className="flex flex-wrap items-center gap-2.5">
             <Link
@@ -518,7 +518,7 @@ export function PosWorkspace() {
 
           </div>
 
-          <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-2 max-lg:mb-0">
+          <div className="scrollbar-none -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-2 max-lg:mb-0">
             {categoryTabs.map((category) => {
               const isActive = category.id === activeCategory;
               return (
@@ -540,7 +540,7 @@ export function PosWorkspace() {
           </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-24 lg:pb-0">
+          <div className="scrollbar-none min-h-0 flex-1 overflow-y-auto px-1 pt-2 pb-32 max-lg:-mx-1 lg:pb-0">
             {productsQuery.isLoading ? (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(142px,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(172px,1fr))]">
                 {Array.from({ length: 1 }, (_, index) => (
@@ -562,7 +562,7 @@ export function PosWorkspace() {
                     data-cy="pos-product-card"
                     className="motion-press flex min-h-[118px] flex-col gap-3 rounded-[18px] border border-[#E7E0D6] bg-white p-4 text-left shadow-sm shadow-carbon/5 transition hover:-translate-y-0.5 hover:border-orange/60 hover:bg-[#FFF8F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange/40 disabled:opacity-60"
                   >
-                    <span className="flex-1 text-[14.5px] font-semibold leading-tight text-[#1C1A17]">{product.name}</span>
+                    <span className="line-clamp-2 min-h-[36px] flex-1 text-[14.5px] font-semibold leading-tight text-[#1C1A17]">{product.name}</span>
                     <span className="flex items-center justify-between gap-2">
                       <span className="nums text-sm font-bold text-[#1C1A17]">
                         {formatMoney(product.priceAmount, product.currency)}
