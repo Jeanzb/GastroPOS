@@ -345,12 +345,14 @@
       linear-gradient(180deg, #f8f3eb 0%, #f1ebe1 100%);
   }
 
+  /* fill-mode backwards: keeps the pre-delay hidden state but clears the
+     final transform, which would otherwise break position:fixed descendants */
   .platform-motion-in {
-    animation: platform-motion-in 420ms var(--motion-enter) both;
+    animation: platform-motion-in 420ms var(--motion-enter) backwards;
   }
 
   .platform-stagger > * {
-    animation: platform-motion-in 420ms var(--motion-enter) both;
+    animation: platform-motion-in 420ms var(--motion-enter) backwards;
   }
 
   .platform-stagger > *:nth-child(1) {
