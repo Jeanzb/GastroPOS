@@ -51,7 +51,6 @@ interface TenantListRecord {
   isActive: boolean;
   createdAt: Date;
   plan: { code: string } | null;
-  fiscalProfile: { nit: string; municipality: string | null } | null;
   _count: { branches: number; users: number };
   users: Array<{ lastLoginAt: Date | null }>;
 }
@@ -100,8 +99,6 @@ export function toPlatformTenantDto(tenant: TenantListRecord): PlatformTenantDto
   return {
     id: tenant.id,
     name: tenant.name,
-    nit: tenant.fiscalProfile?.nit ?? null,
-    municipality: tenant.fiscalProfile?.municipality ?? null,
     status: tenant.status,
     isActive: tenant.isActive,
     planCode: tenant.plan?.code ?? null,
@@ -138,7 +135,6 @@ export function toPlatformTenantDetailDto(tenant: TenantDetailRecord): PlatformT
       isActive: tenant.isActive,
       createdAt: tenant.createdAt,
       plan: tenant.plan,
-      fiscalProfile: tenant.fiscalProfile,
       _count: tenant._count,
       users: tenant.users,
     }),
@@ -185,11 +181,12 @@ export function toTenantFeatureOverrideDtos(tenant: {
   plan: { features: PlanRecord['features'] } | null;
   featureOverrides: Array<{ enabled: boolean; reason: string | null; feature: FeatureRecord }>;
 }): TenantFeatureOverrideDto[] {
-  const baseFeatures = tenant.plan?.features.map((planFeature) => ({
-    ...toFeatureDto(planFeature.feature, planFeature.enabled),
-    source: 'PLAN' as const,
-    overrideReason: null,
-  })) ?? [];
+  const baseFeatures =
+    tenant.plan?.features.map((planFeature) => ({
+      ...toFeatureDto(planFeature.feature, planFeature.enabled),
+      source: 'PLAN' as const,
+      overrideReason: null,
+    })) ?? [];
   const overrideFeatures = tenant.featureOverrides.map((override) => ({
     ...toFeatureDto(override.feature, override.enabled),
     source: 'OVERRIDE' as const,

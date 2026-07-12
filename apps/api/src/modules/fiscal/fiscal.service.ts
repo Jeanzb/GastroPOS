@@ -1,25 +1,40 @@
 import { Injectable } from '@nestjs/common';
-import type { FiscalProfileDto, FiscalProviderConnectionTestDto } from '@gastroai/contracts';
-import {
-  FiscalProviderStatus,
-  FiscalProviderType,
-  type FiscalProviderConfig,
-  type Prisma,
-} from '../../../generated/prisma';
-import { ApiErrorCode } from '../../common/errors/api-error-code';
+import type {
+  FiscalDocumentActionDto,
+  FiscalDocumentDetailDto,
+  FiscalDocumentListDto,
+  FiscalNumberingRangeListDto,
+  FiscalProfileDto,
+} from '@gastroai/contracts';
 import { ApplicationException } from '../../common/errors/application.exception';
 import { AuditService } from '../audit/audit.service';
+import type { ListFiscalDocumentsQueryDto } from './dto/list-fiscal-documents-query.dto';
 import type { UpsertFiscalProfileDto } from './dto/upsert-fiscal-profile.dto';
-import { toFiscalProfileDto, type FiscalProfileWithProvider } from './fiscal.mapper';
+import type { LookupFactusAcquirerQueryDto } from './dto/lookup-factus-acquirer-query.dto';
+import type { UpsertBranchFiscalConfigurationDto } from './dto/upsert-branch-fiscal-configuration.dto';
+import type { UpsertFactusConnectionDto } from './dto/upsert-factus-connection.dto';
+import { FactusAdapter } from './factus/factus.adapter';
+import {
+  FactusConnectionService,
+  type BranchFiscalConfigurationDto,
+  type FactusConnectionDto,
+} from './factus/factus-connection.service';
+import { parseFactusNumberingRanges } from './factus/factus.mapper';
+import { FiscalDocumentWorkflowService } from './fiscal-document-workflow.service';
+import { toFiscalProfileDto, type FiscalProfileRecord } from './fiscal.mapper';
 import { FiscalRepository } from './fiscal.repository';
-import type { UpsertFiscalProfileData, UpsertFiscalProviderConfigData } from './fiscal.repository';
+import type { UpsertFiscalProfileData } from './fiscal.repository';
 import type { FiscalActor } from './fiscal.types';
+import { asJson, auditBase } from './fiscal.utils';
 
 @Injectable()
 export class FiscalService {
   constructor(
     private readonly repository: FiscalRepository,
     private readonly auditService: AuditService,
+    private readonly factusAdapter: FactusAdapter,
+    private readonly factusConnection: FactusConnectionService,
+    private readonly documents: FiscalDocumentWorkflowService,
   ) {}
 
   async getProfile(actor: FiscalActor): Promise<FiscalProfileDto | null> {
@@ -30,10 +45,9 @@ export class FiscalService {
   async upsertProfile(actor: FiscalActor, dto: UpsertFiscalProfileDto): Promise<FiscalProfileDto> {
     assertValidNumberingRange(dto);
     assertValidNumberingDates(dto);
-
     const existing = await this.repository.findProfile(actor.tenantId);
     const before = existing ? toFiscalProfileDto(existing) : null;
-    const data = toProfileData(actor, dto, existing);
+    const data = toProfileData(actor, dto);
 
     const saved = await this.repository.upsertProfile(actor.tenantId, data);
     const after = toFiscalProfileDto(saved);
@@ -50,64 +64,137 @@ export class FiscalService {
     return after;
   }
 
-  async testProviderConnection(actor: FiscalActor): Promise<FiscalProviderConnectionTestDto> {
+  listDocuments(
+    actor: FiscalActor,
+    query: ListFiscalDocumentsQueryDto,
+  ): Promise<FiscalDocumentListDto> {
+    return this.documents.listDocuments(actor, query);
+  }
+
+  getDocumentDetail(actor: FiscalActor, invoiceId: string): Promise<FiscalDocumentDetailDto> {
+    return this.documents.getDocumentDetail(actor, invoiceId);
+  }
+
+  async listNumberingRanges(actor: FiscalActor): Promise<FiscalNumberingRangeListDto> {
     const profile = await this.repository.findProfile(actor.tenantId);
-    if (!profile?.providerConfig) {
-      throw new ApplicationException(400, {
-        code: 'FISCAL_PROVIDER_NOT_CONFIGURED',
-        message: 'Fiscal provider configuration is required before testing.',
+    if (!profile) {
+      throw new ApplicationException(409, {
+        code: 'FISCAL_PROFILE_NOT_CONFIGURED',
+        message: 'Configura primero los datos tributarios del restaurante para sincronizar rangos.',
       });
     }
+    const runtime = await this.factusConnection.getRuntime(actor.tenantId);
+    const result = await this.factusAdapter.listDianNumberingRanges(runtime);
+    const items = parseFactusNumberingRanges(result.payload);
+    const fetchedAt = new Date().toISOString();
 
-    const checkedAt = new Date();
-    const result = validateProviderReadiness(profile.providerConfig);
-    const isReady =
-      result.status === FiscalProviderStatus.CONNECTION_TESTED &&
-      hasRequiredFiscalProfileData(profile);
-
-    const updated = await this.repository.updateProviderConnectionResult({
-      tenantId: actor.tenantId,
-      providerConfigId: profile.providerConfig.id,
-      status: result.status,
-      error: result.error,
-      isReady,
-      actorUserId: actor.actorUserId,
-      checkedAt,
-    });
-
-    if (!updated) {
-      throw notFound();
-    }
-
-    const profileDto = toFiscalProfileDto(updated);
     await this.auditService.tryRecord({
       ...auditBase(actor),
-      action: 'FISCAL_PROVIDER_CONNECTION_TESTED',
-      entityType: 'FiscalProviderConfig',
-      entityId: profile.providerConfig.id,
-      metadata: asJson({
-        status: result.status,
-        environment: profile.providerConfig.environment,
-        providerType: profile.providerConfig.providerType,
-      }),
+      action: 'FISCAL_NUMBERING_RANGES_SYNCED',
+      entityType: 'FiscalProfile',
+      entityId: profile.id,
+      metadata: asJson({ itemCount: items.length, endpoint: result.endpoint }),
     });
 
-    return {
-      status: result.status,
-      checkedAt: checkedAt.toISOString(),
-      message: result.message,
-      profile: profileDto,
-    };
+    return { items, fetchedAt };
+  }
+
+  getFactusConnection(actor: FiscalActor): Promise<FactusConnectionDto | null> {
+    return this.factusConnection.getConnection(actor.tenantId);
+  }
+
+  async configureFactusConnection(
+    actor: FiscalActor,
+    dto: UpsertFactusConnectionDto,
+  ): Promise<FactusConnectionDto> {
+    const saved = await this.factusConnection.configure(actor.tenantId, actor.actorUserId, dto);
+    await this.auditService.tryRecord({
+      ...auditBase(actor),
+      action: 'FACTUS_CONNECTION_CONFIGURED',
+      entityType: 'FactusConnection',
+      entityId: actor.tenantId,
+      after: asJson({ environment: saved.environment, baseUrl: saved.baseUrl, status: saved.status }),
+    });
+    return saved;
+  }
+
+  async verifyFactusConnection(actor: FiscalActor): Promise<FactusConnectionDto> {
+    const verified = await this.factusConnection.verify(actor.tenantId);
+    await this.auditService.tryRecord({
+      ...auditBase(actor),
+      action: 'FACTUS_CONNECTION_VERIFIED',
+      entityType: 'FactusConnection',
+      entityId: actor.tenantId,
+      after: asJson({ status: verified.status, latencyMs: verified.lastLatencyMs }),
+    });
+    return verified;
+  }
+
+  getBranchFiscalConfiguration(actor: FiscalActor): Promise<BranchFiscalConfigurationDto | null> {
+    const branchId = actor.branchId;
+    if (!branchId) {
+      throw new ApplicationException(400, {
+        code: 'BRANCH_CONTEXT_REQUIRED',
+        message: 'Selecciona una sede antes de consultar su configuracion fiscal.',
+      });
+    }
+    return this.factusConnection.getBranchConfiguration(actor.tenantId, branchId);
+  }
+
+  async upsertBranchFiscalConfiguration(
+    actor: FiscalActor,
+    dto: UpsertBranchFiscalConfigurationDto,
+  ): Promise<BranchFiscalConfigurationDto> {
+    const branchId = actor.branchId;
+    if (!branchId) {
+      throw new ApplicationException(400, {
+        code: 'BRANCH_CONTEXT_REQUIRED',
+        message: 'Selecciona una sede antes de configurar su rango fiscal.',
+      });
+    }
+    const saved = await this.factusConnection.upsertBranchConfiguration(
+      actor.tenantId,
+      branchId,
+      actor.actorUserId,
+      dto,
+    );
+    await this.auditService.tryRecord({
+      ...auditBase(actor),
+      action: 'BRANCH_FISCAL_CONFIGURATION_UPDATED',
+      entityType: 'BranchFiscalConfiguration',
+      entityId: branchId,
+      after: asJson(saved),
+    });
+    return saved;
+  }
+
+  async lookupAcquirer(
+    actor: FiscalActor,
+    query: LookupFactusAcquirerQueryDto,
+  ): Promise<{ data: unknown }> {
+    const runtime = await this.factusConnection.getRuntime(actor.tenantId);
+    const result = await this.factusAdapter.lookupAcquirer(
+      runtime,
+      query.identificationDocumentCode,
+      query.identificationNumber,
+    );
+    return { data: result.payload };
+  }
+
+  retryDocument(actor: FiscalActor, invoiceId: string): Promise<FiscalDocumentActionDto> {
+    return this.documents.retryDocument(actor, invoiceId);
+  }
+
+  requestArtifactDownload(actor: FiscalActor, invoiceId: string): Promise<FiscalDocumentActionDto> {
+    return this.documents.requestArtifactDownload(actor, invoiceId);
+  }
+
+  tryScheduleInvoiceIssue(actor: FiscalActor, invoiceId: string): Promise<void> {
+    return this.documents.tryScheduleInvoiceIssue(actor, invoiceId);
   }
 }
 
-function toProfileData(
-  actor: FiscalActor,
-  dto: UpsertFiscalProfileDto,
-  existing: FiscalProfileWithProvider | null,
-): UpsertFiscalProfileData {
-  const providerConfig = dto.providerConfig ? toProviderConfigData(dto.providerConfig) : undefined;
-
+function toProfileData(actor: FiscalActor, dto: UpsertFiscalProfileDto): UpsertFiscalProfileData {
   return {
     legalName: dto.legalName.trim(),
     nit: dto.nit.trim(),
@@ -121,80 +208,21 @@ function toProfileData(
     numberingRangeTo: dto.numberingRangeTo ?? null,
     numberingValidFrom: toDateOrNull(dto.numberingValidFrom),
     numberingValidUntil: toDateOrNull(dto.numberingValidUntil),
-    isReady: existing?.isReady ?? false,
+    numberingRangeId: dto.numberingRangeId ?? null,
+    creditNoteNumberingRangeId: dto.creditNoteNumberingRangeId ?? null,
+    isReady: hasRequiredFiscalProfileInput(dto),
     actorUserId: actor.actorUserId,
-    providerConfig,
   };
 }
-
-function toProviderConfigData(
-  dto: NonNullable<UpsertFiscalProfileDto['providerConfig']>,
-): UpsertFiscalProviderConfigData {
-  return {
-    providerType: dto.providerType,
-    providerName: normalizeOptional(dto.providerName),
-    environment: dto.environment ?? 'TEST',
-    endpointUrl: normalizeOptional(dto.endpointUrl),
-    softwareId: normalizeOptional(dto.softwareId),
-    certificateAlias: normalizeOptional(dto.certificateAlias),
-    accountId: normalizeOptional(dto.accountId),
-    apiKeyRef: normalizeOptional(dto.apiKeyRef),
-  };
-}
-
-function validateProviderReadiness(config: FiscalProviderConfig): {
-  status: FiscalProviderStatus;
-  error: string | null;
-  message: string;
-} {
-  const missing = requiredProviderFields(config).filter((field) => !hasText(config[field]));
-
-  if (missing.length > 0) {
-    const error = `Missing provider configuration fields: ${missing.join(', ')}`;
-    return {
-      status: FiscalProviderStatus.ERROR,
-      error,
-      message:
-        'La configuracion fiscal todavia no tiene los datos tecnicos minimos para probar integracion.',
-    };
-  }
-
-  return {
-    status: FiscalProviderStatus.CONNECTION_TESTED,
-    error: null,
-    message:
-      'Configuracion tecnica validada localmente. Falta ejecutar habilitacion/certificacion real con DIAN o proveedor autorizado.',
-  };
-}
-
-type RequiredProviderField =
-  | 'providerName'
-  | 'endpointUrl'
-  | 'softwareId'
-  | 'certificateAlias'
-  | 'accountId'
-  | 'apiKeyRef';
-
-function requiredProviderFields(config: FiscalProviderConfig): RequiredProviderField[] {
-  if (config.providerType === FiscalProviderType.DIAN_DIRECT) {
-    return ['endpointUrl', 'softwareId', 'certificateAlias'];
-  }
-
-  if (config.providerType === FiscalProviderType.TECHNOLOGY_PROVIDER) {
-    return ['providerName', 'endpointUrl', 'accountId'];
-  }
-
-  return ['providerName', 'endpointUrl', 'apiKeyRef'];
-}
-
-function hasRequiredFiscalProfileData(profile: FiscalProfileWithProvider): boolean {
+function hasRequiredFiscalProfileInput(dto: UpsertFiscalProfileDto): boolean {
   return Boolean(
-    hasText(profile.legalName) &&
-    hasText(profile.nit) &&
-    hasText(profile.invoiceResolutionNumber) &&
-    hasText(profile.invoiceResolutionPrefix) &&
-    profile.numberingRangeFrom &&
-    profile.numberingRangeTo,
+    hasText(dto.legalName) &&
+    hasText(dto.nit) &&
+    hasText(dto.invoiceResolutionNumber) &&
+    hasText(dto.invoiceResolutionPrefix) &&
+    dto.numberingRangeFrom &&
+    dto.numberingRangeTo &&
+    dto.numberingRangeId,
   );
 }
 
@@ -236,26 +264,4 @@ function toDateOrNull(value: string | undefined): Date | null {
 
 function hasText(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;
-}
-
-function auditBase(actor: FiscalActor) {
-  return {
-    tenantId: actor.tenantId,
-    branchId: actor.branchId,
-    actorUserId: actor.actorUserId,
-    requestId: actor.requestId,
-    ipAddress: actor.ipAddress,
-    userAgent: actor.userAgent,
-  };
-}
-
-function notFound(): ApplicationException {
-  return new ApplicationException(404, {
-    code: ApiErrorCode.NOT_FOUND,
-    message: 'Fiscal provider configuration was not found.',
-  });
-}
-
-function asJson(value: unknown): Prisma.InputJsonValue {
-  return value as Prisma.InputJsonValue;
 }

@@ -8,15 +8,12 @@ import { DEFAULT_INVENTORY_CATEGORIES } from '../inventory/inventory-categories.
 export interface PlatformTenantCreateData {
   name: string;
   slug: string;
-  nit: string;
-  municipality: string;
-  taxRegime: string | null;
-  fiscalResponsibilities: string[];
   ownerEmail: string;
   ownerFullName: string;
   ownerPasswordHash: string;
   branchName: string;
   branchCode: string;
+  branchCity: string;
   branchAddress: string | null;
   branchPhone: string | null;
 }
@@ -202,12 +199,6 @@ export class PlatformRepository {
       orderBy: { createdAt: 'desc' },
       include: {
         plan: { select: { code: true } },
-        fiscalProfile: {
-          select: {
-            nit: true,
-            municipality: true,
-          },
-        },
         _count: { select: { branches: true, users: true } },
         users: {
           select: { lastLoginAt: true },
@@ -223,6 +214,14 @@ export class PlatformRepository {
       where: { id, deletedAt: null },
       include: this.tenantDetailInclude(),
     });
+  }
+
+  async tenantExists(id: string): Promise<boolean> {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+    return Boolean(tenant);
   }
 
   findBasicPlan() {
@@ -284,21 +283,9 @@ export class PlatformRepository {
           tenantId: tenant.id,
           name: data.branchName,
           code: data.branchCode,
-          city: data.municipality,
+          city: data.branchCity,
           address: data.branchAddress,
           phone: data.branchPhone,
-        },
-      });
-      await tx.fiscalProfile.create({
-        data: {
-          tenantId: tenant.id,
-          legalName: data.name,
-          nit: data.nit,
-          municipality: data.municipality,
-          taxRegime: data.taxRegime,
-          fiscalResponsibilities: data.fiscalResponsibilities,
-          address: data.branchAddress,
-          createdById: null,
         },
       });
       await tx.user.create({
@@ -360,8 +347,16 @@ export class PlatformRepository {
         suspendedAt: status === 'SUSPENDED' ? now : null,
         cancelledAt: status === 'CANCELLED' ? now : null,
         archivedAt: status === 'ARCHIVED' ? now : null,
-        suspensionReason: status === 'SUSPENDED' ? suspensionReason ?? null : null,
+        suspensionReason: status === 'SUSPENDED' ? (suspensionReason ?? null) : null,
       },
+      include: this.tenantDetailInclude(),
+    });
+  }
+
+  updateTenantName(id: string, name: string) {
+    return this.prisma.tenant.update({
+      where: { id },
+      data: { name },
       include: this.tenantDetailInclude(),
     });
   }
@@ -471,14 +466,16 @@ export class PlatformRepository {
       _count: { select: { branches: true, users: true } },
       branches: {
         where: { deletedAt: null },
-        select: { id: true, code: true, name: true, city: true, address: true, phone: true, isActive: true },
-        orderBy: { name: 'asc' as const },
-      },
-      fiscalProfile: {
         select: {
-          nit: true,
-          municipality: true,
+          id: true,
+          code: true,
+          name: true,
+          city: true,
+          address: true,
+          phone: true,
+          isActive: true,
         },
+        orderBy: { name: 'asc' as const },
       },
       users: {
         where: { deletedAt: null },

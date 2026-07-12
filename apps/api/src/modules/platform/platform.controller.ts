@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,8 @@ import type {
   PlatformOverviewDto,
   PlatformFeatureDto,
   PlatformHealthDto,
+  PlatformIntegrationLogDto,
+  PlatformIntegrationSummaryDto,
   PlatformTenantDetailDto,
   PlatformTenantDto,
   PlanDto,
@@ -32,6 +35,8 @@ import { DeletePlatformTenantDto } from './dto/delete-platform-tenant.dto';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
 import { UpdateTenantPlanDto } from './dto/update-tenant-plan.dto';
 import { UpdateTenantFeatureOverrideDto } from './dto/update-tenant-feature-override.dto';
+import { UpdatePlatformTenantDto } from './dto/update-platform-tenant.dto';
+import { ListPlatformIntegrationLogsQueryDto } from './dto/list-platform-integration-logs-query.dto';
 import { PlatformJwtAuthGuard } from './guards/platform-jwt-auth.guard';
 import { PlatformRolesGuard } from './guards/platform-roles.guard';
 import { CurrentPlatformUser } from './decorators/current-platform-user.decorator';
@@ -130,6 +135,18 @@ export class PlatformController {
     return this.platformService.getTenant(id);
   }
 
+  @Patch('tenants/:id')
+  @UseGuards(PlatformJwtAuthGuard, PlatformRolesGuard)
+  @RequirePlatformRoles('PLATFORM_OWNER', 'PLATFORM_ADMIN')
+  @ApiBearerAuth()
+  updateTenantBasics(
+    @CurrentPlatformUser() user: AuthenticatedPlatformUser,
+    @Param('id') id: string,
+    @Body() dto: UpdatePlatformTenantDto,
+  ): Promise<PlatformTenantDetailDto> {
+    return this.platformService.updateTenantBasics(user, id, dto);
+  }
+
   @Patch('tenants/:id/status')
   @UseGuards(PlatformJwtAuthGuard, PlatformRolesGuard)
   @RequirePlatformRoles('PLATFORM_OWNER', 'PLATFORM_ADMIN')
@@ -186,6 +203,22 @@ export class PlatformController {
   @ApiBearerAuth()
   getHealth(): Promise<PlatformHealthDto> {
     return this.platformService.getHealth();
+  }
+
+  @Get('integrations/summary')
+  @UseGuards(PlatformJwtAuthGuard)
+  @ApiBearerAuth()
+  getIntegrationSummary(): Promise<PlatformIntegrationSummaryDto> {
+    return this.platformService.getIntegrationSummary();
+  }
+
+  @Get('integrations/logs')
+  @UseGuards(PlatformJwtAuthGuard)
+  @ApiBearerAuth()
+  listIntegrationLogs(
+    @Query() query: ListPlatformIntegrationLogsQueryDto,
+  ): Promise<PlatformIntegrationLogDto[]> {
+    return this.platformService.listIntegrationLogs(query.take ?? 50);
   }
 
   @Get('tenants/:id/features')

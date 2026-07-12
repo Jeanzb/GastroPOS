@@ -6,32 +6,6 @@ export class CreatePlatformTenantDto {
   @MaxLength(160)
   name!: string;
 
-  @IsString()
-  @MinLength(3)
-  @MaxLength(40)
-  @Matches(/^[0-9.-]+$/)
-  nit!: string;
-
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d$/)
-  nitVerificationDigit?: string;
-
-  @IsString()
-  @MinLength(2)
-  @MaxLength(120)
-  municipality!: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  taxRegime?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(160)
-  fiscalResponsibility?: string;
-
   @IsEmail()
   ownerEmail!: string;
 
@@ -55,6 +29,11 @@ export class CreatePlatformTenantDto {
   @MinLength(2)
   @MaxLength(20)
   branchCode!: string;
+
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  branchCity!: string;
 
   @IsOptional()
   @IsString()

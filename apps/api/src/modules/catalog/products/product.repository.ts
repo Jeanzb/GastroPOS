@@ -12,11 +12,18 @@ export interface ProductFilters {
 export interface CreateProductData {
   tenantId: string;
   categoryId: string | null;
+  taxCategoryId: string | null;
   sku: string | null;
   name: string;
   description: string | null;
   priceAmount: number;
   currency: string;
+  fiscalName: string | null;
+  fiscalCodeReference: string | null;
+  unitMeasureCode: string;
+  standardCode: string;
+  isExcluded: boolean;
+  incApplies: boolean;
   isActive: boolean;
   isSellable: boolean;
   isInventoried: boolean;
@@ -27,11 +34,18 @@ export interface CreateProductData {
 export interface UpdateProductData {
   tenantId: string;
   categoryId?: string | null;
+  taxCategoryId?: string | null;
   sku?: string | null;
   name?: string;
   description?: string | null;
   priceAmount?: number;
   currency?: string;
+  fiscalName?: string | null;
+  fiscalCodeReference?: string | null;
+  unitMeasureCode?: string;
+  standardCode?: string;
+  isExcluded?: boolean;
+  incApplies?: boolean;
   isActive?: boolean;
   isSellable?: boolean;
   isInventoried?: boolean;
@@ -74,6 +88,14 @@ export class ProductRepository {
     });
   }
 
+  async taxCategoryExists(tenantId: string, taxCategoryId: string): Promise<boolean> {
+    const taxCategory = await this.prisma.taxCategory.findFirst({
+      where: { id: taxCategoryId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    return Boolean(taxCategory);
+  }
+
   create(data: CreateProductData): Promise<ProductWithInventory> {
     return this.prisma.$transaction(async (tx) => {
       await this.assertRecipeIngredientsBelongToTenant(tx, data.tenantId, data.recipeIngredients);
@@ -81,11 +103,18 @@ export class ProductRepository {
         data: {
           tenantId: data.tenantId,
           categoryId: data.categoryId,
+          taxCategoryId: data.taxCategoryId,
           sku: data.sku,
           name: data.name,
           description: data.description,
           priceAmount: data.priceAmount,
           currency: data.currency,
+          fiscalName: data.fiscalName,
+          fiscalCodeReference: data.fiscalCodeReference,
+          unitMeasureCode: data.unitMeasureCode,
+          standardCode: data.standardCode,
+          isExcluded: data.isExcluded,
+          incApplies: data.incApplies,
           isActive: data.isActive,
           isSellable: data.isSellable,
           isInventoried: data.isInventoried,
@@ -112,11 +141,18 @@ export class ProductRepository {
         where: { id, tenantId: data.tenantId, deletedAt: null },
         data: {
           categoryId: data.categoryId,
+          taxCategoryId: data.taxCategoryId,
           sku: data.sku,
           name: data.name,
           description: data.description,
           priceAmount: data.priceAmount,
           currency: data.currency,
+          fiscalName: data.fiscalName,
+          fiscalCodeReference: data.fiscalCodeReference,
+          unitMeasureCode: data.unitMeasureCode,
+          standardCode: data.standardCode,
+          isExcluded: data.isExcluded,
+          incApplies: data.incApplies,
           isActive: data.isActive,
           isSellable: data.isSellable,
           isInventoried: data.isInventoried,

@@ -21,12 +21,21 @@ function customer(overrides: Partial<Customer> = {}): Customer {
     tenantId: 'tenant_1',
     documentType: 'NIT',
     documentNumber: '900123456',
+    dv: null,
+    factusIdentificationCode: null,
+    legalOrganizationCode: null,
+    company: null,
+    names: null,
     name: 'Distribuidora La 80',
     email: null,
     phone: null,
     address: null,
+    countryCode: 'CO',
     municipality: null,
+    municipalityCode: null,
+    tributeCode: null,
     taxResponsibility: null,
+    taxResponsibilities: [],
     isActive: true,
     createdAt: now,
     updatedAt: now,
@@ -74,7 +83,11 @@ describe('CustomerService', () => {
       service.create(ctx, {
         documentType: 'NIT',
         documentNumber: '900123456',
+        dv: '8',
         name: 'Otra',
+        email: 'facturacion@otra.co',
+        address: 'Calle 1',
+        municipalityCode: '11001',
       }),
     ).rejects.toBeInstanceOf(ApplicationException);
     expect(repo.create).not.toHaveBeenCalled();
@@ -88,6 +101,9 @@ describe('CustomerService', () => {
       documentType: 'CC',
       documentNumber: '111',
       name: 'Cliente Uno',
+      email: 'cliente@example.com',
+      address: 'Calle 10',
+      municipalityCode: '11001',
     });
 
     expect(repo.create).toHaveBeenCalledWith(
@@ -96,6 +112,47 @@ describe('CustomerService', () => {
     expect(audit.tryRecord).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'CUSTOMER_CREATED' }),
     );
+  });
+
+  it('stores a NIT and its verification digit in separate fields', async () => {
+    repo.findByDocument.mockResolvedValue(null);
+    repo.create.mockResolvedValue(customer({ dv: '8' }));
+
+    await service.create(ctx, {
+      documentType: 'NIT',
+      documentNumber: '900123456-8',
+      name: 'Distribuidora La 80',
+      email: 'facturacion@la80.co',
+      address: 'Calle 80',
+      municipalityCode: '11001',
+    });
+
+    expect(repo.findByDocument).toHaveBeenCalledWith('NIT', '900123456');
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentNumber: '900123456',
+        dv: '8',
+        factusIdentificationCode: '31',
+        legalOrganizationCode: '1',
+        company: 'Distribuidora La 80',
+        municipalityCode: '11001',
+      }),
+    );
+  });
+
+  it('rejects a NIT with an invalid verification digit', async () => {
+    await expect(
+      service.create(ctx, {
+        documentType: 'NIT',
+        documentNumber: '900123456',
+        dv: '1',
+        name: 'Distribuidora La 80',
+        email: 'facturacion@la80.co',
+        address: 'Calle 80',
+        municipalityCode: '11001',
+      }),
+    ).rejects.toBeInstanceOf(ApplicationException);
+    expect(repo.create).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the customer does not exist', async () => {

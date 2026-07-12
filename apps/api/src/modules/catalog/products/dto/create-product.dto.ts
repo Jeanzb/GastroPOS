@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -54,6 +55,11 @@ export class CreateProductDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  taxCategoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   @MaxLength(64)
   sku?: string;
 
@@ -62,6 +68,39 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(1000)
   description?: string;
+
+  @ApiPropertyOptional({ example: 'Hamburguesa clasica' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  fiscalName?: string;
+
+  @ApiPropertyOptional({ example: 'BURGER-001' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  fiscalCodeReference?: string;
+
+  @ApiPropertyOptional({ example: '94', default: '94' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  unitMeasureCode?: string;
+
+  @ApiPropertyOptional({ enum: ['999', '001', '020', '010'], default: '999' })
+  @IsOptional()
+  @IsIn(['999', '001', '020', '010'])
+  standardCode?: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isExcluded?: boolean;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  incApplies?: boolean;
 
   @ApiPropertyOptional({ default: true })
   @IsOptional()

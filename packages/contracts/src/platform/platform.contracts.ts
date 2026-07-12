@@ -60,8 +60,6 @@ export interface TenantFeatureOverrideDto extends TenantFeatureDto {
 export interface PlatformTenantDto {
   id: string;
   name: string;
-  nit: string | null;
-  municipality: string | null;
   status: TenantStatus;
   isActive: boolean;
   planCode: string | null;
@@ -109,16 +107,12 @@ export interface PlatformOverviewDto {
 
 export interface CreatePlatformTenantRequest {
   name: string;
-  nit: string;
-  nitVerificationDigit?: string;
-  municipality: string;
-  taxRegime?: string;
-  fiscalResponsibility?: string;
   ownerEmail: string;
   ownerFullName: string;
   ownerTemporaryPassword: string;
   branchName: string;
   branchCode: string;
+  branchCity: string;
   branchAddress?: string;
   branchPhone?: string;
 }
@@ -129,6 +123,10 @@ export interface CreatePlatformBranchRequest {
   city: string;
   address?: string;
   phone?: string;
+}
+
+export interface UpdatePlatformTenantRequest {
+  name: string;
 }
 
 export interface UpdateTenantStatusRequest {
@@ -153,7 +151,7 @@ export interface UpdateTenantFeatureOverrideRequest {
 export type PlatformHealthStatus = 'operational' | 'degraded' | 'down';
 
 export interface PlatformHealthCheckDto {
-  name: 'api' | 'postgres' | 'redis';
+  name: 'api' | 'postgres' | 'redis' | 'factus';
   status: PlatformHealthStatus;
   latencyMs?: number;
   message?: string;
@@ -163,4 +161,28 @@ export interface PlatformHealthDto {
   status: PlatformHealthStatus;
   checkedAt: string;
   checks: PlatformHealthCheckDto[];
+}
+
+export type PlatformIntegrationLogStatus = 'SUCCESS' | 'WARNING' | 'ERROR';
+
+export interface PlatformIntegrationLogDto {
+  id: string;
+  provider: 'FACTUS';
+  operation: 'HEALTH_CHECK' | 'AUTHENTICATION' | 'API_REQUEST';
+  status: PlatformIntegrationLogStatus;
+  httpStatus: number | null;
+  errorCode: string | null;
+  message: string | null;
+  latencyMs: number | null;
+  createdAt: string;
+}
+
+export interface PlatformIntegrationSummaryDto {
+  provider: 'FACTUS';
+  totalEvents: number;
+  successfulEvents: number;
+  warningEvents: number;
+  failedEvents: number;
+  lastEventAt: string | null;
+  lastErrorAt: string | null;
 }

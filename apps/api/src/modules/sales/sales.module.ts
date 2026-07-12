@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { FiscalModule } from '../fiscal/fiscal.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { TableAccountsController } from './table-accounts.controller';
 import { TableAccountsRepository } from './table-accounts.repository';
 import { TableAccountsService } from './table-accounts.service';
 
 @Module({
-  imports: [AuthModule, AuditModule, InventoryModule],
+  imports: [AuthModule, AuditModule, InventoryModule, FiscalModule],
   controllers: [TableAccountsController],
   providers: [TableAccountsService, TableAccountsRepository],
 })

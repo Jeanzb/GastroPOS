@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+const optionalSecret = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().min(1).optional(),
+);
+
+const optionalUrl = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().url().optional(),
+);
+
 /**
  * Single source of truth for environment configuration.
  * Validation happens once at startup so the app fails fast on misconfiguration.
@@ -26,6 +36,16 @@ export const envSchema = z.object({
   PLATFORM_JWT_ISSUER: z.string().min(1).optional(),
 
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
+
+  FACTUS_BASE_URL: optionalUrl,
+  FACTUS_CLIENT_ID: optionalSecret,
+  FACTUS_CLIENT_SECRET: optionalSecret,
+  FACTUS_USERNAME: optionalSecret,
+  FACTUS_PASSWORD: optionalSecret,
+  FACTUS_CREDENTIALS_ENCRYPTION_KEY: optionalSecret,
+  FACTUS_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  FACTUS_TIMEOUT_MS: z.coerce.number().int().positive().default(15_000),
+  FISCAL_QUEUE_ENABLED: z.stringbool().default(true),
 
   // When unset, Swagger is served only outside production.
   ENABLE_SWAGGER: z.stringbool().optional(),

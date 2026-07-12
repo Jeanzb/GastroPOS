@@ -50,46 +50,99 @@ enum FiscalProviderType {
   API_PROVIDER
 }
 
-enum FiscalEnvironment {
-  TEST
+/// The Factus environment is part of the tenant fiscal boundary. A sandbox
+/// token must never be reused for the production issuer of another tenant.
+enum FactusEnvironment {
+  SANDBOX
   PRODUCTION
 }
 
-enum FiscalProviderStatus {
+enum FactusConnectionStatus {
   NOT_CONFIGURED
-  CONFIGURED
-  CONNECTION_TESTED
+  PENDING_VERIFICATION
+  READY
+  DEGRADED
   ERROR
+}
+
+enum FiscalOutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  DEAD_LETTER
 }
 
 enum FiscalInvoiceStatus {
   DRAFT
   READY_TO_SEND
+  PENDING_VALIDATION
+  SENT_TO_PROVIDER
   SENT
+  ACCEPTED_BY_DIAN
   ACCEPTED
+  REJECTED_BY_DIAN
   REJECTED
+  CANCELLED_BEFORE_ISSUE
   CANCELLED
+  CORRECTED_WITH_CREDIT_NOTE
+  PARTIALLY_REFUNDED
+  FULLY_REFUNDED
   FAILED
 }
 
 enum FiscalInvoiceEventType {
   CREATED
   READY_TO_SEND
+  PENDING_VALIDATION
+  SENT_TO_PROVIDER
   SUBMITTED
+  ACCEPTED_BY_DIAN
   ACCEPTED
+  REJECTED_BY_DIAN
   REJECTED
   FAILED
   RETRY_REQUESTED
+  ARTIFACTS_DOWNLOADED
   CANCELLED
   PROVIDER_SYNCED
 }
 
+enum CreditNoteEventType {
+  CREATED
+  PENDING_VALIDATION
+  SENT_TO_PROVIDER
+  ACCEPTED_BY_DIAN
+  REJECTED_BY_DIAN
+  FAILED
+  RETRY_REQUESTED
+  ARTIFACTS_DOWNLOADED
+}
+
+/// Provider-agnostic operational telemetry retained by the SaaS platform.
+/// It intentionally contains no tenant, customer, sale, document, payload, or secret data.
+enum IntegrationProvider {
+  FACTUS
+}
+
+enum IntegrationOperation {
+  HEALTH_CHECK
+  AUTHENTICATION
+  API_REQUEST
+}
+
+enum IntegrationLogStatus {
+  SUCCESS
+  WARNING
+  ERROR
+}
+
 /// A restaurant business. Root of tenant isolation.
 model Tenant {
-  id       String  @id @default(cuid())
+  id       String       @id @default(cuid())
   name     String
-  slug     String  @unique
-  isActive Boolean @default(true)
+  slug     String       @unique
+  isActive Boolean      @default(true)
   status   TenantStatus @default(ACTIVE)
 
   planId           String?
@@ -103,36 +156,46 @@ model Tenant {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  plan              Plan?              @relation(fields: [planId], references: [id], onDelete: SetNull)
-  settings          TenantSettings?
-  branches          Branch[]
-  users             User[]
-  sessions          Session[]
-  featureOverrides  TenantFeatureOverride[]
-  productCategories ProductCategory[]
-  products          Product[]
-  productRecipes    ProductRecipe[]
-  productRecipeIngredients ProductRecipeIngredient[]
-  fiscalProfile     FiscalProfile?
-  fiscalProviders   FiscalProviderConfig[]
-  invoices          Invoice[]
-  cashSessions      CashSession[]
-  cashMovements     CashMovement[]
-  sales             Sale[]
-  saleItems         SaleItem[]
-  payments          Payment[]
-  customers         Customer[]
-  suppliers         Supplier[]
-  purchases         Purchase[]
-  purchaseItems     PurchaseItem[]
-  unitsOfMeasure        UnitOfMeasure[]
-  inventoryCategories   InventoryCategory[]
-  inventoryIngredients  InventoryIngredient[]
-  inventorySkuSequences InventorySkuSequence[]
-  inventoryBalances     InventoryBalance[]
-  stockMovements        StockMovement[]
-  diningZones       DiningZone[]
-  diningTables      DiningTable[]
+  plan                       Plan?                       @relation(fields: [planId], references: [id], onDelete: SetNull)
+  settings                   TenantSettings?
+  branches                   Branch[]
+  users                      User[]
+  sessions                   Session[]
+  featureOverrides           TenantFeatureOverride[]
+  productCategories          ProductCategory[]
+  products                   Product[]
+  taxCategories              TaxCategory[]
+  productRecipes             ProductRecipe[]
+  productRecipeIngredients   ProductRecipeIngredient[]
+  fiscalProfile              FiscalProfile?
+  factusConnection           FactusConnection?
+  fiscalOutboxEvents         FiscalOutboxEvent[]
+  invoices                   Invoice[]
+  dianResponses              DianResponse[]
+  creditNotes                CreditNote[]
+  creditNoteLines            CreditNoteLine[]
+  creditNoteResponses        CreditNoteResponse[]
+  creditNoteEvents           CreditNoteEvent[]
+  debitNotes                 DebitNote[]
+  accountingEntries          AccountingEntry[]
+  cashSessions               CashSession[]
+  cashMovements              CashMovement[]
+  sales                      Sale[]
+  saleItems                  SaleItem[]
+  payments                   Payment[]
+  customers                  Customer[]
+  suppliers                  Supplier[]
+  purchases                  Purchase[]
+  purchaseItems              PurchaseItem[]
+  unitsOfMeasure             UnitOfMeasure[]
+  inventoryCategories        InventoryCategory[]
+  inventoryIngredients       InventoryIngredient[]
+  inventorySkuSequences      InventorySkuSequence[]
+  inventoryBalances          InventoryBalance[]
+  stockMovements             StockMovement[]
+  diningZones                DiningZone[]
+  diningTables               DiningTable[]
+  branchFiscalConfigurations BranchFiscalConfiguration[]
 
   @@index([planId])
   @@index([status])
@@ -240,7 +303,7 @@ model Feature {
 }
 
 model PlanFeature {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   planId    String
   featureId String
   enabled   Boolean @default(true)
@@ -258,7 +321,7 @@ model PlanFeature {
 }
 
 model TenantFeatureOverride {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   tenantId  String
   featureId String
   enabled   Boolean
@@ -280,13 +343,13 @@ model TenantFeatureOverride {
 
 /// Per-tenant configuration that business logic must not hardcode.
 model TenantSettings {
-  id                 String  @id @default(cuid())
-  tenantId           String  @unique
-  currency           String  @default("COP")
-  timezone           String  @default("America/Bogota")
-  allowNegativeStock Boolean @default(false)
+  id                      String  @id @default(cuid())
+  tenantId                String  @unique
+  currency                String  @default("COP")
+  timezone                String  @default("America/Bogota")
+  allowNegativeStock      Boolean @default(false)
   // Local hour (0-23) when the business day rolls over; operational POS sessions are force-closed at this hour.
-  businessDayStartsAtHour Int @default(4)
+  businessDayStartsAtHour Int     @default(4)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -313,17 +376,22 @@ model Branch {
   createdById String?
   updatedById String?
 
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users          User[]
-  sessions       Session[]
-  invoices       Invoice[]
-  cashSessions   CashSession[]
-  sales          Sale[]
-  purchases      Purchase[]
-  inventoryBalances InventoryBalance[]
-  stockMovements StockMovement[]
-  diningZones    DiningZone[]
-  diningTables   DiningTable[]
+  tenant             Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users              User[]
+  sessions           Session[]
+  invoices           Invoice[]
+  creditNotes        CreditNote[]
+  debitNotes         DebitNote[]
+  accountingEntries  AccountingEntry[]
+  cashSessions       CashSession[]
+  sales              Sale[]
+  purchases          Purchase[]
+  inventoryBalances  InventoryBalance[]
+  stockMovements     StockMovement[]
+  diningZones        DiningZone[]
+  diningTables       DiningTable[]
+  fiscalSettings     BranchFiscalConfiguration?
+  fiscalOutboxEvents FiscalOutboxEvent[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -403,17 +471,17 @@ model DiningTable {
 
 /// A staff account scoped to a single tenant.
 model User {
-  id           String    @id @default(cuid())
-  tenantId     String
-  branchId     String?
-  email        String
-  passwordHash String
-  fullName     String
+  id             String    @id @default(cuid())
+  tenantId       String
+  branchId       String?
+  email          String
+  passwordHash   String
+  fullName       String
   // National ID (cédula). Unique per tenant; used as the staff POS login identifier.
   documentNumber String?
-  role         UserRole  @default(CASHIER)
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
+  role           UserRole  @default(CASHIER)
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
 
   // Fast POS terminal login. PIN is hashed; uniqueness per branch is enforced in app logic.
   pinHash           String?
@@ -442,10 +510,10 @@ model User {
 
 /// Authenticated device/browser session for a staff user.
 model Session {
-  id       String  @id @default(cuid())
-  tenantId String
-  branchId String?
-  userId   String
+  id        String    @id @default(cuid())
+  tenantId  String
+  branchId  String?
+  userId    String
   authScope AuthScope @default(TENANT)
 
   isActive  Boolean   @default(true)
@@ -519,6 +587,25 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+/// Sanitized global technical log for external integrations. SuperAdmin can
+/// inspect platform reliability without operating a restaurant's fiscal data.
+model PlatformIntegrationLog {
+  id        String               @id @default(cuid())
+  provider  IntegrationProvider
+  operation IntegrationOperation
+  status    IntegrationLogStatus
+
+  httpStatus Int?
+  errorCode  String?
+  message    String?
+  latencyMs  Int?
+  createdAt  DateTime @default(now())
+
+  @@index([provider, createdAt])
+  @@index([status, createdAt])
+  @@map("platform_integration_logs")
+}
+
 /// Grouping of catalog products (menu sections).
 model ProductCategory {
   id        String  @id @default(cuid())
@@ -545,15 +632,23 @@ model ProductCategory {
 /// A sellable and/or inventoried catalog item.
 /// Money is stored in integer minor units (COP has no decimals); never float.
 model Product {
-  id          String  @id @default(cuid())
-  tenantId    String
-  categoryId  String?
-  sku         String?
-  name        String
-  description String?
+  id            String  @id @default(cuid())
+  tenantId      String
+  categoryId    String?
+  taxCategoryId String?
+  sku           String?
+  name          String
+  description   String?
 
   priceAmount Int    @default(0)
   currency    String @default("COP")
+
+  fiscalName          String?
+  fiscalCodeReference String?
+  unitMeasureCode     String  @default("94")
+  standardCode        String  @default("999")
+  isExcluded          Boolean @default(false)
+  incApplies          Boolean @default(false)
 
   isActive      Boolean @default(true)
   isSellable    Boolean @default(true)
@@ -565,18 +660,49 @@ model Product {
   createdById String?
   updatedById String?
 
-  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category       ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  saleItems      SaleItem[]
-  purchaseItems  PurchaseItem[]
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category             ProductCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  taxCategory          TaxCategory?          @relation(fields: [taxCategoryId], references: [id], onDelete: SetNull)
+  saleItems            SaleItem[]
+  purchaseItems        PurchaseItem[]
   inventoryIngredients InventoryIngredient[]
-  recipes        ProductRecipe[]
+  recipes              ProductRecipe[]
 
   @@unique([tenantId, sku])
   @@index([tenantId])
   @@index([tenantId, categoryId])
+  @@index([tenantId, taxCategoryId])
   @@index([tenantId, isActive])
   @@map("products")
+}
+
+model TaxCategory {
+  id       String @id @default(cuid())
+  tenantId String
+
+  code            String
+  name            String
+  factusTaxCode   String
+  rateBasisPoints Int       @default(0)
+  isVat           Boolean   @default(false)
+  isInc           Boolean   @default(false)
+  isExcluded      Boolean   @default(false)
+  validFrom       DateTime?
+  validUntil      DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  createdById String?
+  updatedById String?
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, factusTaxCode])
+  @@map("tax_categories")
 }
 
 model ProductRecipe {
@@ -633,15 +759,22 @@ model FiscalProfile {
   nit                    String
   taxRegime              String?
   fiscalResponsibilities String[] @default([])
+  countryCode            String   @default("CO")
   municipality           String?
+  municipalityCode       String?
   address                String?
+  email                  String?
+  phone                  String?
+  dv                     String?
 
-  invoiceResolutionNumber String?
-  invoiceResolutionPrefix String?
-  numberingRangeFrom      Int?
-  numberingRangeTo        Int?
-  numberingValidFrom      DateTime?
-  numberingValidUntil     DateTime?
+  invoiceResolutionNumber    String?
+  invoiceResolutionPrefix    String?
+  numberingRangeFrom         Int?
+  numberingRangeTo           Int?
+  numberingValidFrom         DateTime?
+  numberingValidUntil        DateTime?
+  numberingRangeId           Int?
+  creditNoteNumberingRangeId Int?
 
   isReady Boolean @default(false)
 
@@ -650,46 +783,101 @@ model FiscalProfile {
   createdById String?
   updatedById String?
 
-  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  providerConfig FiscalProviderConfig?
-  invoices       Invoice[]
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
 
   @@index([tenantId])
   @@map("fiscal_profiles")
 }
 
-/// External fiscal integration metadata. Store secret references here, not raw
-/// certificates, API keys, or provider passwords.
-model FiscalProviderConfig {
-  id              String @id @default(cuid())
-  tenantId        String
-  fiscalProfileId String @unique
-
-  providerType FiscalProviderType
-  providerName String?
-  environment  FiscalEnvironment    @default(TEST)
-  status       FiscalProviderStatus @default(CONFIGURED)
-
-  endpointUrl      String?
-  softwareId       String?
-  certificateAlias String?
-  accountId        String?
-  apiKeyRef        String?
-
-  lastConnectionTestAt DateTime?
-  lastConnectionError  String?
+/// Encrypted provider credentials are isolated per tenant. The renderer only
+/// receives a masked connection state; plaintext never leaves the backend.
+model FactusConnection {
+  id                   String                 @id @default(cuid())
+  tenantId             String                 @unique
+  environment          FactusEnvironment      @default(SANDBOX)
+  baseUrl              String
+  encryptedCredentials String
+  status               FactusConnectionStatus @default(PENDING_VERIFICATION)
+  lastVerifiedAt       DateTime?
+  lastLatencyMs        Int?
+  lastErrorCode        String?
+  lastErrorMessage     String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdById String?
   updatedById String?
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  fiscalProfile FiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([status])
+  @@map("factus_connections")
+}
+
+/// A single issuer belongs to the tenant; every issuing branch selects its
+/// own approved range and establishment data from that issuer.
+model BranchFiscalConfiguration {
+  id       String @id @default(cuid())
+  tenantId String
+  branchId String @unique
+
+  establishmentName         String?
+  establishmentCode         String?
+  establishmentAddress      String?
+  establishmentMunicipality String?
+  establishmentPhone        String?
+
+  invoiceNumberingRangeId    Int?
+  creditNoteNumberingRangeId Int?
+  supportNumberingRangeId    Int?
+  adjustmentNumberingRangeId Int?
+  isEnabled                  Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, branchId])
   @@index([tenantId])
-  @@index([tenantId, status])
-  @@map("fiscal_provider_configs")
+  @@index([tenantId, isEnabled])
+  @@map("branch_fiscal_configurations")
+}
+
+/// A transactional outbox makes provider submission recoverable after the
+/// sale closes. It contains frozen payload data, never secrets.
+model FiscalOutboxEvent {
+  id             String             @id @default(cuid())
+  tenantId       String
+  branchId       String?
+  invoiceId      String?
+  documentType   String
+  aggregateId    String
+  idempotencyKey String
+  payload        Json
+  status         FiscalOutboxStatus @default(PENDING)
+  attemptCount   Int                @default(0)
+  availableAt    DateTime           @default(now())
+  lockedAt       DateTime?
+  completedAt    DateTime?
+  lastError      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch  Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, documentType, idempotencyKey])
+  @@index([status, availableAt])
+  @@index([tenantId, branchId])
+  @@index([invoiceId])
+  @@map("fiscal_outbox_events")
 }
 
 /// Fiscal document lifecycle. POS can create drafts later; provider-specific
@@ -708,13 +896,21 @@ model Invoice {
   number Int?
   status FiscalInvoiceStatus @default(DRAFT)
 
-  customerDocumentType   String?
-  customerDocumentNumber String?
-  customerName           String
-  customerEmail          String?
-  customerPhone          String?
-  customerAddress        String?
-  customerMunicipality   String?
+  customerDocumentType          String?
+  customerDocumentNumber        String?
+  customerDv                    String?
+  customerIdentificationCode    String?
+  customerLegalOrganizationCode String?
+  customerCompany               String?
+  customerNames                 String?
+  customerName                  String
+  customerEmail                 String?
+  customerPhone                 String?
+  customerAddress               String?
+  customerCountryCode           String?
+  customerMunicipality          String?
+  customerMunicipalityCode      String?
+  customerTributeCode           String?
 
   subtotalAmount Int    @default(0)
   taxAmount      Int    @default(0)
@@ -722,19 +918,37 @@ model Invoice {
   totalAmount    Int    @default(0)
   currency       String @default("COP")
 
-  providerType      FiscalProviderType?
-  providerName      String?
-  externalReference String?
-  cufe              String?
-  cude              String?
-  qrUrl             String?
-  xmlUrl            String?
-  pdfUrl            String?
-  providerPayload   Json?
-  rejectionPayload  Json?
+  providerType                FiscalProviderType?
+  providerName                String?
+  externalReference           String?
+  referenceCode               String?
+  numberingRangeId            Int?
+  factusNumber                String?
+  factusId                    String?
+  cufe                        String?
+  cude                        String?
+  qrUrl                       String?
+  publicUrl                   String?
+  xmlUrl                      String?
+  pdfUrl                      String?
+  pdfBase64                   String?
+  pdfFileName                 String?
+  xmlBase64                   String?
+  xmlFileName                 String?
+  attachedDocumentXmlBase64   String?
+  attachedDocumentXmlFileName String?
+  providerPayload             Json?
+  rejectionPayload            Json?
+  isValidated                 Boolean             @default(false)
+  lastErrorCode               String?
+  retryCount                  Int                 @default(0)
+  lastAttemptAt               DateTime?
+  nextRetryAt                 DateTime?
 
   sentAt      DateTime?
   acceptedAt  DateTime?
+  validatedAt DateTime?
+  rejectedAt  DateTime?
   cancelledAt DateTime?
 
   createdAt   DateTime  @default(now())
@@ -743,17 +957,27 @@ model Invoice {
   createdById String?
   updatedById String?
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  fiscalProfile FiscalProfile? @relation(fields: [fiscalProfileId], references: [id], onDelete: SetNull)
-  customer      Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  lines         InvoiceLine[]
-  taxes         InvoiceTax[]
-  events        InvoiceEvent[]
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch?             @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  fiscalProfile  FiscalProfile?      @relation(fields: [fiscalProfileId], references: [id], onDelete: SetNull)
+  customer       Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  sale           Sale?               @relation("SaleInvoices", fields: [saleId], references: [id], onDelete: SetNull)
+  primaryForSale Sale?               @relation("SalePrimaryFiscalDocument")
+  lines          InvoiceLine[]
+  taxes          InvoiceTax[]
+  events         InvoiceEvent[]
+  dianResponses  DianResponse[]
+  outboxEvents   FiscalOutboxEvent[]
+  creditNotes    CreditNote[]        @relation("InvoiceCreditNotes")
+  debitNotes     DebitNote[]         @relation("InvoiceDebitNotes")
 
   @@unique([tenantId, prefix, number])
+  @@unique([tenantId, referenceCode])
+  @@unique([tenantId, saleId])
   @@index([tenantId])
   @@index([tenantId, status])
+  @@index([tenantId, saleId])
+  @@index([tenantId, factusNumber])
   @@index([branchId])
   @@map("invoices")
 }
@@ -764,22 +988,276 @@ model InvoiceLine {
   invoiceId String
   productId String?
 
-  description     String
-  quantity        Int
-  unitPriceAmount Int
-  subtotalAmount  Int
-  taxAmount       Int    @default(0)
-  totalAmount     Int
-  currency        String @default("COP")
+  codeReference        String?
+  description          String
+  quantity             Int
+  unitPriceAmount      Int
+  grossUnitPriceAmount Int?
+  factusPrice          String?
+  discountAmount       Int     @default(0)
+  factusDiscountAmount String?
+  taxableAmount        Int     @default(0)
+  subtotalAmount       Int
+  taxAmount            Int     @default(0)
+  totalAmount          Int
+  currency             String  @default("COP")
+  unitMeasureCode      String  @default("94")
+  standardCode         String  @default("999")
+  factusTaxCode        String  @default("01")
+  taxRateBasisPoints   Int     @default(0)
+  isTaxExcluded        Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice         Invoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  creditNoteLines CreditNoteLine[] @relation("InvoiceLineCreditNoteLines")
 
   @@index([tenantId])
   @@index([invoiceId])
   @@map("invoice_lines")
+}
+
+model DianResponse {
+  id        String @id @default(cuid())
+  tenantId  String
+  invoiceId String
+
+  attempt         Int
+  endpoint        String
+  method          String  @default("POST")
+  httpStatus      Int?
+  requestPayload  Json?
+  responsePayload Json?
+  providerTraceId String?
+  errorCode       String?
+  errorMessage    String?
+
+  createdAt DateTime @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+  @@index([tenantId, createdAt])
+  @@map("dian_responses")
+}
+
+model CreditNote {
+  id                String  @id @default(cuid())
+  tenantId          String
+  branchId          String?
+  originalInvoiceId String
+
+  referenceCode               String
+  correctionConceptCode       String
+  customizationId             String?
+  observation                 String?
+  numberingRangeId            Int?
+  subtotalAmount              Int                 @default(0)
+  taxAmount                   Int                 @default(0)
+  discountAmount              Int                 @default(0)
+  tipAmount                   Int                 @default(0)
+  amount                      Int                 @default(0)
+  currency                    String              @default("COP")
+  status                      FiscalInvoiceStatus @default(DRAFT)
+  factusNumber                String?
+  factusId                    String?
+  cude                        String?
+  qrUrl                       String?
+  publicUrl                   String?
+  pdfBase64                   String?
+  pdfFileName                 String?
+  xmlBase64                   String?
+  xmlFileName                 String?
+  attachedDocumentXmlBase64   String?
+  attachedDocumentXmlFileName String?
+  providerPayload             Json?
+  rejectionPayload            Json?
+  isValidated                 Boolean             @default(false)
+  lastErrorCode               String?
+  retryCount                  Int                 @default(0)
+  lastAttemptAt               DateTime?
+  nextRetryAt                 DateTime?
+  sentAt                      DateTime?
+  validatedAt                 DateTime?
+  acceptedAt                  DateTime?
+  rejectedAt                  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch?              @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  originalInvoice Invoice              @relation("InvoiceCreditNotes", fields: [originalInvoiceId], references: [id], onDelete: Restrict)
+  lines           CreditNoteLine[]
+  events          CreditNoteEvent[]
+  responses       CreditNoteResponse[]
+
+  @@unique([tenantId, referenceCode])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([originalInvoiceId])
+  @@map("credit_notes")
+}
+
+model CreditNoteLine {
+  id                    String  @id @default(cuid())
+  tenantId              String
+  creditNoteId          String
+  originalInvoiceLineId String?
+
+  codeReference        String?
+  description          String
+  quantity             Int
+  unitPriceAmount      Int
+  grossUnitPriceAmount Int?
+  factusPrice          String?
+  discountAmount       Int     @default(0)
+  factusDiscountAmount String?
+  taxableAmount        Int     @default(0)
+  subtotalAmount       Int
+  taxAmount            Int     @default(0)
+  totalAmount          Int
+  currency             String  @default("COP")
+  unitMeasureCode      String  @default("94")
+  standardCode         String  @default("999")
+  factusTaxCode        String  @default("01")
+  taxRateBasisPoints   Int     @default(0)
+  isTaxExcluded        Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant              Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creditNote          CreditNote   @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  originalInvoiceLine InvoiceLine? @relation("InvoiceLineCreditNoteLines", fields: [originalInvoiceLineId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([creditNoteId])
+  @@index([originalInvoiceLineId])
+  @@map("credit_note_lines")
+}
+
+model CreditNoteResponse {
+  id           String @id @default(cuid())
+  tenantId     String
+  creditNoteId String
+
+  attempt         Int
+  endpoint        String
+  method          String  @default("POST")
+  httpStatus      Int?
+  requestPayload  Json?
+  responsePayload Json?
+  providerTraceId String?
+  errorCode       String?
+  errorMessage    String?
+
+  createdAt DateTime @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([creditNoteId])
+  @@index([tenantId, createdAt])
+  @@map("credit_note_responses")
+}
+
+model CreditNoteEvent {
+  id           String @id @default(cuid())
+  tenantId     String
+  creditNoteId String
+
+  type              CreditNoteEventType
+  status            FiscalInvoiceStatus
+  message           String?
+  payload           Json?
+  providerReference String?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([creditNoteId])
+  @@index([tenantId, createdAt])
+  @@map("credit_note_events")
+}
+
+model DebitNote {
+  id                String  @id @default(cuid())
+  tenantId          String
+  branchId          String?
+  originalInvoiceId String?
+
+  referenceCode         String
+  correctionConceptCode String?
+  customizationId       String?
+  amount                Int                 @default(0)
+  status                FiscalInvoiceStatus @default(DRAFT)
+  factusNumber          String?
+  factusId              String?
+  cude                  String?
+  qrUrl                 String?
+  publicUrl             String?
+  providerPayload       Json?
+  rejectionPayload      Json?
+  isValidated           Boolean             @default(false)
+  validatedAt           DateTime?
+  acceptedAt            DateTime?
+  rejectedAt            DateTime?
+  featureFlagEnabled    Boolean             @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  originalInvoice Invoice? @relation("InvoiceDebitNotes", fields: [originalInvoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, referenceCode])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([originalInvoiceId])
+  @@map("debit_notes")
+}
+
+model AccountingEntry {
+  id       String  @id @default(cuid())
+  tenantId String
+  branchId String?
+
+  sourceType    String
+  sourceId      String
+  debitAccount  String
+  creditAccount String
+  amount        Int
+  taxCode       String?
+  postedAt      DateTime?
+  reversedById  String?
+  metadata      Json?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, branchId])
+  @@index([tenantId, sourceType, sourceId])
+  @@map("accounting_entries")
 }
 
 model InvoiceTax {
@@ -788,9 +1266,11 @@ model InvoiceTax {
   invoiceId String
 
   taxName            String
+  factusTaxCode      String  @default("01")
   taxRateBasisPoints Int
   taxableAmount      Int
   taxAmount          Int
+  isTaxExcluded      Boolean @default(false)
 
   createdAt DateTime @default(now())
 
@@ -909,14 +1389,16 @@ enum PaymentMethod {
 /// A point-of-sale ticket. Closed sales are immutable except via cancellation.
 /// All money is stored in integer minor units; never float.
 model Sale {
-  id            String     @id @default(cuid())
-  tenantId      String
-  branchId      String
-  cashSessionId String?
-  diningTableId String?
-  customerId    String?
-  status        SaleStatus @default(DRAFT)
-  currency      String     @default("COP")
+  id               String               @id @default(cuid())
+  tenantId         String
+  branchId         String
+  cashSessionId    String?
+  diningTableId    String?
+  customerId       String?
+  fiscalDocumentId String?              @unique
+  status           SaleStatus           @default(DRAFT)
+  fiscalStatus     FiscalInvoiceStatus?
+  currency         String               @default("COP")
 
   guestCount Int?
   waiterName String?
@@ -924,11 +1406,13 @@ model Sale {
   customerName    String?
   requiresInvoice Boolean @default(false)
 
-  subtotal      Int @default(0)
-  discountTotal Int @default(0)
-  taxTotal      Int @default(0)
-  grandTotal    Int @default(0)
-  paidTotal     Int @default(0)
+  subtotal       Int @default(0)
+  discountTotal  Int @default(0)
+  taxTotal       Int @default(0)
+  tipAmount      Int @default(0)
+  roundingAmount Int @default(0)
+  grandTotal     Int @default(0)
+  paidTotal      Int @default(0)
 
   notes        String?
   cancelReason String?
@@ -941,16 +1425,19 @@ model Sale {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch      Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  cashSession CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
-  diningTable DiningTable? @relation(fields: [diningTableId], references: [id], onDelete: SetNull)
-  customer    Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items       SaleItem[]
-  payments    Payment[]
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch         Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  cashSession    CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  diningTable    DiningTable? @relation(fields: [diningTableId], references: [id], onDelete: SetNull)
+  customer       Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  fiscalDocument Invoice?     @relation("SalePrimaryFiscalDocument", fields: [fiscalDocumentId], references: [id], onDelete: SetNull)
+  invoices       Invoice[]    @relation("SaleInvoices")
+  items          SaleItem[]
+  payments       Payment[]
 
   @@index([tenantId])
   @@index([tenantId, branchId, status])
+  @@index([tenantId, fiscalStatus])
   @@index([tenantId, diningTableId, status])
   @@index([cashSessionId])
   @@map("sales")
@@ -963,10 +1450,17 @@ model SaleItem {
   saleId    String
   productId String?
 
-  nameSnapshot      String
-  unitPriceSnapshot Int
-  quantity          Int    @default(1)
-  lineTotal         Int
+  nameSnapshot        String
+  unitPriceSnapshot   Int
+  quantity            Int     @default(1)
+  lineTotal           Int
+  fiscalName          String?
+  fiscalCodeReference String?
+  unitMeasureCode     String  @default("94")
+  standardCode        String  @default("999")
+  factusTaxCode       String  @default("01")
+  taxRateBasisPoints  Int     @default(0)
+  isTaxExcluded       Boolean @default(false)
 
   createdAt DateTime @default(now())
 
@@ -981,12 +1475,17 @@ model SaleItem {
 
 /// A payment registered against a sale.
 model Payment {
-  id        String        @id @default(cuid())
-  tenantId  String
-  saleId    String
-  method    PaymentMethod
-  amount    Int
-  reference String?
+  id                      String        @id @default(cuid())
+  tenantId                String
+  saleId                  String
+  method                  PaymentMethod
+  amount                  Int
+  reference               String?
+  factusPaymentMethodCode String?
+  paymentForm             Int           @default(1)
+  dueDate                 DateTime?
+  acquirerReference       String?
+  reconciledAt            DateTime?
 
   createdById String
   createdAt   DateTime @default(now())
@@ -1012,17 +1511,26 @@ enum CustomerDocumentType {
 
 /// A customer registry with fiscal data for electronic invoicing (DIAN).
 model Customer {
-  id                String               @id @default(cuid())
-  tenantId          String
-  documentType      CustomerDocumentType @default(CC)
-  documentNumber    String
-  name              String
-  email             String?
-  phone             String?
-  address           String?
-  municipality      String?
-  taxResponsibility String?
-  isActive          Boolean              @default(true)
+  id                       String               @id @default(cuid())
+  tenantId                 String
+  documentType             CustomerDocumentType @default(CC)
+  documentNumber           String
+  dv                       String?
+  factusIdentificationCode String?
+  legalOrganizationCode    String?
+  company                  String?
+  names                    String?
+  name                     String
+  email                    String?
+  phone                    String?
+  address                  String?
+  countryCode              String               @default("CO")
+  municipality             String?
+  municipalityCode         String?
+  tributeCode              String?
+  taxResponsibility        String?
+  taxResponsibilities      String[]             @default([])
+  isActive                 Boolean              @default(true)
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1169,7 +1677,7 @@ model UnitOfMeasure {
   createdById String?
   updatedById String?
 
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   inventoryIngredients InventoryIngredient[]
 
   @@unique([tenantId, code])
@@ -1222,15 +1730,15 @@ model InventorySkuSequence {
 
 /// Tenant-level ingredient catalog entry. Branch-specific stock lives in InventoryBalance.
 model InventoryIngredient {
-  id        String  @id @default(cuid())
-  tenantId  String
-  productId String?
+  id         String  @id @default(cuid())
+  tenantId   String
+  productId  String?
   baseUnitId String
   categoryId String
 
-  name               String
-  sku                String
-  isActive           Boolean @default(true)
+  name     String
+  sku      String
+  isActive Boolean @default(true)
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -1238,12 +1746,12 @@ model InventoryIngredient {
   createdById String?
   updatedById String?
 
-  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
-  baseUnit  UnitOfMeasure   @relation(fields: [baseUnitId], references: [id], onDelete: Restrict)
-  category  InventoryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  balances  InventoryBalance[]
-  movements StockMovement[]
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product           Product?                  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  baseUnit          UnitOfMeasure             @relation(fields: [baseUnitId], references: [id], onDelete: Restrict)
+  category          InventoryCategory         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  balances          InventoryBalance[]
+  movements         StockMovement[]
   recipeIngredients ProductRecipeIngredient[]
 
   @@unique([tenantId, sku])
@@ -1287,14 +1795,14 @@ model InventoryBalance {
 
 /// Kardex-style inventory movement. Every stock-changing workflow writes one.
 model StockMovement {
-  id              String            @id @default(cuid())
-  tenantId        String
-  branchId        String
+  id                 String            @id @default(cuid())
+  tenantId           String
+  branchId           String
   inventoryBalanceId String
-  ingredientId    String
-  purchaseId      String?
-  purchaseItemId  String?
-  type            StockMovementType
+  ingredientId       String
+  purchaseId         String?
+  purchaseItemId     String?
+  type               StockMovementType
 
   quantity    Int
   unitCost    Int?
@@ -1306,12 +1814,12 @@ model StockMovement {
   createdById String
   createdAt   DateTime @default(now())
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  branch        Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  inventoryBalance InventoryBalance @relation(fields: [inventoryBalanceId], references: [id], onDelete: Restrict)
-  ingredient    InventoryIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
-  purchase      Purchase?     @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
-  purchaseItem  PurchaseItem? @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
+  tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch           Branch              @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  inventoryBalance InventoryBalance    @relation(fields: [inventoryBalanceId], references: [id], onDelete: Restrict)
+  ingredient       InventoryIngredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  purchase         Purchase?           @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  purchaseItem     PurchaseItem?       @relation(fields: [purchaseItemId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([tenantId, branchId])

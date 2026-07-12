@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import type { Env } from '../../config/env.schema';
 import { REDIS_CLIENT } from './redis.constants';
+import { normalizeRedisUrl } from './redis-url';
 
 @Global()
 @Module({
@@ -12,7 +13,7 @@ import { REDIS_CLIENT } from './redis.constants';
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => {
         const logger = new Logger('RedisModule');
-        const client = new Redis(config.get('REDIS_URL', { infer: true }), {
+        const client = new Redis(normalizeRedisUrl(config.get('REDIS_URL', { infer: true })), {
           lazyConnect: true,
           maxRetriesPerRequest: 1,
           enableOfflineQueue: false,

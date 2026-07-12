@@ -1,31 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  KitchenCommandDto,
-  ReceiptDto,
-  TableAccountDto,
-} from '@gastroai/contracts';
+import type { KitchenCommandDto, ReceiptDto, TableAccountDto } from '@gastroai/contracts';
 import {
   CustomerDocumentType,
   PaymentMethod,
   SaleStatus,
   type Prisma,
+  type TaxCategory,
 } from '../../../generated/prisma';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
+import { computeNitVerificationDigit } from '../../common/fiscal/colombian-nit';
 import { AuditService } from '../audit/audit.service';
+import { FiscalService } from '../fiscal/fiscal.service';
 import type { OperationsActor } from '../operations/operations.types';
 import type { AddTableAccountItemDto } from './dto/add-table-account-item.dto';
-import type { ChargeFiscalCustomerDto, ChargeTableAccountDto } from './dto/charge-table-account.dto';
+import type {
+  ChargeFiscalCustomerDto,
+  ChargeTableAccountDto,
+} from './dto/charge-table-account.dto';
 import type { OpenTableAccountDto } from './dto/open-table-account.dto';
 import type { UpdateTableAccountItemDto } from './dto/update-table-account-item.dto';
-import {
-  toKitchenCommandDto,
-  toReceiptDto,
-  toTableAccountDto,
-} from './table-accounts.mapper';
+import { toKitchenCommandDto, toReceiptDto, toTableAccountDto } from './table-accounts.mapper';
 import {
   TableAccountsRepository,
   type FiscalCustomerData,
+  type ProductFiscalRecord,
   type TableAccountSaleRecord,
 } from './table-accounts.repository';
 
@@ -34,6 +33,7 @@ export class TableAccountsService {
   constructor(
     private readonly repository: TableAccountsRepository,
     private readonly auditService: AuditService,
+    private readonly fiscalService: FiscalService,
   ) {}
 
   async getCurrentAccount(
@@ -63,8 +63,8 @@ export class TableAccountsService {
     const branchId = requireBranch(actor);
     const waiterName =
       actor.role === 'WAITER'
-        ? cleanOptional(actor.fullName) ?? null
-        : cleanOptional(dto.waiterName) ?? null;
+        ? (cleanOptional(actor.fullName) ?? null)
+        : (cleanOptional(dto.waiterName) ?? null);
     const account = await this.repository.openAccount({
       tenantId: actor.tenantId,
       branchId,
@@ -108,6 +108,7 @@ export class TableAccountsService {
       name: product.name,
       unitPriceAmount: product.priceAmount,
       quantity: dto.quantity ?? 1,
+      ...resolveProductFiscalSnapshot(product),
     });
     if (!account) {
       throw notFound('Table account');
@@ -119,7 +120,11 @@ export class TableAccountsService {
       action: 'TABLE_ACCOUNT_ITEM_ADDED',
       entityType: 'Sale',
       entityId: saleId,
-      after: asJson({ productId: product.id, quantity: dto.quantity ?? 1, total: result.grandTotal }),
+      after: asJson({
+        productId: product.id,
+        quantity: dto.quantity ?? 1,
+        total: result.grandTotal,
+      }),
     });
 
     return result;
@@ -211,7 +216,25 @@ export class TableAccountsService {
       throw badRequest('This table account has no pending balance.');
     }
 
-    const amount = dto.amount ?? balanceDue;
+    const normalizedPayments = dto.payments?.length
+      ? dto.payments.map((payment) => {
+          const paymentForm = payment.paymentForm ?? 1;
+          if (paymentForm === 2 && !payment.dueDate) {
+            throw badRequest('Los pagos a credito requieren fecha de vencimiento.');
+          }
+          return {
+            method: payment.method as PaymentMethod,
+            amount: payment.amount,
+            reference: cleanOptional(payment.reference) ?? null,
+            factusPaymentMethodCode: cleanOptional(payment.factusPaymentMethodCode) ?? null,
+            paymentForm: paymentForm as 1 | 2,
+            dueDate: payment.dueDate ? new Date(`${payment.dueDate}T00:00:00.000Z`) : null,
+          };
+        })
+      : undefined;
+    const amount = normalizedPayments
+      ? normalizedPayments.reduce((total, payment) => total + payment.amount, 0)
+      : (dto.amount ?? balanceDue);
     if (amount !== balanceDue) {
       throw badRequest('The payment amount must match the pending balance.');
     }
@@ -224,6 +247,8 @@ export class TableAccountsService {
       method: dto.method as PaymentMethod,
       amount,
       reference: cleanOptional(dto.reference) ?? null,
+      factusPaymentMethodCode: cleanOptional(dto.factusPaymentMethodCode) ?? null,
+      payments: normalizedPayments,
       requiresInvoice: dto.requiresInvoice,
       customer,
       chargedById: actor.actorUserId,
@@ -278,6 +303,8 @@ export class TableAccountsService {
           totalAmount: charged.invoice.totalAmount,
         }),
       });
+
+      await this.fiscalService.tryScheduleInvoiceIssue(actor, charged.invoice.id);
     }
 
     return receipt;
@@ -291,17 +318,56 @@ export class TableAccountsService {
       return null;
     }
     if (!customer) {
-      throw badRequest('Fiscal customer data is required when electronic invoice is requested.');
+      return {
+        documentType: CustomerDocumentType.OTHER,
+        documentNumber: '222222222222',
+        dv: null,
+        name: 'Consumidor Final',
+        email: null,
+        phone: null,
+        address: null,
+        municipality: null,
+        municipalityCode: null,
+        countryCode: 'CO',
+        taxResponsibility: null,
+      };
+    }
+
+    const documentNumber = customer.documentNumber.trim().replace(/\s/g, '');
+    const dv =
+      cleanOptional(customer.dv) ??
+      (customer.documentType === 'NIT' ? computeNitVerificationDigit(documentNumber) : null);
+    if (customer.documentType === 'NIT' && !dv) {
+      throw badRequest('El NIT requiere digito de verificacion.');
+    }
+    const countryCode = cleanOptional(customer.countryCode)?.toUpperCase() ?? 'CO';
+    const municipalityCode = cleanOptional(customer.municipalityCode) ?? null;
+    if (countryCode === 'CO' && (!municipalityCode || !/^\d{5}$/.test(municipalityCode))) {
+      throw badRequest(
+        'El cliente identificado en Colombia requiere un municipio DIVIPOLA de cinco digitos.',
+      );
+    }
+    if (
+      !cleanOptional(customer.email) ||
+      !cleanOptional(customer.address) ||
+      !cleanOptional(customer.phone)
+    ) {
+      throw badRequest(
+        'El cliente identificado requiere correo, direccion y telefono para el flujo fiscal de GastroAI.',
+      );
     }
 
     return {
       documentType: customer.documentType as CustomerDocumentType,
-      documentNumber: customer.documentNumber.trim(),
+      documentNumber,
+      dv,
       name: customer.name.trim(),
       email: cleanOptional(customer.email) ?? null,
       phone: cleanOptional(customer.phone) ?? null,
       address: cleanOptional(customer.address) ?? null,
       municipality: cleanOptional(customer.municipality) ?? null,
+      municipalityCode,
+      countryCode,
       taxResponsibility: cleanOptional(customer.taxResponsibility) ?? null,
     };
   }
@@ -334,6 +400,54 @@ export class TableAccountsService {
   }
 }
 
+function resolveProductFiscalSnapshot(product: ProductFiscalRecord): {
+  fiscalName: string | null;
+  fiscalCodeReference: string | null;
+  unitMeasureCode: string;
+  standardCode: string;
+  factusTaxCode: string;
+  taxRateBasisPoints: number;
+  isTaxExcluded: boolean;
+} {
+  const taxProfile = resolveTaxProfile(product);
+  return {
+    fiscalName: cleanOptional(product.fiscalName) ?? product.name,
+    fiscalCodeReference: cleanOptional(product.fiscalCodeReference) ?? product.sku ?? product.id,
+    unitMeasureCode: cleanOptional(product.unitMeasureCode) ?? '94',
+    standardCode: cleanOptional(product.standardCode) ?? '999',
+    ...taxProfile,
+  };
+}
+
+function resolveTaxProfile(product: ProductFiscalRecord): {
+  factusTaxCode: string;
+  taxRateBasisPoints: number;
+  isTaxExcluded: boolean;
+} {
+  if (product.taxCategory) {
+    return taxProfileFromCategory(product.taxCategory);
+  }
+  if (product.isExcluded) {
+    return { factusTaxCode: '01', taxRateBasisPoints: 0, isTaxExcluded: true };
+  }
+  if (product.incApplies) {
+    return { factusTaxCode: '04', taxRateBasisPoints: 800, isTaxExcluded: false };
+  }
+  return { factusTaxCode: '01', taxRateBasisPoints: 0, isTaxExcluded: false };
+}
+
+function taxProfileFromCategory(taxCategory: TaxCategory): {
+  factusTaxCode: string;
+  taxRateBasisPoints: number;
+  isTaxExcluded: boolean;
+} {
+  return {
+    factusTaxCode: taxCategory.factusTaxCode,
+    taxRateBasisPoints: taxCategory.isExcluded ? 0 : taxCategory.rateBasisPoints,
+    isTaxExcluded: taxCategory.isExcluded,
+  };
+}
+
 function requireBranch(actor: OperationsActor): string {
   if (!actor.branchId) {
     throw badRequest('A branch context is required for table account operations.');
@@ -352,7 +466,7 @@ function auditBase(actor: OperationsActor, branchId: string) {
   };
 }
 
-function cleanOptional(value?: string): string | undefined {
+function cleanOptional(value?: string | null): string | undefined {
   const cleaned = value?.trim();
   return cleaned && cleaned.length > 0 ? cleaned : undefined;
 }

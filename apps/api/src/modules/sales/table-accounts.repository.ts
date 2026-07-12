@@ -2,15 +2,17 @@ import { Injectable } from '@nestjs/common';
 import {
   CashMovementType,
   CashSessionStatus,
+  CustomerDocumentType,
   DiningTableStatus,
   FiscalInvoiceEventType,
   FiscalInvoiceStatus,
+  FiscalProviderType,
   PaymentMethod,
   SaleStatus,
-  type CustomerDocumentType,
   type Invoice,
   type Prisma,
   type Product,
+  type TaxCategory,
 } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
 import { InventoryConsumptionService } from '../inventory/inventory-consumption.service';
@@ -31,6 +33,8 @@ export type TableAccountSaleRecord = Prisma.SaleGetPayload<{
   include: typeof TABLE_ACCOUNT_INCLUDE;
 }>;
 
+export type ProductFiscalRecord = Product & { taxCategory: TaxCategory | null };
+
 export interface OpenAccountData {
   tenantId: string;
   branchId: string;
@@ -46,16 +50,26 @@ export interface ProductSnapshotData {
   name: string;
   unitPriceAmount: number;
   quantity: number;
+  fiscalName: string | null;
+  fiscalCodeReference: string | null;
+  unitMeasureCode: string;
+  standardCode: string;
+  factusTaxCode: string;
+  taxRateBasisPoints: number;
+  isTaxExcluded: boolean;
 }
 
 export interface FiscalCustomerData {
   documentType: CustomerDocumentType;
   documentNumber: string;
+  dv: string | null;
   name: string;
   email: string | null;
   phone: string | null;
   address: string | null;
   municipality: string | null;
+  municipalityCode: string | null;
+  countryCode: string;
   taxResponsibility: string | null;
 }
 
@@ -66,6 +80,15 @@ export interface ChargeAccountData {
   method: PaymentMethod;
   amount: number;
   reference: string | null;
+  factusPaymentMethodCode: string | null;
+  payments?: Array<{
+    method: PaymentMethod;
+    amount: number;
+    reference: string | null;
+    factusPaymentMethodCode: string | null;
+    paymentForm: 1 | 2;
+    dueDate: Date | null;
+  }>;
   requiresInvoice: boolean;
   customer: FiscalCustomerData | null;
   chargedById: string;
@@ -136,7 +159,7 @@ export class TableAccountsRepository {
     });
   }
 
-  findSellableProduct(tenantId: string, productId: string): Promise<Product | null> {
+  findSellableProduct(tenantId: string, productId: string): Promise<ProductFiscalRecord | null> {
     return this.prisma.product.findFirst({
       where: {
         id: productId,
@@ -145,6 +168,7 @@ export class TableAccountsRepository {
         isActive: true,
         isSellable: true,
       },
+      include: { taxCategory: true },
     });
   }
 
@@ -238,6 +262,13 @@ export class TableAccountsRepository {
             unitPriceSnapshot: item.unitPriceAmount,
             quantity: item.quantity,
             lineTotal: item.unitPriceAmount * item.quantity,
+            fiscalName: item.fiscalName,
+            fiscalCodeReference: item.fiscalCodeReference,
+            unitMeasureCode: item.unitMeasureCode,
+            standardCode: item.standardCode,
+            factusTaxCode: item.factusTaxCode,
+            taxRateBasisPoints: item.taxRateBasisPoints,
+            isTaxExcluded: item.isTaxExcluded,
           },
         });
       }
@@ -326,26 +357,76 @@ export class TableAccountsRepository {
         return stockResult;
       }
 
-      await tx.payment.create({
-        data: {
-          tenantId: data.tenantId,
-          saleId: sale.id,
-          method: data.method,
-          amount: data.amount,
-          reference: data.reference,
-          createdById: data.chargedById,
-        },
-      });
+      const mixedPayments = data.payments ?? [];
+      const hasMixedPayments = mixedPayments.length > 0;
+      const payments: NonNullable<ChargeAccountData['payments']> = hasMixedPayments
+        ? mixedPayments
+        : [
+            {
+              method: data.method,
+              amount: data.amount,
+              reference: data.reference,
+              factusPaymentMethodCode: data.factusPaymentMethodCode,
+              paymentForm: 1 as const,
+              dueDate: null,
+            },
+          ];
 
-      if (data.method === PaymentMethod.CASH) {
+      if (hasMixedPayments) {
+        await tx.payment.createMany({
+          data: payments.map((payment) => ({
+            tenantId: data.tenantId,
+            saleId: sale.id,
+            method: payment.method,
+            amount: payment.amount,
+            reference: payment.reference,
+            factusPaymentMethodCode: payment.factusPaymentMethodCode,
+            paymentForm: payment.paymentForm,
+            dueDate: payment.dueDate,
+            createdById: data.chargedById,
+          })),
+        });
+      } else {
+        const payment = payments[0]!;
+        await tx.payment.create({
+          data: {
+            tenantId: data.tenantId,
+            saleId: sale.id,
+            method: payment.method,
+            amount: payment.amount,
+            reference: payment.reference,
+            factusPaymentMethodCode: payment.factusPaymentMethodCode,
+            paymentForm: payment.paymentForm,
+            dueDate: payment.dueDate,
+            createdById: data.chargedById,
+          },
+        });
+      }
+
+      const cashPayments = payments.filter((payment) => payment.method === PaymentMethod.CASH);
+      if (cashPayments.length > 0 && hasMixedPayments) {
+        await tx.cashMovement.createMany({
+          data: cashPayments.map((payment) => ({
+            tenantId: data.tenantId,
+            branchId: data.branchId,
+            cashSessionId: cashSession.id,
+            type: CashMovementType.SALE_PAYMENT,
+            amount: payment.amount,
+            reference: payment.reference ?? sale.id,
+            notes: `Sale payment ${sale.id}`,
+            createdById: data.chargedById,
+          })),
+        });
+      } else if (cashPayments.length > 0) {
+        const payment = cashPayments[0]!;
         await tx.cashMovement.create({
           data: {
             tenantId: data.tenantId,
             branchId: data.branchId,
             cashSessionId: cashSession.id,
             type: CashMovementType.SALE_PAYMENT,
-            amount: data.amount,
-            reference: sale.id,
+            amount: payment.amount,
+            reference: payment.reference ?? sale.id,
             notes: `Sale payment ${sale.id}`,
             createdById: data.chargedById,
           },
@@ -369,7 +450,18 @@ export class TableAccountsRepository {
             phone: data.customer.phone,
             address: data.customer.address,
             municipality: data.customer.municipality,
+            municipalityCode: data.customer.municipalityCode,
+            countryCode: data.customer.countryCode,
+            dv: data.customer.dv,
             taxResponsibility: data.customer.taxResponsibility,
+            factusIdentificationCode: mapFactusDocumentCode(data.customer.documentType),
+            legalOrganizationCode:
+              data.customer.documentType === CustomerDocumentType.NIT ? '1' : '2',
+            company:
+              data.customer.documentType === CustomerDocumentType.NIT ? data.customer.name : null,
+            names:
+              data.customer.documentType === CustomerDocumentType.NIT ? null : data.customer.name,
+            tributeCode: 'ZZ',
             isActive: true,
             deletedAt: null,
             updatedById: data.chargedById,
@@ -383,7 +475,18 @@ export class TableAccountsRepository {
             phone: data.customer.phone,
             address: data.customer.address,
             municipality: data.customer.municipality,
+            municipalityCode: data.customer.municipalityCode,
+            countryCode: data.customer.countryCode,
+            dv: data.customer.dv,
             taxResponsibility: data.customer.taxResponsibility,
+            factusIdentificationCode: mapFactusDocumentCode(data.customer.documentType),
+            legalOrganizationCode:
+              data.customer.documentType === CustomerDocumentType.NIT ? '1' : '2',
+            company:
+              data.customer.documentType === CustomerDocumentType.NIT ? data.customer.name : null,
+            names:
+              data.customer.documentType === CustomerDocumentType.NIT ? null : data.customer.name,
+            tributeCode: 'ZZ',
             createdById: data.chargedById,
           },
         });
@@ -394,15 +497,10 @@ export class TableAccountsRepository {
           select: {
             id: true,
             invoiceResolutionPrefix: true,
-            providerConfig: {
-              select: {
-                providerType: true,
-                providerName: true,
-              },
-            },
           },
         });
 
+        const fiscalSnapshot = buildFiscalInvoiceSnapshot(sale.items, sale.discountTotal);
         invoice = await tx.invoice.create({
           data: {
             tenantId: data.tenantId,
@@ -415,32 +513,67 @@ export class TableAccountsRepository {
             status: FiscalInvoiceStatus.DRAFT,
             customerDocumentType: data.customer.documentType,
             customerDocumentNumber: data.customer.documentNumber,
+            customerDv: data.customer.dv,
+            customerIdentificationCode: mapFactusDocumentCode(data.customer.documentType),
+            customerLegalOrganizationCode:
+              data.customer.documentType === CustomerDocumentType.NIT ? '1' : '2',
+            customerCompany:
+              data.customer.documentType === CustomerDocumentType.NIT ? data.customer.name : null,
+            customerNames:
+              data.customer.documentType === CustomerDocumentType.NIT ? null : data.customer.name,
             customerName: data.customer.name,
             customerEmail: data.customer.email,
             customerPhone: data.customer.phone,
             customerAddress: data.customer.address,
+            customerCountryCode: data.customer.countryCode,
             customerMunicipality: data.customer.municipality,
-            subtotalAmount: sale.subtotal,
-            taxAmount: sale.taxTotal,
-            discountAmount: sale.discountTotal,
+            customerMunicipalityCode: data.customer.municipalityCode,
+            customerTributeCode: 'ZZ',
+            subtotalAmount: fiscalSnapshot.subtotalAmount,
+            taxAmount: fiscalSnapshot.taxAmount,
+            discountAmount: fiscalSnapshot.discountAmount,
             totalAmount: sale.grandTotal,
             currency: sale.currency,
-            providerType: fiscalProfile?.providerConfig?.providerType ?? null,
-            providerName: fiscalProfile?.providerConfig?.providerName ?? null,
+            providerType: FiscalProviderType.API_PROVIDER,
+            providerName: 'Factus',
             createdById: data.chargedById,
             lines: {
-              create: sale.items.map((item) => ({
+              create: fiscalSnapshot.lines.map((item) => ({
                 tenantId: data.tenantId,
                 productId: item.productId,
-                description: item.nameSnapshot,
+                codeReference: item.codeReference,
+                description: item.description,
                 quantity: item.quantity,
-                unitPriceAmount: item.unitPriceSnapshot,
-                subtotalAmount: item.lineTotal,
-                taxAmount: 0,
-                totalAmount: item.lineTotal,
+                unitPriceAmount: item.unitPriceAmount,
+                grossUnitPriceAmount: item.grossUnitPriceAmount,
+                factusPrice: item.factusPrice,
+                discountAmount: item.discountAmount,
+                factusDiscountAmount: item.factusDiscountAmount,
+                taxableAmount: item.taxableAmount,
+                subtotalAmount: item.subtotalAmount,
+                taxAmount: item.taxAmount,
+                totalAmount: item.totalAmount,
                 currency: sale.currency,
+                unitMeasureCode: item.unitMeasureCode,
+                standardCode: item.standardCode,
+                factusTaxCode: item.factusTaxCode,
+                taxRateBasisPoints: item.taxRateBasisPoints,
+                isTaxExcluded: item.isTaxExcluded,
               })),
             },
+            taxes: fiscalSnapshot.taxes.length
+              ? {
+                  create: fiscalSnapshot.taxes.map((tax) => ({
+                    tenantId: data.tenantId,
+                    taxName: tax.taxName,
+                    factusTaxCode: tax.factusTaxCode,
+                    taxRateBasisPoints: tax.taxRateBasisPoints,
+                    taxableAmount: tax.taxableAmount,
+                    taxAmount: tax.taxAmount,
+                    isTaxExcluded: tax.isTaxExcluded,
+                  })),
+                }
+              : undefined,
             events: {
               create: {
                 tenantId: data.tenantId,
@@ -463,6 +596,8 @@ export class TableAccountsRepository {
         },
         data: {
           status: SaleStatus.CLOSED,
+          fiscalDocumentId: invoice?.id ?? null,
+          fiscalStatus: invoice ? FiscalInvoiceStatus.DRAFT : null,
           cashSessionId: cashSession.id,
           customerId,
           customerName: data.customer?.name ?? sale.customerName,
@@ -557,4 +692,182 @@ export class TableAccountsRepository {
       include: TABLE_ACCOUNT_INCLUDE,
     });
   }
+}
+
+function mapFactusDocumentCode(type: CustomerDocumentType): string {
+  const map: Record<CustomerDocumentType, string> = {
+    [CustomerDocumentType.CC]: '13',
+    [CustomerDocumentType.NIT]: '31',
+    [CustomerDocumentType.CE]: '22',
+    [CustomerDocumentType.PP]: '41',
+    [CustomerDocumentType.TI]: '12',
+    [CustomerDocumentType.NUIP]: '91',
+    [CustomerDocumentType.OTHER]: '13',
+  };
+  return map[type];
+}
+
+type FiscalSaleItem = TableAccountSaleRecord['items'][number];
+
+interface FiscalInvoiceLineSnapshot {
+  productId: string | null;
+  codeReference: string;
+  description: string;
+  quantity: number;
+  unitPriceAmount: number;
+  grossUnitPriceAmount: number;
+  factusPrice: string;
+  discountAmount: number;
+  factusDiscountAmount: string | null;
+  taxableAmount: number;
+  subtotalAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  unitMeasureCode: string;
+  standardCode: string;
+  factusTaxCode: string;
+  taxRateBasisPoints: number;
+  isTaxExcluded: boolean;
+}
+
+interface FiscalInvoiceTaxSnapshot {
+  taxName: string;
+  factusTaxCode: string;
+  taxRateBasisPoints: number;
+  taxableAmount: number;
+  taxAmount: number;
+  isTaxExcluded: boolean;
+}
+
+function buildFiscalInvoiceSnapshot(
+  items: FiscalSaleItem[],
+  discountTotal: number,
+): {
+  lines: FiscalInvoiceLineSnapshot[];
+  taxes: FiscalInvoiceTaxSnapshot[];
+  subtotalAmount: number;
+  taxAmount: number;
+  discountAmount: number;
+} {
+  const grossTotal = items.reduce((total, item) => total + item.lineTotal, 0);
+  if (discountTotal < 0 || discountTotal > grossTotal) {
+    throw new Error('INVALID_FISCAL_DISCOUNT_TOTAL');
+  }
+
+  const discounts = allocateAmount(
+    discountTotal,
+    items.map((item) => item.lineTotal),
+  );
+  const lines = items.map((item, index) => buildFiscalLineSnapshot(item, discounts[index] ?? 0));
+  const taxesByKey = new Map<string, FiscalInvoiceTaxSnapshot>();
+
+  for (const line of lines) {
+    const key = `${line.factusTaxCode}:${line.taxRateBasisPoints}:${line.isTaxExcluded}`;
+    const current = taxesByKey.get(key) ?? {
+      taxName: taxName(line.factusTaxCode, line.isTaxExcluded),
+      factusTaxCode: line.factusTaxCode,
+      taxRateBasisPoints: line.taxRateBasisPoints,
+      taxableAmount: 0,
+      taxAmount: 0,
+      isTaxExcluded: line.isTaxExcluded,
+    };
+    current.taxableAmount += line.taxableAmount;
+    current.taxAmount += line.taxAmount;
+    taxesByKey.set(key, current);
+  }
+
+  return {
+    lines,
+    taxes: [...taxesByKey.values()].filter((tax) => tax.taxAmount > 0 || tax.isTaxExcluded),
+    subtotalAmount: lines.reduce((total, line) => total + line.taxableAmount, 0),
+    taxAmount: lines.reduce((total, line) => total + line.taxAmount, 0),
+    discountAmount: lines.reduce((total, line) => total + line.discountAmount, 0),
+  };
+}
+
+function buildFiscalLineSnapshot(
+  item: FiscalSaleItem,
+  grossDiscountAmount: number,
+): FiscalInvoiceLineSnapshot {
+  const rateBasisPoints = item.isTaxExcluded ? 0 : Math.max(0, item.taxRateBasisPoints);
+  const unitNetCents = netCentsFromTaxIncludedPesos(item.unitPriceSnapshot, rateBasisPoints);
+  const grossLineCents = item.lineTotal * 100;
+  const grossDiscountCents = grossDiscountAmount * 100;
+  const netDiscountCents = netCentsFromTaxIncludedCents(grossDiscountCents, rateBasisPoints);
+  const taxableCents = Math.max(0, unitNetCents * item.quantity - netDiscountCents);
+  const totalCents = Math.max(0, grossLineCents - grossDiscountCents);
+  const taxCents = item.isTaxExcluded ? 0 : Math.max(0, totalCents - taxableCents);
+
+  return {
+    productId: item.productId,
+    codeReference: item.fiscalCodeReference ?? item.productId ?? item.id,
+    description: item.fiscalName ?? item.nameSnapshot,
+    quantity: item.quantity,
+    unitPriceAmount: centsToRoundedPesos(unitNetCents),
+    grossUnitPriceAmount: item.unitPriceSnapshot,
+    factusPrice: centsToAmount(unitNetCents),
+    discountAmount: centsToRoundedPesos(netDiscountCents),
+    factusDiscountAmount: netDiscountCents > 0 ? centsToAmount(netDiscountCents) : null,
+    taxableAmount: centsToRoundedPesos(taxableCents),
+    subtotalAmount: centsToRoundedPesos(taxableCents),
+    taxAmount: centsToRoundedPesos(taxCents),
+    totalAmount: centsToRoundedPesos(totalCents),
+    unitMeasureCode: item.unitMeasureCode,
+    standardCode: item.standardCode,
+    factusTaxCode: item.factusTaxCode,
+    taxRateBasisPoints: rateBasisPoints,
+    isTaxExcluded: item.isTaxExcluded,
+  };
+}
+
+function allocateAmount(amount: number, weights: number[]): number[] {
+  if (amount === 0) {
+    return weights.map(() => 0);
+  }
+  const totalWeight = weights.reduce((total, weight) => total + weight, 0);
+  if (totalWeight <= 0) {
+    return weights.map(() => 0);
+  }
+
+  let assigned = 0;
+  return weights.map((weight, index) => {
+    if (index === weights.length - 1) {
+      return amount - assigned;
+    }
+    const share = Math.floor((amount * weight) / totalWeight);
+    assigned += share;
+    return share;
+  });
+}
+
+function netCentsFromTaxIncludedPesos(amount: number, rateBasisPoints: number): number {
+  return netCentsFromTaxIncludedCents(amount * 100, rateBasisPoints);
+}
+
+function netCentsFromTaxIncludedCents(amountCents: number, rateBasisPoints: number): number {
+  if (rateBasisPoints <= 0) {
+    return amountCents;
+  }
+  return Math.round((amountCents * 10_000) / (10_000 + rateBasisPoints));
+}
+
+function centsToRoundedPesos(value: number): number {
+  return Math.round(value / 100);
+}
+
+function centsToAmount(value: number): string {
+  return (value / 100).toFixed(2);
+}
+
+function taxName(factusTaxCode: string, isExcluded: boolean): string {
+  if (isExcluded) {
+    return 'Excluido';
+  }
+  if (factusTaxCode === '04') {
+    return 'INC';
+  }
+  if (factusTaxCode === '35') {
+    return 'Impuesto saludable';
+  }
+  return 'IVA';
 }

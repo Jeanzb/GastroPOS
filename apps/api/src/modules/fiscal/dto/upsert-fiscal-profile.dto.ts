@@ -1,4 +1,3 @@
-import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -10,10 +9,8 @@ import {
   MaxLength,
   Min,
   MinLength,
-  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UpsertFiscalProviderConfigDto } from './upsert-fiscal-provider-config.dto';
 
 export class UpsertFiscalProfileDto {
   @ApiProperty({ example: 'Restaurante GastroAI S.A.S.' })
@@ -90,9 +87,17 @@ export class UpsertFiscalProfileDto {
   @IsISO8601({ strict: true })
   numberingValidUntil?: string;
 
-  @ApiPropertyOptional({ type: UpsertFiscalProviderConfigDto })
+  @ApiPropertyOptional({ example: 389 })
   @IsOptional()
-  @ValidateNested()
-  @Type(() => UpsertFiscalProviderConfigDto)
-  providerConfig?: UpsertFiscalProviderConfigDto;
+  @IsInt()
+  @Min(1)
+  @Max(999_999_999)
+  numberingRangeId?: number;
+
+  @ApiPropertyOptional({ example: 390 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(999_999_999)
+  creditNoteNumberingRangeId?: number;
 }

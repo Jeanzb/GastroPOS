@@ -6,6 +6,7 @@ import {
 } from '../../../generated/prisma';
 import { ApplicationException } from '../../common/errors/application.exception';
 import type { AuditService } from '../audit/audit.service';
+import type { FiscalService } from '../fiscal/fiscal.service';
 import { TableAccountsRepository, type TableAccountSaleRecord } from './table-accounts.repository';
 import { TableAccountsService } from './table-accounts.service';
 import type { OperationsActor } from '../operations/operations.types';
@@ -27,7 +28,9 @@ function account(overrides: Partial<TableAccountSaleRecord> = {}): TableAccountS
     cashSessionId: null,
     diningTableId: 'table_1',
     customerId: null,
+    fiscalDocumentId: null,
     status: SaleStatus.DRAFT,
+    fiscalStatus: null,
     currency: 'COP',
     guestCount: 2,
     waiterName: 'Maria Restrepo',
@@ -36,6 +39,8 @@ function account(overrides: Partial<TableAccountSaleRecord> = {}): TableAccountS
     subtotal: 32000,
     discountTotal: 0,
     taxTotal: 0,
+    tipAmount: 0,
+    roundingAmount: 0,
     grandTotal: 32000,
     paidTotal: 0,
     notes: null,
@@ -70,11 +75,18 @@ function product(overrides: Partial<Product> = {}): Product {
     id: 'product_1',
     tenantId: 'tenant_1',
     categoryId: 'category_1',
+    taxCategoryId: null,
     sku: 'FUERTE-BANDEJA-PAISA',
     name: 'Bandeja paisa',
     description: null,
     priceAmount: 32000,
     currency: 'COP',
+    fiscalName: null,
+    fiscalCodeReference: null,
+    unitMeasureCode: '94',
+    standardCode: '999',
+    isExcluded: false,
+    incApplies: false,
     isActive: true,
     isSellable: true,
     isInventoried: false,
@@ -101,6 +113,7 @@ describe('TableAccountsService', () => {
     chargeAccount: jest.Mock;
   };
   let audit: { tryRecord: jest.Mock };
+  let fiscal: { tryScheduleInvoiceIssue: jest.Mock };
   let service: TableAccountsService;
 
   beforeEach(() => {
@@ -117,9 +130,11 @@ describe('TableAccountsService', () => {
       chargeAccount: jest.fn(),
     };
     audit = { tryRecord: jest.fn() };
+    fiscal = { tryScheduleInvoiceIssue: jest.fn() };
     service = new TableAccountsService(
       repo as unknown as TableAccountsRepository,
       audit as unknown as AuditService,
+      fiscal as unknown as FiscalService,
     );
   });
 
@@ -184,23 +199,75 @@ describe('TableAccountsService', () => {
       'tenant_1',
       'branch_1',
       'sale_1',
-      expect.objectContaining({ unitPriceAmount: 32000 }),
+      expect.objectContaining({
+        unitPriceAmount: 32000,
+        factusTaxCode: '01',
+        taxRateBasisPoints: 0,
+      }),
     );
     expect(result.grandTotal).toBe(32000);
   });
 
-  it('requires fiscal customer data when electronic invoice is requested', async () => {
-    repo.findById.mockResolvedValue(account());
-
-    await expect(
-      service.chargeAccount(actor, 'sale_1', {
-        method: PaymentMethod.CARD,
-        amount: 32000,
-        requiresInvoice: true,
+  it('snapshots fiscal product tax profile when adding an item', async () => {
+    repo.findById.mockResolvedValue(account({ items: [], subtotal: 0, grandTotal: 0 }));
+    repo.findSellableProduct.mockResolvedValue(
+      product({
+        incApplies: true,
+        fiscalName: 'Menu ejecutivo',
+        fiscalCodeReference: 'MENU-001',
       }),
-    ).rejects.toBeInstanceOf(ApplicationException);
+    );
+    repo.addItem.mockResolvedValue(account());
 
-    expect(repo.chargeAccount).not.toHaveBeenCalled();
+    await service.addItem(actor, 'sale_1', {
+      productId: 'product_1',
+      quantity: 1,
+    });
+
+    expect(repo.addItem).toHaveBeenCalledWith(
+      'tenant_1',
+      'branch_1',
+      'sale_1',
+      expect.objectContaining({
+        fiscalName: 'Menu ejecutivo',
+        fiscalCodeReference: 'MENU-001',
+        unitMeasureCode: '94',
+        standardCode: '999',
+        factusTaxCode: '04',
+        taxRateBasisPoints: 800,
+        isTaxExcluded: false,
+      }),
+    );
+  });
+
+  it('uses final consumer data when electronic invoice is requested without customer', async () => {
+    repo.findById.mockResolvedValue(account());
+    repo.chargeAccount.mockResolvedValue({
+      status: 'CHARGED',
+      account: account({
+        status: SaleStatus.CLOSED,
+        paidTotal: 32000,
+        requiresInvoice: true,
+        closedAt: now,
+      }),
+      invoice: null,
+    });
+
+    await service.chargeAccount(actor, 'sale_1', {
+      method: PaymentMethod.CARD,
+      amount: 32000,
+      requiresInvoice: true,
+    });
+
+    expect(repo.chargeAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customer: expect.objectContaining({
+          documentType: CustomerDocumentType.OTHER,
+          documentNumber: '222222222222',
+          name: 'Consumidor Final',
+        }),
+      }),
+    );
   });
 
   it('charges a complete account and returns a receipt', async () => {
@@ -220,6 +287,11 @@ describe('TableAccountsService', () => {
             method: PaymentMethod.CARD,
             amount: 32000,
             reference: null,
+            factusPaymentMethodCode: null,
+            paymentForm: 1,
+            dueDate: null,
+            acquirerReference: null,
+            reconciledAt: null,
             createdById: 'user_1',
             createdAt: now,
           },
@@ -231,6 +303,7 @@ describe('TableAccountsService', () => {
     const result = await service.chargeAccount(actor, 'sale_1', {
       method: PaymentMethod.CARD,
       amount: 32000,
+      factusPaymentMethodCode: '48',
       requiresInvoice: false,
     });
 
@@ -238,6 +311,7 @@ describe('TableAccountsService', () => {
       expect.objectContaining({
         method: PaymentMethod.CARD,
         amount: 32000,
+        factusPaymentMethodCode: '48',
         requiresInvoice: false,
       }),
     );
@@ -311,15 +385,33 @@ describe('TableAccountsService', () => {
         providerType: null,
         providerName: null,
         externalReference: null,
+        referenceCode: null,
+        numberingRangeId: null,
+        factusNumber: null,
+        factusId: null,
         cufe: null,
         cude: null,
         qrUrl: null,
+        publicUrl: null,
         xmlUrl: null,
         pdfUrl: null,
+        pdfBase64: null,
+        pdfFileName: null,
+        xmlBase64: null,
+        xmlFileName: null,
+        attachedDocumentXmlBase64: null,
+        attachedDocumentXmlFileName: null,
         providerPayload: null,
         rejectionPayload: null,
+        isValidated: false,
+        lastErrorCode: null,
+        retryCount: 0,
+        lastAttemptAt: null,
+        nextRetryAt: null,
         sentAt: null,
         acceptedAt: null,
+        validatedAt: null,
+        rejectedAt: null,
         cancelledAt: null,
         createdAt: now,
         updatedAt: now,
@@ -337,6 +429,10 @@ describe('TableAccountsService', () => {
         documentType: CustomerDocumentType.CC,
         documentNumber: '123',
         name: 'Cliente Demo',
+        email: 'cliente@example.com',
+        phone: '3001234567',
+        address: 'Calle 10 # 1-2',
+        municipalityCode: '11001',
       },
     });
 
@@ -352,5 +448,6 @@ describe('TableAccountsService', () => {
     expect(audit.tryRecord).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'INVOICE_DRAFT_CREATED' }),
     );
+    expect(fiscal.tryScheduleInvoiceIssue).toHaveBeenCalledWith(actor, 'invoice_1');
   });
 });

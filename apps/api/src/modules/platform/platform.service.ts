@@ -10,6 +10,8 @@ import type {
   PlatformAuthResponse,
   PlatformHealthCheckDto,
   PlatformHealthDto,
+  PlatformIntegrationLogDto,
+  PlatformIntegrationSummaryDto,
   PlatformOverviewDto,
   PlatformTenantDetailDto,
   PlatformTenantDto,
@@ -17,8 +19,8 @@ import type {
   PlanDto,
   TenantFeatureOverrideDto,
   TenantStatus,
+  UpdatePlatformTenantRequest,
 } from '@gastroai/contracts';
-import { parseColombianNit } from '@gastroai/contracts';
 import { TenantAccessCacheService } from '../../common/access/tenant-access-cache.service';
 import { ApplicationException } from '../../common/errors/application.exception';
 import { REDIS_CLIENT } from '../../common/redis';
@@ -39,6 +41,7 @@ import {
   toTenantFeatureOverrideDtos,
 } from './platform.mapper';
 import { PlatformRepository } from './platform.repository';
+import { PlatformIntegrationService } from './platform-integration.service';
 import type {
   AuthenticatedPlatformUser,
   PlatformAccessTokenPayload,
@@ -56,6 +59,7 @@ export class PlatformService {
     private readonly config: ConfigService<Env, true>,
     private readonly auditService: AuditService,
     private readonly tenantAccessCache: TenantAccessCacheService,
+    private readonly integrations: PlatformIntegrationService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
@@ -202,20 +206,15 @@ export class PlatformService {
   ): Promise<PlatformTenantDetailDto> {
     const passwordHash = await this.passwordHashing.hash(input.ownerTemporaryPassword);
     const slug = await this.generateInternalSlug(input.name);
-    const fiscalResponsibility = normalizeOptional(input.fiscalResponsibility);
-    const nit = normalizeNitOrThrow(input.nit, input.nitVerificationDigit);
     const tenant = await this.repository.createTenant({
       name: input.name.trim(),
       slug,
-      nit,
-      municipality: input.municipality.trim(),
-      taxRegime: normalizeOptional(input.taxRegime),
-      fiscalResponsibilities: fiscalResponsibility ? [fiscalResponsibility] : [],
       ownerEmail: input.ownerEmail.trim().toLowerCase(),
       ownerFullName: input.ownerFullName.trim(),
       ownerPasswordHash: passwordHash,
       branchName: input.branchName.trim(),
       branchCode: input.branchCode.trim().toUpperCase(),
+      branchCity: input.branchCity.trim(),
       branchAddress: normalizeOptional(input.branchAddress),
       branchPhone: normalizeOptional(input.branchPhone),
     });
@@ -224,7 +223,7 @@ export class PlatformService {
       action: 'PLATFORM_TENANT_CREATED',
       entityType: 'Tenant',
       entityId: tenant.id,
-      metadata: { internalSlug: slug, plan: 'BASIC', nit },
+      metadata: { internalSlug: slug, plan: 'BASIC' },
     });
     return toPlatformTenantDetailDto(tenant);
   }
@@ -279,6 +278,24 @@ export class PlatformService {
       entityType: 'Tenant',
       entityId: id,
       metadata: { status, suspensionReason: suspensionReason ?? null },
+    });
+    return toPlatformTenantDetailDto(tenant);
+  }
+
+  async updateTenantBasics(
+    actor: AuthenticatedPlatformUser,
+    id: string,
+    input: UpdatePlatformTenantRequest,
+  ): Promise<PlatformTenantDetailDto> {
+    const before = await this.getTenant(id);
+    const tenant = await this.repository.updateTenantName(id, input.name.trim());
+    await this.auditService.tryRecord({
+      actorUserId: actor.id,
+      action: 'PLATFORM_TENANT_UPDATED',
+      entityType: 'Tenant',
+      entityId: id,
+      before: { name: before.name },
+      after: { name: tenant.name },
     });
     return toPlatformTenantDetailDto(tenant);
   }
@@ -354,6 +371,7 @@ export class PlatformService {
       { name: 'api', status: 'operational', latencyMs: 0 },
       await this.checkPostgres(),
       await this.checkRedis(),
+      await this.integrations.getFactusHealthCheck(),
     ];
     const hasDown = checks.some((check) => check.status === 'down');
     const hasDegraded = checks.some((check) => check.status === 'degraded');
@@ -362,6 +380,14 @@ export class PlatformService {
       checkedAt: new Date().toISOString(),
       checks,
     };
+  }
+
+  getIntegrationSummary(): Promise<PlatformIntegrationSummaryDto> {
+    return this.integrations.getSummary();
+  }
+
+  listIntegrationLogs(take: number): Promise<PlatformIntegrationLogDto[]> {
+    return this.integrations.listLogs(take);
   }
 
   async updateTenantFeatureOverride(
@@ -545,25 +571,6 @@ function isPast(date: Date): boolean {
 function normalizeOptional(value?: string | null): string | null {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : null;
-}
-
-function normalizeNitOrThrow(value: string, verificationDigit?: string): string {
-  const nit = parseColombianNit(value, verificationDigit);
-  if (!nit) {
-    throw invalidNit('Ingresa un NIT valido.');
-  }
-  if (!nit.isValid) {
-    throw invalidNit(`El digito de verificacion del NIT debe ser ${nit.expectedVerificationDigit}.`);
-  }
-  return nit.formatted;
-}
-
-function invalidNit(message: string): ApplicationException {
-  return new ApplicationException(400, {
-    code: 'INVALID_NIT',
-    message,
-    details: { fields: { nitVerificationDigit: message } },
-  });
 }
 
 function tenantDeletePhrase(tenantName: string): string {

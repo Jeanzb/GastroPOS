@@ -58,6 +58,10 @@ export class ProductService {
     if (dto.categoryId) {
       await this.assertCategoryExists(dto.categoryId);
     }
+    if (dto.taxCategoryId) {
+      await this.assertTaxCategoryExists(actor.tenantId, dto.taxCategoryId);
+    }
+    this.assertCoherentFiscalFlags(dto.isExcluded, dto.incApplies, dto.taxCategoryId);
 
     const sku = dto.sku?.trim() || null;
     if (sku) {
@@ -69,11 +73,18 @@ export class ProductService {
       created = await this.repository.create({
         tenantId: actor.tenantId,
         categoryId: dto.categoryId ?? null,
+        taxCategoryId: dto.taxCategoryId ?? null,
         sku,
         name: dto.name.trim(),
         description: dto.description?.trim() || null,
         priceAmount: dto.priceAmount,
         currency: dto.currency ?? 'COP',
+        fiscalName: dto.fiscalName?.trim() || null,
+        fiscalCodeReference: dto.fiscalCodeReference?.trim() || null,
+        unitMeasureCode: dto.unitMeasureCode?.trim() || '94',
+        standardCode: dto.standardCode ?? '999',
+        isExcluded: dto.isExcluded ?? false,
+        incApplies: dto.incApplies ?? false,
         isActive: dto.isActive ?? true,
         isSellable: dto.isSellable ?? true,
         isInventoried: dto.isInventoried ?? false,
@@ -112,6 +123,14 @@ export class ProductService {
     if (dto.categoryId && dto.categoryId !== existing.categoryId) {
       await this.assertCategoryExists(dto.categoryId);
     }
+    if (dto.taxCategoryId && dto.taxCategoryId !== existing.taxCategoryId) {
+      await this.assertTaxCategoryExists(actor.tenantId, dto.taxCategoryId);
+    }
+    this.assertCoherentFiscalFlags(
+      dto.isExcluded ?? existing.isExcluded,
+      dto.incApplies ?? existing.incApplies,
+      dto.taxCategoryId === undefined ? existing.taxCategoryId : dto.taxCategoryId,
+    );
 
     const sku = dto.sku?.trim();
     if (sku && sku !== existing.sku) {
@@ -124,12 +143,23 @@ export class ProductService {
       updated = await this.repository.update(id, {
         tenantId: actor.tenantId,
         categoryId: dto.categoryId,
+        taxCategoryId: dto.taxCategoryId,
         sku: dto.sku === undefined ? undefined : sku || null,
         name: dto.name?.trim(),
         description:
           dto.description === undefined ? undefined : dto.description.trim() || null,
         priceAmount: dto.priceAmount,
         currency: dto.currency,
+        fiscalName:
+          dto.fiscalName === undefined ? undefined : dto.fiscalName.trim() || null,
+        fiscalCodeReference:
+          dto.fiscalCodeReference === undefined
+            ? undefined
+            : dto.fiscalCodeReference.trim() || null,
+        unitMeasureCode: dto.unitMeasureCode?.trim(),
+        standardCode: dto.standardCode,
+        isExcluded: dto.isExcluded,
+        incApplies: dto.incApplies,
         isActive: dto.isActive,
         isSellable: dto.isSellable,
         isInventoried: dto.isInventoried,
@@ -206,6 +236,38 @@ export class ProductService {
       throw new ApplicationException(409, {
         code: ApiErrorCode.CONFLICT,
         message: `A product with SKU "${sku}" already exists.`,
+      });
+    }
+  }
+
+  private async assertTaxCategoryExists(
+    tenantId: string,
+    taxCategoryId: string,
+  ): Promise<void> {
+    const exists = await this.repository.taxCategoryExists(tenantId, taxCategoryId);
+    if (!exists) {
+      throw new ApplicationException(400, {
+        code: 'INVALID_TAX_CATEGORY',
+        message: 'The referenced tax category does not exist.',
+      });
+    }
+  }
+
+  private assertCoherentFiscalFlags(
+    isExcluded: boolean | undefined,
+    incApplies: boolean | undefined,
+    taxCategoryId: string | null | undefined,
+  ): void {
+    if (isExcluded && incApplies) {
+      throw new ApplicationException(400, {
+        code: ApiErrorCode.BAD_REQUEST,
+        message: 'A product cannot be both excluded from tax and subject to INC.',
+      });
+    }
+    if (taxCategoryId && (isExcluded || incApplies)) {
+      throw new ApplicationException(400, {
+        code: ApiErrorCode.BAD_REQUEST,
+        message: 'Use either a tax category or direct excluded/INC flags, not both.',
       });
     }
   }

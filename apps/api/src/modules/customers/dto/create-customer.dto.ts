@@ -5,19 +5,13 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  Length,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
 
-export const CUSTOMER_DOCUMENT_TYPES = [
-  'CC',
-  'NIT',
-  'CE',
-  'PP',
-  'TI',
-  'NUIP',
-  'OTHER',
-] as const;
+export const CUSTOMER_DOCUMENT_TYPES = ['CC', 'NIT', 'CE', 'PP', 'TI', 'NUIP', 'OTHER'] as const;
 
 export type CustomerDocumentTypeInput = (typeof CUSTOMER_DOCUMENT_TYPES)[number];
 
@@ -32,16 +26,20 @@ export class CreateCustomerDto {
   @MaxLength(40)
   documentNumber!: string;
 
+  @ApiPropertyOptional({ description: 'Digito de verificacion separado del NIT.' })
+  @IsOptional()
+  @Matches(/^\d$/, { message: 'dv must contain exactly one digit' })
+  dv?: string;
+
   @ApiProperty({ example: 'Distribuidora La 80 S.A.S.' })
   @IsString()
   @MinLength(1)
   @MaxLength(160)
   name!: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
+  @ApiProperty({ example: 'facturacion@empresa.co' })
   @IsEmail()
-  email?: string;
+  email!: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -49,17 +47,34 @@ export class CreateCustomerDto {
   @MaxLength(40)
   phone?: string;
 
-  @ApiPropertyOptional()
+  @ApiProperty({ example: 'Carrera 7 # 18-24' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  address!: string;
+
+  @ApiPropertyOptional({ default: 'CO' })
   @IsOptional()
   @IsString()
-  @MaxLength(200)
-  address?: string;
+  @Length(2, 2)
+  countryCode?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(120)
   municipality?: string;
+
+  @ApiPropertyOptional({ description: 'Codigo DIVIPOLA cuando countryCode es CO.' })
+  @IsOptional()
+  @Matches(/^\d{5}$/, { message: 'municipalityCode must contain five digits' })
+  municipalityCode?: string;
+
+  @ApiPropertyOptional({ default: 'ZZ' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  tributeCode?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

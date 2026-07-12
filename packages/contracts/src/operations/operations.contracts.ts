@@ -66,10 +66,18 @@ export type FiscalCustomerDocumentType = 'CC' | 'NIT' | 'CE' | 'PP' | 'TI' | 'NU
 export type FiscalInvoiceDraftStatus =
   | 'DRAFT'
   | 'READY_TO_SEND'
+  | 'PENDING_VALIDATION'
+  | 'SENT_TO_PROVIDER'
   | 'SENT'
+  | 'ACCEPTED_BY_DIAN'
   | 'ACCEPTED'
+  | 'REJECTED_BY_DIAN'
   | 'REJECTED'
+  | 'CANCELLED_BEFORE_ISSUE'
   | 'CANCELLED'
+  | 'CORRECTED_WITH_CREDIT_NOTE'
+  | 'PARTIALLY_REFUNDED'
+  | 'FULLY_REFUNDED'
   | 'FAILED';
 
 export interface TableAccountItemDto {
@@ -141,11 +149,14 @@ export interface UpdateTableAccountItemRequest {
 export interface FiscalCustomerInput {
   documentType: FiscalCustomerDocumentType;
   documentNumber: string;
+  dv?: string;
   name: string;
   email?: string;
   phone?: string;
   address?: string;
   municipality?: string;
+  municipalityCode?: string;
+  countryCode?: string;
   taxResponsibility?: string;
 }
 
@@ -153,8 +164,17 @@ export interface ChargeTableAccountRequest {
   method: TablePaymentMethod;
   amount?: number;
   reference?: string;
+  factusPaymentMethodCode?: string;
   requiresInvoice: boolean;
   customer?: FiscalCustomerInput;
+  payments?: Array<{
+    method: TablePaymentMethod;
+    amount: number;
+    reference?: string;
+    factusPaymentMethodCode?: string;
+    paymentForm?: 1 | 2;
+    dueDate?: string;
+  }>;
 }
 
 export interface KitchenCommandItemDto {

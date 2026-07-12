@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  Prisma,
-  type Customer,
-  type CustomerDocumentType,
-} from '../../../generated/prisma';
+import { Prisma, type Customer, type CustomerDocumentType } from '../../../generated/prisma';
 import { PrismaService } from '../../database/prisma.service';
 
 export interface CustomerFilters {
@@ -14,12 +10,21 @@ export interface CustomerFilters {
 export interface CreateCustomerData {
   documentType: CustomerDocumentType;
   documentNumber: string;
+  dv: string | null;
+  factusIdentificationCode: string;
+  legalOrganizationCode: string;
+  company: string | null;
+  names: string | null;
   name: string;
   email: string | null;
   phone: string | null;
   address: string | null;
+  countryCode: string;
   municipality: string | null;
+  municipalityCode: string | null;
+  tributeCode: string;
   taxResponsibility: string | null;
+  taxResponsibilities: string[];
   isActive: boolean;
   createdById: string;
 }
@@ -27,12 +32,21 @@ export interface CreateCustomerData {
 export interface UpdateCustomerData {
   documentType?: CustomerDocumentType;
   documentNumber?: string;
+  dv?: string | null;
+  factusIdentificationCode?: string;
+  legalOrganizationCode?: string;
+  company?: string | null;
+  names?: string | null;
   name?: string;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  countryCode?: string;
   municipality?: string | null;
+  municipalityCode?: string | null;
+  tributeCode?: string;
   taxResponsibility?: string | null;
+  taxResponsibilities?: string[];
   isActive?: boolean;
   updatedById: string;
 }

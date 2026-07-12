@@ -1,15 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { CustomerDto, PaginatedResult } from '@gastroai/contracts';
-import {
-  type CustomerDocumentType,
-  type Prisma,
-} from '../../../generated/prisma';
+import { type CustomerDocumentType, type Prisma } from '../../../generated/prisma';
 import { ApiErrorCode } from '../../common/errors/api-error-code';
 import { ApplicationException } from '../../common/errors/application.exception';
-import {
-  createPaginatedResult,
-  normalizePagination,
-} from '../../common/pagination/pagination';
+import { parseColombianNit } from '../../common/fiscal/colombian-nit';
+import { createPaginatedResult, normalizePagination } from '../../common/pagination/pagination';
 import type { TenantRequestContext } from '../auth/auth.types';
 import { AuditService } from '../audit/audit.service';
 import { CustomerRepository } from './customer.repository';
@@ -48,30 +43,22 @@ export class CustomerService {
     return toCustomerDto(customer);
   }
 
-  async create(
-    ctx: TenantRequestContext,
-    dto: CreateCustomerDto,
-  ): Promise<CustomerDto> {
-    const documentNumber = dto.documentNumber.trim();
-    const documentType = dto.documentType as CustomerDocumentType;
+  async create(ctx: TenantRequestContext, dto: CreateCustomerDto): Promise<CustomerDto> {
+    const normalized = normalizeCustomer({
+      ...dto,
+      documentType: dto.documentType as CustomerDocumentType,
+    });
 
     const existing = await this.repository.findByDocument(
-      documentType,
-      documentNumber,
+      normalized.documentType,
+      normalized.documentNumber,
     );
     if (existing) {
-      throw duplicateDocument(documentNumber);
+      throw duplicateDocument(normalized.documentNumber);
     }
 
     const created = await this.repository.create({
-      documentType,
-      documentNumber,
-      name: dto.name.trim(),
-      email: dto.email?.trim() || null,
-      phone: dto.phone?.trim() || null,
-      address: dto.address?.trim() || null,
-      municipality: dto.municipality?.trim() || null,
-      taxResponsibility: dto.taxResponsibility?.trim() || null,
+      ...normalized,
       isActive: dto.isActive ?? true,
       createdById: ctx.actorUserId,
     });
@@ -98,36 +85,38 @@ export class CustomerService {
       throw notFound();
     }
 
-    const documentType = (dto.documentType ??
-      existing.documentType) as CustomerDocumentType;
-    const documentNumber = dto.documentNumber?.trim() ?? existing.documentNumber;
+    const normalized = normalizeCustomer({
+      documentType: (dto.documentType ?? existing.documentType) as CustomerDocumentType,
+      documentNumber: dto.documentNumber ?? existing.documentNumber,
+      dv: dto.dv === undefined ? existing.dv : dto.dv,
+      name: dto.name ?? existing.name,
+      email: dto.email === undefined ? existing.email : dto.email,
+      phone: dto.phone === undefined ? existing.phone : dto.phone,
+      address: dto.address === undefined ? existing.address : dto.address,
+      countryCode: dto.countryCode ?? existing.countryCode,
+      municipality: dto.municipality === undefined ? existing.municipality : dto.municipality,
+      municipalityCode:
+        dto.municipalityCode === undefined ? existing.municipalityCode : dto.municipalityCode,
+      tributeCode: dto.tributeCode ?? existing.tributeCode,
+      taxResponsibility:
+        dto.taxResponsibility === undefined ? existing.taxResponsibility : dto.taxResponsibility,
+    });
     const documentChanged =
-      documentType !== existing.documentType ||
-      documentNumber !== existing.documentNumber;
+      normalized.documentType !== existing.documentType ||
+      normalized.documentNumber !== existing.documentNumber;
     if (documentChanged) {
       const clash = await this.repository.findByDocument(
-        documentType,
-        documentNumber,
+        normalized.documentType,
+        normalized.documentNumber,
       );
       if (clash && clash.id !== id) {
-        throw duplicateDocument(documentNumber);
+        throw duplicateDocument(normalized.documentNumber);
       }
     }
 
     const before = toCustomerDto(existing);
     const updated = await this.repository.update(id, {
-      documentType: dto.documentType ? documentType : undefined,
-      documentNumber: dto.documentNumber === undefined ? undefined : documentNumber,
-      name: dto.name?.trim(),
-      email: dto.email === undefined ? undefined : dto.email.trim() || null,
-      phone: dto.phone === undefined ? undefined : dto.phone.trim() || null,
-      address: dto.address === undefined ? undefined : dto.address.trim() || null,
-      municipality:
-        dto.municipality === undefined ? undefined : dto.municipality.trim() || null,
-      taxResponsibility:
-        dto.taxResponsibility === undefined
-          ? undefined
-          : dto.taxResponsibility.trim() || null,
+      ...normalized,
       isActive: dto.isActive,
       updatedById: ctx.actorUserId,
     });
@@ -160,6 +149,104 @@ export class CustomerService {
       before: asJson(toCustomerDto(existing)),
     });
   }
+}
+
+interface CustomerInput {
+  documentType: CustomerDocumentType;
+  documentNumber: string;
+  dv?: string | null;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  countryCode?: string | null;
+  municipality?: string | null;
+  municipalityCode?: string | null;
+  tributeCode?: string | null;
+  taxResponsibility?: string | null;
+}
+
+function normalizeCustomer(input: CustomerInput) {
+  const documentType = input.documentType;
+  let documentNumber = input.documentNumber.trim();
+  let dv: string | null = null;
+
+  if (documentType === 'NIT') {
+    const nit = parseColombianNit(documentNumber, input.dv);
+    if (!nit?.isValid) {
+      throw invalidFiscalCustomer('El NIT y su digito de verificacion no coinciden.');
+    }
+    documentNumber = nit.number;
+    dv = nit.verificationDigit;
+  } else if (documentType === 'CC' || documentType === 'TI' || documentType === 'NUIP') {
+    if (!/^\d+$/.test(documentNumber)) {
+      throw invalidFiscalCustomer('El tipo de documento seleccionado solo admite numeros.');
+    }
+  }
+
+  const countryCode = (input.countryCode?.trim() || 'CO').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(countryCode)) {
+    throw invalidFiscalCustomer('El pais debe usar un codigo ISO de dos letras.');
+  }
+  const municipalityCode = cleanOptional(input.municipalityCode);
+  if (countryCode === 'CO' && !/^\d{5}$/.test(municipalityCode ?? '')) {
+    throw invalidFiscalCustomer(
+      'Un cliente residente en Colombia requiere municipio DIVIPOLA de cinco digitos.',
+    );
+  }
+
+  const name = input.name.trim();
+  const email = cleanOptional(input.email);
+  const address = cleanOptional(input.address);
+  if (!email || !address) {
+    throw invalidFiscalCustomer(
+      'El cliente fiscal requiere correo y direccion antes de guardarse.',
+    );
+  }
+  const taxResponsibility = cleanOptional(input.taxResponsibility);
+  return {
+    documentType,
+    documentNumber,
+    dv,
+    factusIdentificationCode: mapFactusDocumentCode(documentType),
+    legalOrganizationCode: documentType === 'NIT' ? '1' : '2',
+    company: documentType === 'NIT' ? name : null,
+    names: documentType === 'NIT' ? null : name,
+    name,
+    email,
+    phone: cleanOptional(input.phone),
+    address,
+    countryCode,
+    municipality: cleanOptional(input.municipality),
+    municipalityCode: countryCode === 'CO' ? municipalityCode : null,
+    tributeCode: cleanOptional(input.tributeCode) ?? 'ZZ',
+    taxResponsibility,
+    taxResponsibilities: taxResponsibility ? [taxResponsibility] : [],
+  };
+}
+
+function cleanOptional(value: string | null | undefined): string | null {
+  return value?.trim() || null;
+}
+
+function mapFactusDocumentCode(type: CustomerDocumentType): string {
+  const codes: Record<CustomerDocumentType, string> = {
+    CC: '13',
+    NIT: '31',
+    CE: '22',
+    PP: '41',
+    TI: '12',
+    NUIP: '91',
+    OTHER: '13',
+  };
+  return codes[type];
+}
+
+function invalidFiscalCustomer(message: string): ApplicationException {
+  return new ApplicationException(400, {
+    code: ApiErrorCode.VALIDATION_ERROR,
+    message,
+  });
 }
 
 function auditBase(ctx: TenantRequestContext) {

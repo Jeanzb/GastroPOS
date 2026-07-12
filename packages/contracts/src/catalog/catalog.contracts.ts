@@ -40,12 +40,19 @@ export interface ProductRecipeIngredientPayload {
 export interface ProductDto {
   id: string;
   categoryId: string | null;
+  taxCategoryId: string | null;
   sku: string | null;
   name: string;
   description: string | null;
   /** Price in integer minor units of `currency` (e.g. COP pesos). Never float. */
   priceAmount: number;
   currency: string;
+  fiscalName: string | null;
+  fiscalCodeReference: string | null;
+  unitMeasureCode: string;
+  standardCode: string;
+  isExcluded: boolean;
+  incApplies: boolean;
   isActive: boolean;
   isSellable: boolean;
   isInventoried: boolean;

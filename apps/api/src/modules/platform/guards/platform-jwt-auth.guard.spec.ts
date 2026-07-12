@@ -35,7 +35,11 @@ describe('PlatformJwtAuthGuard', () => {
       sessionId: 'platform_session_1',
     });
 
-    const guard = new PlatformJwtAuthGuard(jwtService as never, config as never, repository as never);
+    const guard = new PlatformJwtAuthGuard(
+      jwtService as never,
+      config as never,
+      repository as never,
+    );
     await expect(guard.canActivate(createContext())).resolves.toBe(true);
 
     expect(jwtService.verifyAsync).toHaveBeenCalledWith('token', {
@@ -56,7 +60,11 @@ describe('PlatformJwtAuthGuard', () => {
       sessionId: 'session_1',
     });
 
-    const guard = new PlatformJwtAuthGuard(jwtService as never, config as never, repository as never);
+    const guard = new PlatformJwtAuthGuard(
+      jwtService as never,
+      config as never,
+      repository as never,
+    );
     await expect(guard.canActivate(createContext())).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
