@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import {
   PrintTicket,
   TicketDivider,
@@ -53,6 +52,29 @@ export const PAYMENT_LABELS: Record<TablePaymentMethod, string> = {
   TRANSFER: 'Transferencia',
   OTHER: 'Otro',
 };
+
+const FACTUS_PAYMENT_LABELS = {
+  '10': 'Efectivo',
+  '47': 'Transferencia',
+  '49': 'Tarjeta debito',
+  '48': 'Tarjeta credito',
+  ZZZ: 'Otro',
+} as const;
+
+type FactusPaymentMethodCode = keyof typeof FACTUS_PAYMENT_LABELS;
+
+function defaultFactusPaymentCode(method: TablePaymentMethod): FactusPaymentMethodCode {
+  if (method === 'CASH') {
+    return '10';
+  }
+  if (method === 'TRANSFER') {
+    return '47';
+  }
+  if (method === 'CARD') {
+    return '49';
+  }
+  return 'ZZZ';
+}
 
 export function CommandDialog({
   command,
@@ -272,43 +294,53 @@ export function ChargeDialog({
     resolver: zodResolver(chargeTableAccountSchema),
     defaultValues: {
       method: 'CASH',
+      factusPaymentMethodCode: '10',
       amount: account?.balanceDue ?? 0,
       reference: '',
-      requiresInvoice: false,
+      fiscalRecipient: 'CONSUMER_FINAL',
       customer: undefined,
     },
   });
-  const requiresInvoice = form.watch('requiresInvoice');
+  const fiscalRecipient = form.watch('fiscalRecipient');
+  const paymentMethod = form.watch('method');
 
   useEffect(() => {
     if (open) {
       form.reset({
         method: 'CASH',
+        factusPaymentMethodCode: '10',
         amount: account?.balanceDue ?? 0,
         reference: '',
-        requiresInvoice: false,
+        fiscalRecipient: 'CONSUMER_FINAL',
         customer: undefined,
       });
     }
   }, [account?.balanceDue, form, open]);
 
   useEffect(() => {
-    if (requiresInvoice && !form.getValues('customer')) {
+    form.setValue('factusPaymentMethodCode', defaultFactusPaymentCode(paymentMethod));
+  }, [form, paymentMethod]);
+
+  useEffect(() => {
+    if (fiscalRecipient === 'IDENTIFIED' && !form.getValues('customer')) {
       form.setValue('customer', {
         documentType: 'CC',
         documentNumber: '',
+        dv: '',
         name: '',
         email: '',
         phone: '',
         address: '',
         municipality: '',
+        municipalityCode: '',
+        countryCode: 'CO',
         taxResponsibility: '',
       });
     }
-    if (!requiresInvoice) {
+    if (fiscalRecipient === 'CONSUMER_FINAL') {
       form.setValue('customer', undefined);
     }
-  }, [form, requiresInvoice]);
+  }, [form, fiscalRecipient]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -318,7 +350,7 @@ export function ChargeDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
               <FormField
                 control={form.control}
                 name="method"
@@ -333,6 +365,30 @@ export function ChargeDialog({
                       </FormControl>
                       <SelectContent>
                         {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="factusPaymentMethodCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Metodo fiscal</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(FACTUS_PAYMENT_LABELS).map(([value, label]) => (
                           <SelectItem key={value} value={value}>
                             {label}
                           </SelectItem>
@@ -378,23 +434,40 @@ export function ChargeDialog({
 
             <FormField
               control={form.control}
-              name="requiresInvoice"
+              name="fiscalRecipient"
               render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
-                  <div>
-                    <FormLabel>Requiere factura electronica</FormLabel>
-                    <p className="text-xs text-muted-foreground">
-                      Se crea un borrador fiscal; el envio DIAN queda pendiente.
-                    </p>
-                  </div>
+                <FormItem>
+                  <FormLabel>Adquiriente fiscal</FormLabel>
                   <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-muted/30 p-1" role="radiogroup">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={field.value === 'CONSUMER_FINAL' ? 'default' : 'ghost'}
+                        role="radio"
+                        aria-checked={field.value === 'CONSUMER_FINAL'}
+                        onClick={() => field.onChange('CONSUMER_FINAL')}
+                      >
+                        Consumidor final
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={field.value === 'IDENTIFIED' ? 'default' : 'ghost'}
+                        role="radio"
+                        aria-checked={field.value === 'IDENTIFIED'}
+                        onClick={() => field.onChange('IDENTIFIED')}
+                      >
+                        Cliente identificado
+                      </Button>
+                    </div>
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            {requiresInvoice ? (
+            {fiscalRecipient === 'IDENTIFIED' ? (
               <div className="grid gap-3 rounded-lg border border-border p-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -433,6 +506,21 @@ export function ChargeDialog({
                     </FormItem>
                   )}
                 />
+                {form.watch('customer.documentType') === 'NIT' ? (
+                  <FormField
+                    control={form.control}
+                    name="customer.dv"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>DV</FormLabel>
+                        <FormControl>
+                          <Input inputMode="numeric" maxLength={1} placeholder="7" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
                 <FormField
                   control={form.control}
                   name="customer.name"
@@ -474,12 +562,38 @@ export function ChargeDialog({
                 />
                 <FormField
                   control={form.control}
-                  name="customer.municipality"
+                  name="customer.municipalityCode"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Municipio</FormLabel>
+                      <FormLabel>Codigo municipio</FormLabel>
                       <FormControl>
-                        <Input placeholder="Medellin" {...field} />
+                        <Input inputMode="numeric" placeholder="05001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="customer.address"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Direccion</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Carrera 7 # 18-24" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="customer.taxResponsibility"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Responsabilidad tributaria</FormLabel>
+                      <FormControl>
+                        <Input placeholder="ZZ" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

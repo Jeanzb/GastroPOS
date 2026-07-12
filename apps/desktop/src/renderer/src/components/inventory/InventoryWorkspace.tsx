@@ -347,10 +347,10 @@ export function InventoryWorkspace() {
   return (
     <>
       <div
-        className="mx-auto grid max-w-[1320px] gap-4 xl:grid-cols-[minmax(0,1fr)_360px]"
+        className="mx-auto grid min-w-0 max-w-[1320px] gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
         data-cy="inventory-page"
       >
-        <section className="space-y-4">
+        <section className="min-w-0 space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <KpiCard label="Insumos" value={total} hint="Registrados en inventario" />
             <KpiCard

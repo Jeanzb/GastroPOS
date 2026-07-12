@@ -67,7 +67,7 @@ export function HourlySalesChart({
                       {point.amount > 0 ? formatMoney(point.amount, currency) : '-'}
                     </span>
                     <div
-                      className="w-full max-w-9 rounded-t-md bg-orange shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-orange/20 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                      className="w-full max-w-9 rounded-t-md bg-orange shadow-sm transition-all duration-[var(--motion-duration-enter)] hover:-translate-y-1 hover:shadow-orange/20 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                       style={{ height: `${percent}%`, opacity: point.amount > 0 ? 1 : 0.2 }}
                     />
                     <span className="nums text-[11px] text-muted-foreground">{formatHour(point.hour)}</span>

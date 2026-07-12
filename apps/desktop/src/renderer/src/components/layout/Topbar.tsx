@@ -71,8 +71,6 @@ export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) 
   const routeMeta = getRouteMeta(pathname);
   const availableRoles = getRoleProfiles(user?.role, user?.availableRoles);
   const selectedRole = user ? (activeRole ?? availableRoles[0]?.role ?? user.role) : null;
-  const isWaiterProfile = selectedRole === 'WAITER' || user?.role === 'WAITER';
-  const hideBranchSelectorOnMobile = pathname === '/pos' || isWaiterProfile;
   const rolesRef = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState({ left: 0, width: 0, ready: false });
 
@@ -123,7 +121,7 @@ export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) 
             {pill.ready ? (
               <span
                 aria-hidden
-                className="absolute top-1 bottom-1 left-0 rounded-md bg-carbon shadow-sm ease-[var(--motion-pop)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
+                className="absolute top-1 bottom-1 left-0 rounded-md bg-carbon shadow-sm ease-[var(--motion-pop)] [transition:transform_var(--motion-duration-pop),width_var(--motion-duration-pop)] motion-reduce:transition-none"
                 style={{ width: pill.width, transform: `translateX(${pill.left}px)` }}
               />
             ) : null}
@@ -133,7 +131,7 @@ export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) 
                 type="button"
                 data-active={selectedRole === profile.role}
                 className={cn(
-                  'relative z-10 h-7 rounded-md px-3 text-xs font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-ring/50',
+                  'relative z-10 h-7 rounded-md px-3 text-xs font-semibold transition-colors duration-[var(--motion-duration-medium)] focus-visible:ring-2 focus-visible:ring-ring/50',
                   selectedRole === profile.role
                     ? 'text-white'
                     : 'text-muted-foreground hover:text-foreground',
@@ -149,10 +147,7 @@ export function Topbar({ onOpenNavigation }: { onOpenNavigation?: () => void }) 
         <Button
           variant="outline"
           asChild
-          className={cn(
-            'touch-target h-10 gap-2 rounded-lg px-3',
-            hideBranchSelectorOnMobile ? 'hidden md:inline-flex' : null,
-          )}
+          className="touch-target hidden h-10 gap-2 rounded-lg px-3 md:inline-flex"
         >
           <Link to="/sede">
             <span className="h-2.5 w-2.5 rounded-full bg-success" />

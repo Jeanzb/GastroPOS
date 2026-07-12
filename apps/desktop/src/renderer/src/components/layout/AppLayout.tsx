@@ -26,7 +26,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="operational-surface no-body-overflow flex h-dvh overflow-hidden bg-background">
+    <div className="operational-surface no-body-overflow flex h-dvh min-w-0 max-w-full overflow-hidden bg-background">
       <Sidebar className="hidden lg:flex" />
       <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
         <SheetContent
@@ -45,12 +45,12 @@ export function AppLayout() {
           />
         </SheetContent>
       </Sheet>
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden">
         <Topbar onOpenNavigation={() => setNavigationOpen(true)} />
-        <main className="responsive-bottom-safe flex-1 overflow-auto p-3 pb-20 sm:p-4 md:p-6 lg:pb-6">
+        <main className="responsive-bottom-safe min-w-0 flex-1 overflow-auto overflow-x-hidden p-3 pb-20 sm:p-4 md:p-6 lg:pb-6">
           <div
             key={`${pathname}-${activeRole ?? 'role'}`}
-            className="dc-view-in mx-auto w-full max-w-[1480px]"
+            className="dc-view-in mx-auto w-full min-w-0 max-w-[1480px]"
           >
             <Outlet />
           </div>

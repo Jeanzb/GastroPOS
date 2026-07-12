@@ -11,14 +11,10 @@ const API_MESSAGE_ES: Record<string, string> = {
     'La categoría de producto referenciada no existe.',
   'Product was not found.': 'No se encontró el producto.',
   'Product category was not found.': 'No se encontró la categoría.',
-  'Fiscal provider configuration is required before testing.':
-    'Debes configurar el proveedor fiscal antes de probar la conexión.',
   'Invoice numbering range start must be lower than or equal to end.':
     'El rango de numeración debe iniciar en un valor menor o igual al final.',
   'Invoice resolution start date must be before the end date.':
     'La fecha inicial de la resolución debe ser anterior a la final.',
-  'Fiscal provider configuration was not found.':
-    'No se encontró la configuración del proveedor fiscal.',
   'This branch already has an open cash session.': 'Esta sede ya tiene una caja abierta.',
   'There is no open cash session for this branch.': 'No hay una caja abierta en esta sede.',
   'The cash session is already closed.': 'La caja ya está cerrada.',

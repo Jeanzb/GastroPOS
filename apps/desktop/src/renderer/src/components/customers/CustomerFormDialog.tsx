@@ -46,10 +46,7 @@ interface CustomerFormDialogProps {
   onSubmit: (values: CustomerFormValues) => Promise<void>;
 }
 
-const DOCUMENT_TYPE_LABELS: Record<
-  (typeof CUSTOMER_DOCUMENT_TYPES)[number],
-  string
-> = {
+const DOCUMENT_TYPE_LABELS: Record<(typeof CUSTOMER_DOCUMENT_TYPES)[number], string> = {
   CC: 'Cedula de ciudadania (CC)',
   NIT: 'NIT',
   CE: 'Cedula de extranjeria (CE)',
@@ -66,12 +63,14 @@ function getDefaultValues(customer?: CustomerDto): CustomerFormValues {
   return {
     documentType: customer?.documentType ?? 'CC',
     documentNumber: nitMatch ? nitMatch[1] : rawNumber,
-    verificationDigit: nitMatch ? nitMatch[2] : '',
+    verificationDigit: customer?.dv ?? (nitMatch ? nitMatch[2] : ''),
     name: customer?.name ?? '',
     email: customer?.email ?? '',
     phone: customer?.phone ?? '',
     address: customer?.address ?? '',
+    countryCode: customer?.countryCode ?? 'CO',
     municipality: customer?.municipality ?? '',
+    municipalityCode: customer?.municipalityCode ?? '',
     taxResponsibility: customer?.taxResponsibility ?? '',
     isActive: customer?.isActive ?? true,
   };
@@ -99,6 +98,7 @@ export function CustomerFormDialog({
   const mode = customer ? 'edit' : 'create';
   const documentType = form.watch('documentType');
   const verificationDigit = form.watch('verificationDigit') ?? '';
+  const countryCode = form.watch('countryCode');
   const isNit = documentType === 'NIT';
 
   useEffect(() => {
@@ -154,9 +154,7 @@ export function CustomerFormDialog({
                   <FormItem>
                     <div
                       className={
-                        isNit
-                          ? 'grid grid-cols-[minmax(0,1fr)_56px] gap-x-2 gap-y-2'
-                          : 'grid gap-2'
+                        isNit ? 'grid grid-cols-[minmax(0,1fr)_56px] gap-x-2 gap-y-2' : 'grid gap-2'
                       }
                     >
                       <FormLabel className={isNit ? 'self-end' : undefined}>
@@ -267,6 +265,50 @@ export function CustomerFormDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="countryCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pais (ISO)</FormLabel>
+                    <FormControl>
+                      <Input
+                        maxLength={2}
+                        placeholder="CO"
+                        {...field}
+                        onChange={(event) => field.onChange(event.target.value.toUpperCase())}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {countryCode === 'CO' ? (
+                <FormField
+                  control={form.control}
+                  name="municipalityCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Codigo DIVIPOLA</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="numeric"
+                          maxLength={5}
+                          placeholder="05001"
+                          {...field}
+                          onChange={(event) =>
+                            field.onChange(event.target.value.replace(/\D/g, '').slice(0, 5))
+                          }
+                        />
+                      </FormControl>
+                      <FormDescription>Municipio oficial DIAN de cinco digitos.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
 
               <FormField
                 control={form.control}

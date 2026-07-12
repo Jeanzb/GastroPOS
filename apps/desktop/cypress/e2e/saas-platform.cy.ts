@@ -21,29 +21,16 @@ interface TenantLoginResponse {
   };
 }
 
-const NIT_WEIGHTS = [3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71];
-
 function appPath(path: string): string {
   return `/#${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-function computeNitVerificationDigit(nit: string): string {
-  const digits = nit.replace(/\D/g, '').split('').reverse();
-  const sum = digits.reduce(
-    (total, digit, index) => total + Number(digit) * (NIT_WEIGHTS[index] ?? 0),
-    0,
-  );
-  const remainder = sum % 11;
-  return String(remainder < 2 ? remainder : 11 - remainder);
-}
-
 describe('SaaS platform', () => {
-  it('creates a tenant and controls access -> tenant and feature guards block operations', () => {
+  it('creates a tenant and controls SaaS access without operating fiscal data', () => {
     const stamp = `${Date.now()}-${Cypress._.random(1000, 9999)}`;
     const tenantName = `Cypress Restaurante ${stamp}`;
     const ownerEmail = `owner-${stamp}@gastroia.test`;
-    const nit = `90${Cypress._.random(1000000, 9999999)}`;
-    const nitVerificationDigit = computeNitVerificationDigit(nit);
+    let platformToken = '';
 
     cy.intercept('POST', '**/api/v1/platform/auth/login').as('platformLogin');
     cy.intercept('GET', '**/api/v1/platform/tenants').as('platformTenants');
@@ -63,6 +50,7 @@ describe('SaaS platform', () => {
     cy.wait('@platformLogin')
       .its('response.body')
       .should((body: PlatformLoginResponse) => {
+        platformToken = body.tokens.accessToken;
         expect(body.tokens.accessToken).to.be.a('string').and.not.be.empty;
       });
     cy.location('hash').should('eq', '#/platform');
@@ -74,10 +62,10 @@ describe('SaaS platform', () => {
     cy.get('[data-cy="platform-new-tenant"]').click();
     cy.get('[data-cy="platform-tenant-form"]').should('be.visible');
     cy.get('[data-cy="platform-tenant-name"]').type(tenantName);
-    cy.get('[data-cy="platform-tenant-nit"]').type(nit);
-    cy.get('[data-cy="platform-tenant-nit-dv"]').should('have.value', nitVerificationDigit);
-    cy.get('[data-cy="platform-tenant-municipality"]').type('Bogota');
-    cy.get('[data-cy="platform-tenant-fiscal-responsibility"]').type('Responsable de IVA');
+    cy.get('[data-cy="platform-tenant-nit"]').should('not.exist');
+    cy.get('[data-cy="platform-tenant-municipality"]').should('not.exist');
+    cy.get('[data-cy="platform-tenant-fiscal-responsibility"]').should('not.exist');
+    cy.get('[data-cy="platform-tenant-branch-city"]').type('Bogota');
     cy.get('[data-cy="platform-tenant-owner-email"]').type(ownerEmail);
     cy.get('[data-cy="platform-tenant-owner-name"]').type('Owner Cypress');
     cy.get('[data-cy="platform-tenant-owner-password"]').type('Temporal123!');
@@ -92,6 +80,34 @@ describe('SaaS platform', () => {
       expect(tenant.name).to.eq(tenantName);
       expect(tenant.planCode).to.eq('BASIC');
       expect(tenant.status).to.eq('ACTIVE');
+      cy.env<{ apiUrl: string }>(['apiUrl']).then(({ apiUrl }) => {
+        cy.request({
+          method: 'GET',
+          url: `${apiUrl}/platform/tenants/${tenant.id}`,
+          headers: { Authorization: `Bearer ${platformToken}` },
+        })
+          .its('body.features')
+          .should((features: Array<{ code: string; enabled: boolean }>) => {
+            expect(features.find((feature) => feature.code === 'dian.enabled')?.enabled).to.eq(
+              true,
+            );
+          });
+
+        cy.request({
+          method: 'GET',
+          url: `${apiUrl}/platform/tenants/${tenant.id}/fiscal/documents`,
+          headers: { Authorization: `Bearer ${platformToken}` },
+          failOnStatusCode: false,
+        })
+          .its('status')
+          .should('eq', 404);
+      });
+
+      cy.visit(appPath(`/platform/tenants/${tenant.id}`));
+      cy.get('body').should('contain.text', 'Facturacion electronica DIAN: habilitada');
+      cy.get('[role="tablist"]').should('not.contain.text', 'Facturacion');
+      cy.get('body').should('not.contain.text', 'NIT');
+      cy.visit(appPath('/platform/tenants'));
     });
     cy.wait('@platformTenants');
     cy.contains('[data-cy="platform-tenant-row"]', tenantName)
@@ -121,7 +137,9 @@ describe('SaaS platform', () => {
           url: `${apiUrl}/inventory-items`,
           headers: { Authorization: `Bearer ${body.tokens.accessToken}` },
           failOnStatusCode: false,
-        }).its('status').should('eq', 403);
+        })
+          .its('status')
+          .should('eq', 403);
       });
     });
 
@@ -160,7 +178,9 @@ describe('SaaS platform', () => {
           url: `${apiUrl}/inventory-items`,
           headers: { Authorization: `Bearer ${body.tokens.accessToken}` },
           failOnStatusCode: false,
-        }).its('status').should('eq', 403);
+        })
+          .its('status')
+          .should('eq', 403);
       });
     });
   });

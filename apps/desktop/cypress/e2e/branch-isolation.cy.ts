@@ -44,22 +44,18 @@ function createTenant(
       headers: { Authorization: `Bearer ${platformToken}` },
       body: {
         name,
-        nit: `9000${Cypress._.random(10000, 99999)}`,
-        municipality: 'Medellin',
         ownerEmail,
         ownerFullName: `Owner ${label}`,
         ownerTemporaryPassword: OWNER_PASSWORD,
         branchName: `Sede ${label}`,
         branchCode: `MAIN${label}`,
+        branchCity: 'Medellin',
       },
     })
     .then(({ body }) => ({ name: body.name, ownerEmail }));
 }
 
-function ownerLogin(
-  apiUrl: string,
-  tenant: SeededTenant,
-): Cypress.Chainable<string> {
+function ownerLogin(apiUrl: string, tenant: SeededTenant): Cypress.Chainable<string> {
   return cy
     .request<TenantLoginResponse>({
       method: 'POST',
@@ -134,6 +130,31 @@ describe('branch isolation (two tenants)', () => {
                     cy.request({
                       method: 'GET',
                       url: `${apiUrl}/inventory-items`,
+                      headers: {
+                        Authorization: `Bearer ${tokenA}`,
+                        'X-GastroIA-Branch-Id': branchA.id,
+                      },
+                      failOnStatusCode: false,
+                    })
+                      .its('status')
+                      .should('eq', 200);
+
+                    // Fiscal records use the same active-branch boundary.
+                    cy.request({
+                      method: 'GET',
+                      url: `${apiUrl}/fiscal/documents`,
+                      headers: {
+                        Authorization: `Bearer ${tokenA}`,
+                        'X-GastroIA-Branch-Id': branchB.id,
+                      },
+                      failOnStatusCode: false,
+                    })
+                      .its('status')
+                      .should('eq', 403);
+
+                    cy.request({
+                      method: 'GET',
+                      url: `${apiUrl}/fiscal/documents`,
                       headers: {
                         Authorization: `Bearer ${tokenA}`,
                         'X-GastroIA-Branch-Id': branchA.id,

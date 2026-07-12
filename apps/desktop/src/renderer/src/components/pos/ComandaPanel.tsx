@@ -1,16 +1,11 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Minus, Plus, Printer, ReceiptText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MoneyInput } from '@/components/ui/money-input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatMoney } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { TableAccountDto } from '@/types/dining';
-
-type TableAccountItemDto = TableAccountDto['items'][number];
-
-const TAX_RATE = 0.08;
 
 interface ComandaPanelProps {
   account: TableAccountDto | null;
@@ -45,24 +40,13 @@ export function ComandaPanel({
   className,
 }: ComandaPanelProps) {
   const reduceMotion = useReducedMotion();
-  // Visual-only overrides — they tune the on-screen comanda, not the persisted sale.
-  const [priceOverrides, setPriceOverrides] = useState<Record<string, number>>({});
-
   const items = account?.items ?? [];
-  const priceFor = (item: TableAccountItemDto) => priceOverrides[item.id] ?? item.unitPriceAmount;
-  const lineTotalFor = (item: TableAccountItemDto) => priceFor(item) * item.quantity;
-
-  const totals = useMemo(() => {
-    const subtotal = items.reduce((sum, item) => sum + priceFor(item) * item.quantity, 0);
-    const tax = Math.round(subtotal * TAX_RATE);
-    return {
-      subtotal,
-      tax,
-      total: subtotal + tax,
-      units: items.reduce((sum, item) => sum + item.quantity, 0),
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, priceOverrides]);
+  const totals = {
+    subtotal: account?.subtotal ?? 0,
+    tax: account?.taxTotal ?? 0,
+    total: account?.grandTotal ?? 0,
+    units: items.reduce((sum, item) => sum + item.quantity, 0),
+  };
 
   const currency = account?.currency ?? 'COP';
 
@@ -144,29 +128,19 @@ export function ComandaPanel({
                           name={item.name}
                           disabled={isMutating}
                           reduceMotion={reduceMotion}
-                          onDec={() => onQuantityChange(item.id, Math.max(0, item.quantity - 1))}
-                          onInc={() => onQuantityChange(item.id, item.quantity + 1)}
+                          onSetQuantity={(quantity) => onQuantityChange(item.id, quantity)}
                         />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[13.5px] font-semibold leading-tight">
                             {item.name}
                           </p>
-                          <div className="mt-1 inline-flex w-fit items-center gap-1 rounded-lg border border-[#E7DECF] bg-surface-quiet px-2 py-[3px] transition-colors focus-within:border-orange/50 focus-within:bg-orange/5">
-                            <span className="nums text-[11px] font-semibold text-[#8A8173]">$</span>
-                            <MoneyInput
-                              value={priceFor(item)}
-                              onChange={(value) =>
-                                setPriceOverrides((prev) => ({ ...prev, [item.id]: value }))
-                              }
-                              aria-label={`Precio unitario de ${item.name}`}
-                              className="h-5 w-[58px] border-transparent bg-transparent px-0 text-left text-[12px] font-semibold text-foreground shadow-none focus-visible:ring-0"
-                            />
-                            <span className="text-[10.5px] text-muted-foreground">c/u</span>
-                          </div>
+                          <p className="nums mt-1 text-[12px] text-muted-foreground">
+                            {formatMoney(item.unitPriceAmount, currency)} c/u
+                          </p>
                         </div>
                         <div className="flex flex-col items-end">
                           <AnimatedAmount
-                            value={lineTotalFor(item)}
+                            value={item.lineTotal}
                             currency={currency}
                             reduceMotion={reduceMotion}
                             className="nums text-sm font-bold"
@@ -199,7 +173,7 @@ export function ComandaPanel({
               />
             </div>
             <div className="mb-3 flex items-center justify-between text-[13px] text-[#6B6359]">
-              <span>Impuesto al consumo (8%)</span>
+              <span>Impuestos</span>
               <AnimatedAmount
                 value={totals.tax}
                 currency={currency}
@@ -265,38 +239,106 @@ function Stepper({
   name,
   disabled,
   reduceMotion,
-  onDec,
-  onInc,
+  onSetQuantity,
 }: {
   quantity: number;
   name: string;
   disabled: boolean;
   reduceMotion: boolean | null;
-  onDec: () => void;
-  onInc: () => void;
+  onSetQuantity: (quantity: number) => void;
 }) {
+  const [draftQuantity, setDraftQuantity] = useState(String(quantity));
+
+  useEffect(() => {
+    setDraftQuantity(String(quantity));
+  }, [quantity]);
+
+  const parsedDraftQuantity = () => {
+    const nextQuantity = Number.parseInt(draftQuantity, 10);
+    return Number.isFinite(nextQuantity) && nextQuantity >= 1 ? nextQuantity : null;
+  };
+
+  const commitDraftQuantity = () => {
+    const nextQuantity = parsedDraftQuantity();
+
+    if (nextQuantity === null) {
+      setDraftQuantity(String(quantity));
+      return;
+    }
+
+    if (nextQuantity !== quantity) {
+      onSetQuantity(nextQuantity);
+    } else {
+      setDraftQuantity(String(quantity));
+    }
+  };
+
+  const stepQuantity = (delta: number) => {
+    const baseQuantity = parsedDraftQuantity() ?? quantity;
+    const nextQuantity = Math.max(0, baseQuantity + delta);
+
+    if (nextQuantity === 0) {
+      onSetQuantity(0);
+      return;
+    }
+
+    setDraftQuantity(String(nextQuantity));
+
+    if (nextQuantity !== quantity) {
+      onSetQuantity(nextQuantity);
+    }
+  };
+
+  const handleQuantityKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.currentTarget.blur();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      setDraftQuantity(String(quantity));
+      event.currentTarget.blur();
+    }
+  };
+
   return (
     <div className="flex shrink-0 items-center overflow-hidden rounded-lg border border-border">
       <motion.button
         type="button"
         disabled={disabled}
         aria-label={`Restar ${name}`}
-        onClick={onDec}
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={() => stepQuantity(-1)}
         whileTap={reduceMotion ? undefined : { scale: 0.85 }}
         className="grid h-10 w-9 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
       >
         <Minus className="size-4" />
       </motion.button>
-      <span className="nums w-8 text-center text-sm font-bold">
-        <span key={quantity} className={cn('block', !reduceMotion && 'pos-pop-qty')}>
-          {quantity}
-        </span>
-      </span>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        aria-label={`Cantidad de ${name}`}
+        disabled={disabled}
+        value={draftQuantity}
+        onFocus={(event) => event.currentTarget.select()}
+        onBlur={commitDraftQuantity}
+        onKeyDown={handleQuantityKeyDown}
+        onChange={(event) => {
+          const nextValue = event.target.value.replace(/\D/g, '').slice(0, 4);
+          setDraftQuantity(nextValue);
+        }}
+        className={cn(
+          'nums h-10 w-12 border-x border-border bg-white text-center text-sm font-bold outline-none transition-colors duration-[var(--motion-duration-fast)] focus:bg-orange/5 focus:ring-2 focus:ring-orange/20 disabled:opacity-50',
+          !reduceMotion && draftQuantity === String(quantity) && 'pos-pop-qty',
+        )}
+      />
       <motion.button
         type="button"
         disabled={disabled}
         aria-label={`Sumar ${name}`}
-        onClick={onInc}
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={() => stepQuantity(1)}
         whileTap={reduceMotion ? undefined : { scale: 0.85 }}
         className="grid h-10 w-9 place-items-center bg-surface-quiet text-[#6B6359] transition-colors active:bg-[#E4DCCF] disabled:opacity-50"
       >

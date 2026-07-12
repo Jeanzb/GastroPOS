@@ -26,6 +26,7 @@ const HEALTH_LABELS: Record<PlatformHealthCheckDto['name'], string> = {
   api: 'API',
   postgres: 'PostgreSQL',
   redis: 'Redis',
+  factus: 'Facturacion electronica',
 };
 
 const HEALTH_CLASSES: Record<PlatformHealthStatus, string> = {
@@ -119,8 +120,7 @@ export function PlatformOverviewPage() {
                     <div>
                       <p className="font-semibold">{tenant.name}</p>
                       <p className="text-muted-foreground">
-                        {tenant.municipality ?? 'Ciudad sin registrar'} - {tenant.branchCount} sedes -{' '}
-                        {tenant.userCount} usuarios
+                        {tenant.branchCount} sedes - {tenant.userCount} usuarios
                       </p>
                     </div>
                     <PlatformStatusBadge status={tenant.status} />
@@ -128,7 +128,10 @@ export function PlatformOverviewPage() {
                 ))}
               </div>
             ) : (
-              <PlatformState title="Sin restaurantes" description="Crea el primer restaurante desde Restaurantes." />
+              <PlatformState
+                title="Sin restaurantes"
+                description="Crea el primer restaurante desde Restaurantes."
+              />
             )}
           </CardContent>
         </Card>
@@ -159,7 +162,10 @@ export function PlatformOverviewPage() {
                 <div className="space-y-3">
                   <Badge
                     variant="outline"
-                    className={cn('rounded-full px-3 py-1 font-semibold', HEALTH_CLASSES[healthQuery.data.status])}
+                    className={cn(
+                      'rounded-full px-3 py-1 font-semibold',
+                      HEALTH_CLASSES[healthQuery.data.status],
+                    )}
                   >
                     {healthQuery.data.status === 'operational'
                       ? 'Operativa'
@@ -199,14 +205,17 @@ export function PlatformOverviewPage() {
                     >
                       <p className="font-semibold">{tenant.name}</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        NIT {tenant.nit ?? 'sin registrar'} - {tenant.municipality ?? 'sin ciudad'}
+                        {tenant.branchCount} sedes - {tenant.userCount} usuarios
                       </p>
                       <PlatformStatusBadge status={tenant.status} className="mt-3" />
                     </div>
                   ))}
                 </div>
               ) : (
-                <PlatformState title="Sin alertas" description="No hay restaurantes suspendidos, cancelados o en mora." />
+                <PlatformState
+                  title="Sin alertas"
+                  description="No hay restaurantes suspendidos, cancelados o en mora."
+                />
               )}
             </CardContent>
           </Card>
@@ -223,8 +232,14 @@ function HealthCheckRow({ check }: { check: PlatformHealthCheckDto }) {
         <Server className="size-4 text-muted-foreground" />
         <span className="font-semibold">{HEALTH_LABELS[check.name]}</span>
       </div>
-      <span className={cn('rounded-full px-2.5 py-1 text-xs font-bold', HEALTH_CLASSES[check.status])}>
-        {check.status === 'operational' ? 'OK' : check.status === 'degraded' ? 'Degradado' : 'Caido'}
+      <span
+        className={cn('rounded-full px-2.5 py-1 text-xs font-bold', HEALTH_CLASSES[check.status])}
+      >
+        {check.status === 'operational'
+          ? 'OK'
+          : check.status === 'degraded'
+            ? 'Degradado'
+            : 'Caido'}
         {typeof check.latencyMs === 'number' ? ` - ${check.latencyMs}ms` : ''}
       </span>
     </div>

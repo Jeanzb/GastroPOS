@@ -376,8 +376,8 @@ export function PurchasesWorkspace() {
 
   return (
     <>
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]" data-cy="purchases-page">
-        <section className="space-y-4">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]" data-cy="purchases-page">
+        <section className="min-w-0 space-y-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <KpiCard
               label="Compras del mes"

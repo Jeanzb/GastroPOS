@@ -4,7 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePlatformPlans } from '@/hooks/platform';
-import { BASIC_PLAN_CURRENCY, BASIC_PLAN_PRICE_AMOUNT, featureDescription, featureLabel } from '@/lib/platform-labels';
+import {
+  BASIC_PLAN_CURRENCY,
+  BASIC_PLAN_PRICE_AMOUNT,
+  featureDescription,
+  featureLabel,
+} from '@/lib/platform-labels';
 import { formatMoney } from '@/lib/format';
 
 export function PlatformPlansPage() {
@@ -25,11 +30,17 @@ export function PlatformPlansPage() {
           tone="danger"
         />
       ) : !basicPlan ? (
-        <PlatformState title="BASIC no disponible" description="El seed de planes debe crear el plan BASIC." tone="danger" />
+        <PlatformState
+          title="BASIC no disponible"
+          description="El seed de planes debe crear el plan BASIC."
+          tone="danger"
+        />
       ) : (
         <Card className="platform-card max-w-xl rounded-2xl bg-white/92">
           <CardContent className="p-7">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Plan unico</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Plan unico
+            </p>
             <h2 className="mt-3 font-display text-3xl font-bold">Basico</h2>
             <p className="nums mt-4 text-4xl font-bold">
               {formatMoney(BASIC_PLAN_PRICE_AMOUNT, BASIC_PLAN_CURRENCY)}

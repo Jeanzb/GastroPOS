@@ -63,7 +63,10 @@ export function PlatformFeaturesPage() {
         featureCode: feature.code,
         payload: { enabled: true, reason: 'Activacion manual desde platform' },
       });
-      toast.success('Modulo activado', `${featureLabel(feature.code)} quedo disponible para el restaurante.`);
+      toast.success(
+        'Modulo activado',
+        `${featureLabel(feature.code)} quedo disponible para el restaurante.`,
+      );
     } catch (error) {
       toast.error('No se pudo activar', errorMessage(error));
     }
@@ -78,7 +81,10 @@ export function PlatformFeaturesPage() {
         featureCode: pendingFeature.code,
         payload: { enabled: false, reason: reason.trim() },
       });
-      toast.warning('Modulo desactivado', `${featureLabel(pendingFeature.code)} quedo bloqueado para este restaurante.`);
+      toast.warning(
+        'Modulo desactivado',
+        `${featureLabel(pendingFeature.code)} quedo bloqueado para este restaurante.`,
+      );
       setPendingFeature(null);
       setReason('');
     } catch (error) {
@@ -124,7 +130,7 @@ export function PlatformFeaturesPage() {
               <SelectContent>
                 {(tenantsQuery.data ?? []).map((tenant) => (
                   <SelectItem key={tenant.id} value={tenant.id}>
-                    {tenant.name} {tenant.nit ? `- NIT ${tenant.nit}` : ''}
+                    {tenant.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -133,14 +139,15 @@ export function PlatformFeaturesPage() {
               <div className="platform-motion-in rounded-xl border bg-muted/30 p-4 text-sm">
                 <p className="font-semibold">{selectedTenant.name}</p>
                 <p className="text-muted-foreground">
-                  NIT {selectedTenant.nit ?? 'sin registrar'} - {selectedTenant.municipality ?? 'sin ciudad'}
+                  {selectedTenant.branchCount} sedes - {selectedTenant.userCount} usuarios
                 </p>
                 <PlatformStatusBadge status={selectedTenant.status} className="mt-3" />
               </div>
             ) : null}
             <div className="rounded-xl border border-orange/20 bg-orange/8 p-4 text-sm text-carbon">
               <ShieldAlert className="mb-2 size-4 text-orange" />
-              Los cambios de modulos son para incidentes o soporte. El plan comercial sigue siendo BASIC.
+              Los cambios de modulos son para incidentes o soporte. El plan comercial sigue siendo
+              BASIC.
             </div>
           </CardContent>
         </Card>
@@ -236,12 +243,16 @@ export function PlatformFeaturesPage() {
         </Card>
       </div>
 
-      <Dialog open={Boolean(pendingFeature)} onOpenChange={(open) => !open && setPendingFeature(null)}>
+      <Dialog
+        open={Boolean(pendingFeature)}
+        onOpenChange={(open) => !open && setPendingFeature(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Desactivar modulo</DialogTitle>
             <DialogDescription>
-              Indica el motivo operativo. Esta accion bloquea el modulo para el restaurante seleccionado.
+              Indica el motivo operativo. Esta accion bloquea el modulo para el restaurante
+              seleccionado.
             </DialogDescription>
           </DialogHeader>
           <Textarea

@@ -14,14 +14,8 @@ export const fiscalProfileFormSchema = z
     numberingRangeTo: z.number().int().min(1).optional(),
     numberingValidFrom: z.string().trim().optional(),
     numberingValidUntil: z.string().trim().optional(),
-    providerType: z.enum(['DIAN_DIRECT', 'TECHNOLOGY_PROVIDER', 'API_PROVIDER']),
-    providerName: z.string().trim().optional(),
-    environment: z.enum(['TEST', 'PRODUCTION']),
-    endpointUrl: z.string().trim().optional(),
-    softwareId: z.string().trim().optional(),
-    certificateAlias: z.string().trim().optional(),
-    accountId: z.string().trim().optional(),
-    apiKeyRef: z.string().trim().optional(),
+    numberingRangeId: z.number().int().min(1).optional(),
+    creditNoteNumberingRangeId: z.number().int().min(1).optional(),
   })
   .refine(
     (values) =>
@@ -35,3 +29,14 @@ export const fiscalProfileFormSchema = z
   );
 
 export type FiscalProfileFormValues = z.infer<typeof fiscalProfileFormSchema>;
+
+export const factusConnectionFormSchema = z.object({
+  environment: z.enum(['SANDBOX', 'PRODUCTION']),
+  baseUrl: z.string().trim().url('Ingresa una URL valida').optional().or(z.literal('')),
+  clientId: z.string().trim().min(1, 'Client ID requerido').max(240),
+  clientSecret: z.string().min(1, 'Client secret requerido').max(500),
+  username: z.string().trim().email('Correo de Factus invalido').max(254),
+  password: z.string().min(1, 'Contrasena requerida').max(500),
+});
+
+export type FactusConnectionFormValues = z.infer<typeof factusConnectionFormSchema>;

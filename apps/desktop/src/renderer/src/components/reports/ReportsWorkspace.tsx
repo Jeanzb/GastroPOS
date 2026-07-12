@@ -179,7 +179,7 @@ export function ReportsWorkspace() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <Card className="gap-4 border-border/80 bg-surface-raised py-5 shadow-sm">
           <CardHeader className="px-5">
             <div className="flex flex-wrap items-start justify-between gap-4">

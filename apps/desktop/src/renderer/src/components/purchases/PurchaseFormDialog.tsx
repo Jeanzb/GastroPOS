@@ -195,7 +195,7 @@ export function PurchaseFormDialog({
               </div>
 
               <div className="overflow-hidden rounded-xl border border-border">
-                <div className="grid grid-cols-[1fr_72px_120px_110px_36px] items-center gap-2 border-b border-border bg-surface-quiet px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                <div className="hidden grid-cols-[minmax(0,1fr)_72px_120px_110px_36px] items-center gap-2 border-b border-border bg-surface-quiet px-3 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground md:grid">
                   <span>Insumo</span>
                   <span className="text-center">Cant.</span>
                   <span className="text-right">Costo unit.</span>
@@ -211,7 +211,7 @@ export function PurchaseFormDialog({
                     <div
                       key={row.id}
                       data-cy="purchase-item-row"
-                      className="grid grid-cols-[1fr_72px_120px_110px_36px] items-start gap-2 border-b border-[#F2ECE3] px-3 py-2 last:border-b-0"
+                      className="grid gap-3 border-b border-[#F2ECE3] px-3 py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_72px_120px_110px_36px] md:items-start md:gap-2 md:py-2"
                     >
                       <FormField
                         control={form.control}
@@ -237,6 +237,9 @@ export function PurchaseFormDialog({
                         name={`items.${index}.quantity`}
                         render={({ field }) => (
                           <FormItem>
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground md:hidden">
+                              Cant.
+                            </p>
                             <FormControl>
                               <Input
                                 type="number"
@@ -259,6 +262,9 @@ export function PurchaseFormDialog({
                         name={`items.${index}.unitCost`}
                         render={({ field }) => (
                           <FormItem>
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground md:hidden">
+                              Costo unit.
+                            </p>
                             <FormControl>
                               <MoneyInput
                                 className="h-9 text-right"
@@ -273,16 +279,21 @@ export function PurchaseFormDialog({
                           </FormItem>
                         )}
                       />
-                      <span className="nums pt-2 text-right text-sm font-semibold">
-                        {formatMoney(line, 'COP')}
-                      </span>
+                      <div>
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground md:hidden">
+                          Subtotal
+                        </p>
+                        <span className="nums block rounded-md bg-surface-quiet px-3 py-2 text-right text-sm font-semibold md:bg-transparent md:px-0 md:pt-2">
+                          {formatMoney(line, 'COP')}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         aria-label="Quitar insumo"
                         data-cy="purchase-item-remove"
                         disabled={fields.length === 1}
                         onClick={() => remove(index)}
-                        className="mt-1.5 grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface-quiet hover:text-danger-strong disabled:opacity-40"
+                        className="grid size-10 place-items-center justify-self-end rounded-md text-muted-foreground transition-colors hover:bg-surface-quiet hover:text-danger-strong disabled:opacity-40 md:mt-1.5 md:size-7"
                       >
                         <Trash2 className="size-4" />
                       </button>

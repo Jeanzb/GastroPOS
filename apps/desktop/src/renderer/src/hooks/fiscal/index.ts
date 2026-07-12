@@ -1,1 +1,1 @@
-export { useFiscalProfile } from './useFiscalProfile';
+export { useFiscalDocument, useFiscalProfile } from './useFiscalProfile';

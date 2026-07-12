@@ -6,6 +6,8 @@ import type {
   PlatformAuthResponse,
   PlatformFeatureDto,
   PlatformHealthDto,
+  PlatformIntegrationLogDto,
+  PlatformIntegrationSummaryDto,
   PlatformLoginRequest,
   PlatformOverviewDto,
   PlatformTenantDetailDto,
@@ -13,6 +15,7 @@ import type {
   PlanDto,
   TenantFeatureOverrideDto,
   UpdateTenantFeatureOverrideRequest,
+  UpdatePlatformTenantRequest,
   UpdateTenantPlanRequest,
   UpdateTenantStatusRequest,
 } from '@gastroai/contracts';
@@ -47,7 +50,10 @@ export const PlatformService = {
   },
 
   createBranch(id: string, payload: CreatePlatformBranchRequest) {
-    return platformApiClient.post<PlatformTenantDetailDto>(`/platform/tenants/${id}/branches`, payload);
+    return platformApiClient.post<PlatformTenantDetailDto>(
+      `/platform/tenants/${id}/branches`,
+      payload,
+    );
   },
 
   updateTenantStatus(id: string, payload: UpdateTenantStatusRequest) {
@@ -57,8 +63,15 @@ export const PlatformService = {
     );
   },
 
+  updateTenantBasics(id: string, payload: UpdatePlatformTenantRequest) {
+    return platformApiClient.patch<PlatformTenantDetailDto>(`/platform/tenants/${id}`, payload);
+  },
+
   updateTenantPlan(id: string, payload: UpdateTenantPlanRequest) {
-    return platformApiClient.patch<PlatformTenantDetailDto>(`/platform/tenants/${id}/plan`, payload);
+    return platformApiClient.patch<PlatformTenantDetailDto>(
+      `/platform/tenants/${id}/plan`,
+      payload,
+    );
   },
 
   deleteTenant(id: string, payload: DeletePlatformTenantRequest) {
@@ -78,6 +91,16 @@ export const PlatformService = {
 
   getHealth() {
     return platformApiClient.get<PlatformHealthDto>('/platform/health');
+  },
+
+  getIntegrationSummary() {
+    return platformApiClient.get<PlatformIntegrationSummaryDto>('/platform/integrations/summary');
+  },
+
+  listIntegrationLogs(take = 50) {
+    return platformApiClient.get<PlatformIntegrationLogDto[]>('/platform/integrations/logs', {
+      take,
+    });
   },
 
   listTenantFeatures(id: string) {

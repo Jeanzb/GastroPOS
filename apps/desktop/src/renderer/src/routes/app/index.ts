@@ -4,8 +4,8 @@ import { catalogRoute } from '../catalog';
 import { customersRoute } from '../customers';
 import { dashboardRoute } from '../dashboard';
 import { employeesRoute } from '../employees';
-import { fiscalRoute } from '../fiscal';
 import { floorRoute } from '../floor';
+import { fiscalRoute } from '../fiscal';
 import { inventoryRoute } from '../inventory';
 import { onboardingRoute } from '../onboarding';
 import { posRoute } from '../pos';
@@ -24,8 +24,8 @@ export const appRoutes = appLayoutRoute.addChildren([
   customersRoute,
   purchasesRoute,
   employeesRoute,
-  fiscalRoute,
   reportsRoute,
+  fiscalRoute,
   floorRoute,
   onboardingRoute,
 ]);

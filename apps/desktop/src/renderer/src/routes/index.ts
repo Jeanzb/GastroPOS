@@ -3,6 +3,7 @@ import { rootFeatureRoutes } from './app';
 import { loginRoute } from './auth';
 import { platformRoute } from './platform';
 import { platformFeaturesRoute } from './platform/features';
+import { platformIntegrationsRoute } from './platform/integrations';
 import { platformLoginRoute } from './platform/login';
 import { platformPlansRoute } from './platform/plans';
 import { platformTenantDetailRoute } from './platform/tenant-detail';
@@ -16,6 +17,7 @@ const routeTree = rootRoute.addChildren([
   platformTenantsRoute,
   platformTenantDetailRoute,
   platformFeaturesRoute,
+  platformIntegrationsRoute,
   platformPlansRoute,
   ...rootFeatureRoutes,
 ]);

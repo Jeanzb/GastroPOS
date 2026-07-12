@@ -21,13 +21,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { fiscalProfileFormSchema, type FiscalProfileFormValues } from '@/schemas/fiscal';
 import type { FiscalProfileDto } from '@/types/fiscal';
 
@@ -40,8 +33,6 @@ interface FiscalProfileFormDialogProps {
 }
 
 function getDefaultValues(profile: FiscalProfileDto | null): FiscalProfileFormValues {
-  const provider = profile?.providerConfig;
-
   return {
     legalName: profile?.legalName ?? '',
     nit: profile?.nit ?? '',
@@ -55,14 +46,8 @@ function getDefaultValues(profile: FiscalProfileDto | null): FiscalProfileFormVa
     numberingRangeTo: profile?.numberingRangeTo ?? undefined,
     numberingValidFrom: toDateInput(profile?.numberingValidFrom),
     numberingValidUntil: toDateInput(profile?.numberingValidUntil),
-    providerType: provider?.providerType ?? 'TECHNOLOGY_PROVIDER',
-    providerName: provider?.providerName ?? '',
-    environment: provider?.environment ?? 'TEST',
-    endpointUrl: provider?.endpointUrl ?? '',
-    softwareId: provider?.softwareId ?? '',
-    certificateAlias: provider?.certificateAlias ?? '',
-    accountId: provider?.accountId ?? '',
-    apiKeyRef: provider?.apiKeyRef ?? '',
+    numberingRangeId: profile?.numberingRangeId ?? undefined,
+    creditNoteNumberingRangeId: profile?.creditNoteNumberingRangeId ?? undefined,
   };
 }
 
@@ -99,17 +84,17 @@ export function FiscalProfileFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-4xl">
+        <DialogHeader className="min-w-0">
           <DialogTitle>Configurar perfil fiscal</DialogTitle>
           <DialogDescription>
-            Guarda datos fiscales colombianos y referencias tecnicas del proveedor.
+            Guarda los datos tributarios y las resoluciones DIAN de este restaurante.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={onFormSubmit} className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+          <form onSubmit={onFormSubmit} className="min-w-0 space-y-6">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="legalName"
@@ -196,7 +181,7 @@ export function FiscalProfileFormDialog({
               />
             </div>
 
-            <div className="grid gap-4 rounded-lg border border-border bg-background p-4 md:grid-cols-4">
+            <div className="grid min-w-0 gap-4 rounded-lg border border-border bg-background p-4 md:grid-cols-4">
               <FormField
                 control={form.control}
                 name="invoiceResolutionNumber"
@@ -294,150 +279,65 @@ export function FiscalProfileFormDialog({
                   </FormItem>
                 )}
               />
-            </div>
-
-            <div className="grid gap-4 rounded-lg border border-border bg-background p-4 md:grid-cols-3">
-              <FormField
-                control={form.control}
-                name="providerType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de integracion</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="TECHNOLOGY_PROVIDER">Proveedor tecnologico</SelectItem>
-                        <SelectItem value="DIAN_DIRECT">DIAN directo</SelectItem>
-                        <SelectItem value="API_PROVIDER">API fiscal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <FormField
                 control={form.control}
-                name="environment"
+                name="numberingRangeId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ambiente</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="TEST">Pruebas</SelectItem>
-                        <SelectItem value="PRODUCTION">Produccion</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="providerName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Proveedor</FormLabel>
+                    <FormLabel>ID del rango de factura</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre del proveedor" {...field} />
+                      <Input
+                        type="number"
+                        min={1}
+                        value={field.value ?? ''}
+                        onChange={(event) =>
+                          field.onChange(parseOptionalNumber(event.target.value))
+                        }
+                      />
                     </FormControl>
+                    <FormDescription>
+                      Identificador del rango autorizado para factura de venta.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
-                name="endpointUrl"
+                name="creditNoteNumberingRangeId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Endpoint</FormLabel>
+                    <FormLabel>ID rango nota credito</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://..." {...field} />
+                      <Input
+                        type="number"
+                        min={1}
+                        value={field.value ?? ''}
+                        onChange={(event) =>
+                          field.onChange(parseOptionalNumber(event.target.value))
+                        }
+                      />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="softwareId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Software ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Referencia DIAN/proveedor" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="certificateAlias"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Alias certificado</FormLabel>
-                    <FormControl>
-                      <Input placeholder="secret://certificados/dian" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="accountId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cuenta proveedor</FormLabel>
-                    <FormControl>
-                      <Input placeholder="acct_..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="apiKeyRef"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel>Referencia API key</FormLabel>
-                    <FormControl>
-                      <Input placeholder="secret://fiscal/api-key" {...field} />
-                    </FormControl>
-                    <FormDescription>No guardes la clave real en el escritorio.</FormDescription>
+                    <FormDescription>
+                      Necesario para correcciones posteriores a la emision.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="min-w-0">
               <Button
                 type="button"
                 variant="outline"
-                className="bg-background"
+                className="w-full bg-background sm:w-auto"
                 onClick={() => onOpenChange(false)}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Guardar perfil fiscal
               </Button>

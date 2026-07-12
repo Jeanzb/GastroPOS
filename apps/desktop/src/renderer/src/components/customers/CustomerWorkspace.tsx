@@ -39,24 +39,20 @@ function normalizeOptional(value?: string): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function buildDocumentNumber(values: CustomerFormValues): string {
-  const number = values.documentNumber.trim();
-  const dv = values.verificationDigit?.trim();
-  if (values.documentType === 'NIT' && dv) {
-    return `${number}-${dv}`;
-  }
-  return number;
-}
-
 function toCustomerPayload(values: CustomerFormValues): CreateCustomerPayload {
   return {
     documentType: values.documentType,
-    documentNumber: buildDocumentNumber(values),
+    documentNumber: values.documentNumber.trim(),
+    dv: values.documentType === 'NIT' ? normalizeOptional(values.verificationDigit) : undefined,
     name: values.name.trim(),
-    email: normalizeOptional(values.email),
+    email: values.email.trim(),
     phone: normalizeOptional(values.phone),
-    address: normalizeOptional(values.address),
+    address: values.address.trim(),
+    countryCode: values.countryCode,
     municipality: normalizeOptional(values.municipality),
+    municipalityCode:
+      values.countryCode === 'CO' ? normalizeOptional(values.municipalityCode) : undefined,
+    tributeCode: 'ZZ',
     taxResponsibility: normalizeOptional(values.taxResponsibility),
     isActive: values.isActive,
   };
@@ -70,12 +66,13 @@ export function CustomerWorkspace() {
   const [customerToDelete, setCustomerToDelete] = useState<CustomerDto>();
   const customerList = customers.listQuery.data?.data ?? EMPTY_CUSTOMERS;
   const total = customers.listQuery.data?.meta.total ?? customerList.length;
-  const isSaving =
-    customers.createMutation.isPending || customers.updateMutation.isPending;
+  const isSaving = customers.createMutation.isPending || customers.updateMutation.isPending;
 
   const stats = useMemo(() => {
     const active = customerList.filter((customer) => customer.isActive).length;
-    const iva = customerList.filter((customer) => isIvaResponsible(customer.taxResponsibility)).length;
+    const iva = customerList.filter((customer) =>
+      isIvaResponsible(customer.taxResponsibility),
+    ).length;
     const companies = customerList.filter((customer) => customer.documentType === 'NIT').length;
     return { active, iva, companies };
   }, [customerList]);
@@ -110,7 +107,10 @@ export function CustomerWorkspace() {
           id: selectedCustomer.id,
           payload: toCustomerPayload(values),
         });
-        appToast.success('Cliente actualizado', `${values.name} quedo listo para facturacion electronica.`);
+        appToast.success(
+          'Cliente actualizado',
+          `${values.name} quedo listo para facturacion electronica.`,
+        );
         return;
       }
       await customers.createMutation.mutateAsync(toCustomerPayload(values));
@@ -130,7 +130,10 @@ export function CustomerWorkspace() {
     }
     try {
       await customers.deleteMutation.mutateAsync(customerToDelete.id);
-      appToast.success('Cliente eliminado', `${customerToDelete.name} salio del registro fiscal activo.`);
+      appToast.success(
+        'Cliente eliminado',
+        `${customerToDelete.name} salio del registro fiscal activo.`,
+      );
       setCustomerToDelete(undefined);
     } catch (error) {
       appToast.error(
@@ -166,28 +169,38 @@ export function CustomerWorkspace() {
 
         <div className="grid grid-cols-2 gap-[14px] lg:grid-cols-4">
           <KpiCard label="Clientes registrados" value={total} hint="Total en el registro fiscal" />
-          <KpiCard label="Activos" value={stats.active} hint="Disponibles para facturar" accent="success" />
+          <KpiCard
+            label="Activos"
+            value={stats.active}
+            hint="Disponibles para facturar"
+            accent="success"
+          />
           <KpiCard label="Responsables de IVA" value={stats.iva} hint="Régimen con retención" />
           <KpiCard label="Empresas (NIT)" value={stats.companies} hint="Personas jurídicas" />
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-border bg-surface-raised">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-[18px] py-4">
-            <div>
-              <h2 className="font-display text-[18px] font-bold tracking-tight">Directorio de clientes</h2>
+          <div className="flex flex-col gap-4 border-b border-border px-4 py-4 sm:px-[18px] md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <h2 className="font-display text-[18px] font-bold tracking-tight">
+                Directorio de clientes
+              </h2>
               <p className="text-[12.5px] text-[#6B6359]">Régimen fiscal y contacto por cliente</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative w-64">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] md:w-auto md:min-w-[420px]">
+              <div className="relative min-w-0">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={customers.params.search ?? ''}
                   onChange={onSearch}
                   placeholder="Buscar por nombre, documento o correo"
-                  className="pl-9"
+                  className="min-w-0 pl-9"
                 />
               </div>
-              <Button onClick={onCreateClick}>
+              <Button
+                onClick={onCreateClick}
+                className="w-full justify-center sm:w-auto sm:shrink-0"
+              >
                 <Plus className="size-4" />
                 Nuevo cliente
               </Button>
@@ -217,8 +230,7 @@ export function CustomerWorkspace() {
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar cliente</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta accion eliminara a &quot;{customerToDelete?.name ?? ''}&quot; del
-              registro.
+              Esta accion eliminara a &quot;{customerToDelete?.name ?? ''}&quot; del registro.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

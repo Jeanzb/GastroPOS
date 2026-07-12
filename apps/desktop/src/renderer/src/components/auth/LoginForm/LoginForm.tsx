@@ -106,7 +106,7 @@ export function LoginForm() {
                         type="text"
                         autoCapitalize="none"
                         autoComplete="off"
-                        placeholder="GastroIA Demo o 900123456"
+                        placeholder="GastroAI Demo o 900123456"
                         data-cy="login-tenant-identifier"
                         {...field}
                       />

@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  PlugZap,
   ShieldCheck,
   SlidersHorizontal,
   Tags,
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { to: '/platform', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/platform/tenants', label: 'Restaurantes', icon: Building2, exact: false },
   { to: '/platform/features', label: 'Modulos', icon: SlidersHorizontal, exact: false },
+  { to: '/platform/integrations', label: 'Integraciones', icon: PlugZap, exact: false },
   { to: '/platform/plans', label: 'Plan Basico', icon: Tags, exact: false },
 ] as const;
 

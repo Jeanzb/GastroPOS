@@ -7,6 +7,7 @@ import type {
   DeletePlatformTenantRequest,
   PlatformLoginRequest,
   UpdateTenantFeatureOverrideRequest,
+  UpdatePlatformTenantRequest,
   UpdateTenantPlanRequest,
   UpdateTenantStatusRequest,
 } from '@gastroai/contracts';
@@ -66,6 +67,22 @@ export function usePlatformHealth() {
   });
 }
 
+export function usePlatformIntegrationSummary() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.platformIntegrationSummary],
+    queryFn: () => PlatformService.getIntegrationSummary(),
+    refetchInterval: 30_000,
+  });
+}
+
+export function usePlatformIntegrationLogs() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.platformIntegrationLogs],
+    queryFn: () => PlatformService.listIntegrationLogs(),
+    refetchInterval: 30_000,
+  });
+}
+
 export function usePlatformTenantFeatures(id: string | null) {
   return useQuery({
     queryKey: [QUERY_KEYS.platformTenantFeatures, id],
@@ -100,7 +117,20 @@ export function useCreatePlatformBranch(id: string) {
 export function useUpdateTenantStatus(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: UpdateTenantStatusRequest) => PlatformService.updateTenantStatus(id, payload),
+    mutationFn: (payload: UpdateTenantStatusRequest) =>
+      PlatformService.updateTenantStatus(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenants] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformOverview] });
+    },
+  });
+}
+
+export function useUpdatePlatformTenant(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdatePlatformTenantRequest) => PlatformService.updateTenantBasics(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenants] });
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });
@@ -149,7 +179,8 @@ export function useUpdateTenantFeatureOverride(id: string) {
 export function useDeleteTenantFeatureOverride(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (featureCode: string) => PlatformService.deleteTenantFeatureOverride(id, featureCode),
+    mutationFn: (featureCode: string) =>
+      PlatformService.deleteTenantFeatureOverride(id, featureCode),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenantFeatures, id] });
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.platformTenant, id] });

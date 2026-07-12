@@ -37,25 +37,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useCreatePlatformTenant, usePlatformTenants, useUpdateTenantStatus } from '@/hooks/platform';
+import {
+  useCreatePlatformTenant,
+  usePlatformTenants,
+  useUpdateTenantStatus,
+} from '@/hooks/platform';
 import { useAppToast } from '@/hooks/ui';
-import { computeNitVerificationDigit, parseColombianNit } from '@/lib/co-document';
 import { BASIC_PLAN_CURRENCY, BASIC_PLAN_PRICE_AMOUNT } from '@/lib/platform-labels';
 import { formatMoney } from '@/lib/format';
 import type { PlatformTenantDto, TenantStatus } from '@gastroai/contracts';
 
 const EMPTY_TENANT_FORM = {
   name: '',
-  nit: '',
-  nitVerificationDigit: '',
-  municipality: '',
-  taxRegime: 'Responsable de IVA',
-  fiscalResponsibility: 'Responsable de IVA',
   ownerEmail: '',
   ownerFullName: '',
   ownerTemporaryPassword: '',
   branchName: 'Sede Principal',
   branchCode: 'MAIN',
+  branchCity: '',
   branchAddress: '',
   branchPhone: '',
 };
@@ -65,16 +64,12 @@ type TenantFormErrors = Partial<Record<keyof TenantForm, string>>;
 
 const FIELD_LABELS: Record<keyof TenantForm, string> = {
   name: 'Nombre restaurante',
-  nit: 'NIT',
-  nitVerificationDigit: 'DV',
-  municipality: 'Ciudad principal',
-  taxRegime: 'Regimen tributario',
-  fiscalResponsibility: 'Responsabilidad fiscal',
   ownerEmail: 'Correo owner',
   ownerFullName: 'Nombre owner',
   ownerTemporaryPassword: 'Password temporal',
   branchName: 'Sede inicial',
   branchCode: 'Codigo sede',
+  branchCity: 'Ciudad de la sede',
   branchAddress: 'Direccion sede',
   branchPhone: 'Telefono sede',
 };
@@ -99,11 +94,7 @@ export function PlatformTenantsPage() {
     if (!needle) {
       return tenants;
     }
-    return tenants.filter((tenant) =>
-      [tenant.name, tenant.nit, tenant.municipality]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(needle)),
-    );
+    return tenants.filter((tenant) => tenant.name.toLowerCase().includes(needle));
   }, [search, tenants]);
 
   const stats = useMemo(() => {
@@ -120,27 +111,8 @@ export function PlatformTenantsPage() {
   const handleChange =
     (key: keyof typeof form): ChangeEventHandler<HTMLInputElement> =>
     (event) => {
-      if (key === 'nit') {
-        const value = event.target.value.replace(/\D/g, '').slice(0, 15);
-        setForm((current) => ({
-          ...current,
-          nit: value,
-          nitVerificationDigit: computeNitVerificationDigit(value) ?? '',
-        }));
-        setFormErrors((current) => ({
-          ...current,
-          nit: undefined,
-          nitVerificationDigit: undefined,
-        }));
-        return;
-      }
-
       const value =
-        key === 'branchCode'
-          ? normalizeBranchCode(event.target.value)
-          : key === 'nitVerificationDigit'
-            ? event.target.value.replace(/\D/g, '').slice(0, 1)
-            : event.target.value;
+        key === 'branchCode' ? normalizeBranchCode(event.target.value) : event.target.value;
       setForm((current) => ({ ...current, [key]: value }));
       setFormErrors((current) => ({ ...current, [key]: undefined }));
     };
@@ -167,7 +139,9 @@ export function PlatformTenantsPage() {
       if (Object.keys(apiErrors).length > 0) {
         setFormErrors(apiErrors);
       }
-      const message = firstFormError(apiErrors) ?? (error instanceof Error ? error.message : 'No se pudo crear el restaurante.');
+      const message =
+        firstFormError(apiErrors) ??
+        (error instanceof Error ? error.message : 'No se pudo crear el restaurante.');
       toast.error('No se pudo crear', message);
     }
   };
@@ -187,9 +161,7 @@ export function PlatformTenantsPage() {
       await updateStatus.mutateAsync({
         status: selectedTenantAction.status,
         suspensionReason:
-          selectedTenantAction.status === 'SUSPENDED'
-            ? 'Suspension manual desde platform'
-            : null,
+          selectedTenantAction.status === 'SUSPENDED' ? 'Suspension manual desde platform' : null,
       });
       toast.success('Estado actualizado', `${selectedTenantAction.tenant.name} quedo actualizado.`);
       setSelectedTenantAction(null);
@@ -207,12 +179,12 @@ export function PlatformTenantsPage() {
       <div className="mb-6 flex flex-col gap-4 border-b border-carbon/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div />
         <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-          <div className="flex h-11 min-w-[300px] items-center gap-2 rounded-xl border border-carbon/10 bg-white px-3 shadow-sm focus-within:border-orange/45">
+          <div className="flex h-11 w-full min-w-0 items-center gap-2 rounded-xl border border-carbon/10 bg-white px-3 shadow-sm focus-within:border-orange/45 sm:min-w-[300px]">
             <Search className="size-4 text-muted-foreground" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar restaurante, NIT..."
+              placeholder="Buscar restaurante"
               className="h-9 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
               data-cy="platform-tenant-search"
             />
@@ -230,9 +202,24 @@ export function PlatformTenantsPage() {
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <MetricCard label="Restaurantes activos" value={stats.activeTenants} hint={`${tenants.length} en total`} icon={Store} />
-        <MetricCard label="Sedes operando" value={stats.operatingBranches} hint="Activas en la red" icon={Warehouse} />
-        <MetricCard label="Seguimiento" value={stats.blockedTenants} hint="En mora, suspendidos o cancelados" icon={ShieldAlert} />
+        <MetricCard
+          label="Restaurantes activos"
+          value={stats.activeTenants}
+          hint={`${tenants.length} en total`}
+          icon={Store}
+        />
+        <MetricCard
+          label="Sedes operando"
+          value={stats.operatingBranches}
+          hint="Activas en la red"
+          icon={Warehouse}
+        />
+        <MetricCard
+          label="Seguimiento"
+          value={stats.blockedTenants}
+          hint="En mora, suspendidos o cancelados"
+          icon={ShieldAlert}
+        />
       </div>
 
       <Card className="platform-card rounded-xl bg-white/92">
@@ -264,9 +251,9 @@ export function PlatformTenantsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Restaurante</TableHead>
-                  <TableHead>NIT</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Sedes</TableHead>
+                  <TableHead>Usuarios</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right">Mensualidad</TableHead>
                   <TableHead className="text-right">Accion</TableHead>
@@ -284,24 +271,25 @@ export function PlatformTenantsPage() {
                         <TenantAvatar name={tenant.name} />
                         <div>
                           <p className="font-semibold">{tenant.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {tenant.municipality ?? 'Ciudad sin registrar'}
-                          </p>
+                          <p className="text-xs text-muted-foreground">Cuenta SaaS</p>
                         </div>
                       </Link>
                     </TableCell>
-                    <TableCell className="nums text-muted-foreground">{tenant.nit ?? 'Sin NIT'}</TableCell>
                     <TableCell>
                       <span className="rounded-full bg-emerald-700/10 px-2.5 py-1 text-xs font-bold text-emerald-800">
                         BASIC
                       </span>
                     </TableCell>
                     <TableCell className="nums font-semibold">{tenant.branchCount}</TableCell>
+                    <TableCell className="nums text-muted-foreground">{tenant.userCount}</TableCell>
                     <TableCell>
                       <PlatformStatusBadge status={tenant.status} />
                     </TableCell>
                     <TableCell className="nums text-right font-bold">
-                      {formatMoney(tenant.planPriceAmount ?? BASIC_PLAN_PRICE_AMOUNT, tenant.planPriceCurrency ?? BASIC_PLAN_CURRENCY)}
+                      {formatMoney(
+                        tenant.planPriceAmount ?? BASIC_PLAN_PRICE_AMOUNT,
+                        tenant.planPriceCurrency ?? BASIC_PLAN_CURRENCY,
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -329,7 +317,7 @@ export function PlatformTenantsPage() {
                 title={search.trim() ? 'Sin resultados' : 'Aun no hay restaurantes'}
                 description={
                   search.trim()
-                    ? 'Ajusta la busqueda por nombre o NIT.'
+                    ? 'Ajusta la busqueda por nombre.'
                     : 'Crea el primer restaurante para activar el panel SaaS.'
                 }
               />
@@ -338,7 +326,10 @@ export function PlatformTenantsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={Boolean(selectedTenantAction)} onOpenChange={(open) => !open && setSelectedTenantAction(null)}>
+      <Dialog
+        open={Boolean(selectedTenantAction)}
+        onOpenChange={(open) => !open && setSelectedTenantAction(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cambiar estado del restaurante</DialogTitle>
@@ -387,7 +378,10 @@ function CreateTenantDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
-        <Button className="h-11 bg-orange text-white hover:bg-orange/90" data-cy="platform-new-tenant">
+        <Button
+          className="h-11 bg-orange text-white hover:bg-orange/90"
+          data-cy="platform-new-tenant"
+        >
           <Plus className="size-4" />
           Nuevo restaurante
         </Button>
@@ -396,36 +390,35 @@ function CreateTenantDialog({
         <DialogHeader>
           <DialogTitle>Crear restaurante</DialogTitle>
           <DialogDescription>
-            BASIC queda activo por {formatMoney(BASIC_PLAN_PRICE_AMOUNT, BASIC_PLAN_CURRENCY)} al mes.
+            BASIC queda activo por {formatMoney(BASIC_PLAN_PRICE_AMOUNT, BASIC_PLAN_CURRENCY)} al
+            mes.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-5" onSubmit={onSubmit} data-cy="platform-tenant-form">
           {Object.keys(errors).length > 0 ? <TenantFormErrorSummary errors={errors} /> : null}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nombre restaurante" value={form.name} error={errors.name} onChange={onChange('name')} dataCy="platform-tenant-name" />
-            <NitField
-              nit={form.nit}
-              verificationDigit={form.nitVerificationDigit}
-              nitError={errors.nit}
-              verificationDigitError={errors.nitVerificationDigit}
-              onNitChange={onChange('nit')}
-              onVerificationDigitChange={onChange('nitVerificationDigit')}
+            <Field
+              label="Nombre restaurante"
+              value={form.name}
+              error={errors.name}
+              onChange={onChange('name')}
+              dataCy="platform-tenant-name"
             />
             <Field
-              label="Ciudad principal"
-              value={form.municipality}
-              error={errors.municipality}
-              onChange={onChange('municipality')}
-              dataCy="platform-tenant-municipality"
+              label="Ciudad de la sede"
+              value={form.branchCity}
+              error={errors.branchCity}
+              onChange={onChange('branchCity')}
+              dataCy="platform-tenant-branch-city"
             />
             <Field
-              label="Responsabilidad fiscal"
-              value={form.fiscalResponsibility}
-              error={errors.fiscalResponsibility}
-              onChange={onChange('fiscalResponsibility')}
-              dataCy="platform-tenant-fiscal-responsibility"
+              label="Correo owner"
+              type="email"
+              value={form.ownerEmail}
+              error={errors.ownerEmail}
+              onChange={onChange('ownerEmail')}
+              dataCy="platform-tenant-owner-email"
             />
-            <Field label="Correo owner" type="email" value={form.ownerEmail} error={errors.ownerEmail} onChange={onChange('ownerEmail')} dataCy="platform-tenant-owner-email" />
             <Field
               label="Nombre owner"
               value={form.ownerFullName}
@@ -481,70 +474,6 @@ function CreateTenantDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function NitField({
-  nit,
-  verificationDigit,
-  nitError,
-  verificationDigitError,
-  onNitChange,
-  onVerificationDigitChange,
-}: {
-  nit: string;
-  verificationDigit: string;
-  nitError?: string;
-  verificationDigitError?: string;
-  onNitChange: ChangeEventHandler<HTMLInputElement>;
-  onVerificationDigitChange: ChangeEventHandler<HTMLInputElement>;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor="nit">NIT</Label>
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <Input
-            id="nit"
-            inputMode="numeric"
-            value={nit}
-            onChange={onNitChange}
-            required
-            aria-invalid={Boolean(nitError)}
-            data-cy="platform-tenant-nit"
-            placeholder="900123456"
-          />
-          {nitError ? <p className="mt-2 text-xs font-medium text-destructive">{nitError}</p> : null}
-        </div>
-        <div className="w-16 shrink-0">
-          <Label htmlFor="nit-dv" className="sr-only">
-            Digito de verificacion
-          </Label>
-          <Input
-            id="nit-dv"
-            inputMode="numeric"
-            maxLength={1}
-            value={verificationDigit}
-            onChange={onVerificationDigitChange}
-            required
-            aria-invalid={Boolean(verificationDigitError)}
-            className="text-center font-bold"
-            data-cy="platform-tenant-nit-dv"
-            placeholder="DV"
-          />
-          {verificationDigitError ? (
-            <p className="mt-2 text-center text-xs font-medium text-destructive">
-              {verificationDigitError}
-            </p>
-          ) : null}
-        </div>
-      </div>
-      {!nitError && !verificationDigitError ? (
-        <p className="text-xs text-muted-foreground">
-          El DV se calcula automaticamente segun la formula DIAN.
-        </p>
-      ) : null}
-    </div>
   );
 }
 
@@ -664,13 +593,12 @@ function validateTenantForm(input: TenantForm): TenantFormErrors {
   const errors: TenantFormErrors = {};
   const requiredFields: Array<keyof TenantForm> = [
     'name',
-    'nit',
-    'municipality',
     'ownerEmail',
     'ownerFullName',
     'ownerTemporaryPassword',
     'branchName',
     'branchCode',
+    'branchCity',
   ];
 
   for (const field of requiredFields) {
@@ -684,15 +612,6 @@ function validateTenantForm(input: TenantForm): TenantFormErrors {
   }
   if (input.ownerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.ownerEmail.trim())) {
     errors.ownerEmail = 'Ingresa un correo valido.';
-  }
-  if (input.nit.trim() && !/^[0-9.-]+$/.test(input.nit.trim())) {
-    errors.nit = 'El NIT solo puede tener numeros.';
-  }
-  const nit = parseColombianNit(input.nit, input.nitVerificationDigit);
-  if (input.nit.trim() && !nit) {
-    errors.nit = 'Ingresa un NIT valido.';
-  } else if (nit && !nit.isValid) {
-    errors.nitVerificationDigit = `Debe ser ${nit.expectedVerificationDigit}.`;
   }
   if (input.branchCode.trim() && !/^[A-Z0-9_-]+$/.test(input.branchCode.trim())) {
     errors.branchCode = 'Usa solo mayusculas, numeros, guion o guion bajo.';
@@ -722,7 +641,11 @@ function validationFields(details: unknown): Record<string, string[]> {
     return {};
   }
   const detailsObject = details as Record<string, unknown>;
-  if (detailsObject.fields && typeof detailsObject.fields === 'object' && !Array.isArray(detailsObject.fields)) {
+  if (
+    detailsObject.fields &&
+    typeof detailsObject.fields === 'object' &&
+    !Array.isArray(detailsObject.fields)
+  ) {
     return normalizeFieldMap(detailsObject.fields as Record<string, unknown>);
   }
   const validation = detailsObject.validation;
@@ -763,12 +686,6 @@ function translateValidationMessage(field: keyof TenantForm, message: string): s
   }
   if (field === 'ownerEmail' && /email/i.test(message)) {
     return 'Ingresa un correo valido.';
-  }
-  if (field === 'nit' && /match|regular expression/i.test(message)) {
-    return 'El NIT solo puede tener numeros.';
-  }
-  if (field === 'nitVerificationDigit' && /match|regular expression|digito|verification/i.test(message)) {
-    return 'Ingresa el digito de verificacion del NIT.';
   }
   if (/should not be empty|must be longer than or equal to 2/i.test(message)) {
     return `${FIELD_LABELS[field]} es obligatorio.`;

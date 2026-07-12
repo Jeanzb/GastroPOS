@@ -431,8 +431,9 @@ export function PosWorkspace() {
           method: values.method,
           amount: values.amount,
           reference: values.reference,
-          requiresInvoice: values.requiresInvoice,
-          customer: values.requiresInvoice ? values.customer : undefined,
+          factusPaymentMethodCode: values.factusPaymentMethodCode,
+          requiresInvoice: true,
+          customer: values.fiscalRecipient === 'IDENTIFIED' ? values.customer : undefined,
         },
       });
       setReceipt(result);
@@ -440,9 +441,9 @@ export function PosWorkspace() {
       setChargeOpen(false);
       appToast.success(
         'Cuenta cobrada',
-        values.requiresInvoice
+        values.fiscalRecipient === 'IDENTIFIED'
           ? 'Se creó un borrador de factura electrónica.'
-          : 'La mesa quedó liberada.',
+          : 'Se creó un borrador fiscal para consumidor final.',
       );
     } catch (error) {
       appToast.error(

@@ -65,18 +65,18 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     requiredPermission: 'employees:view',
   },
   {
-    label: 'Facturacion DIAN',
-    path: '/fiscal',
-    section: 'administration',
-    icon: 'fiscal',
-    requiredPermission: 'fiscal:view',
-  },
-  {
     label: 'Reportes',
     path: '/reports',
     section: 'administration',
     icon: 'reports',
     requiredPermission: 'reports:view',
+  },
+  {
+    label: 'Facturacion DIAN',
+    path: '/fiscal',
+    section: 'administration',
+    icon: 'fiscal',
+    requiredPermission: 'fiscal:view',
   },
   {
     label: 'Puesta en marcha',
@@ -150,16 +150,16 @@ export const ROUTE_META: RouteMeta[] = [
     status: 'Accesos activos',
   },
   {
-    path: '/fiscal',
-    title: 'Facturacion DIAN',
-    description: 'Preparacion fiscal y estado de documentos',
-    status: 'Modo preparacion',
-  },
-  {
     path: '/reports',
     title: 'Reportes',
     description: 'Ventas, margen, caja e inventario',
     status: 'Datos del dia',
+  },
+  {
+    path: '/fiscal',
+    title: 'Facturacion DIAN',
+    description: 'Perfil tributario, documentos y correcciones de la sede actual',
+    status: 'Control fiscal',
   },
   {
     path: '/floor',
@@ -193,7 +193,7 @@ export const SETUP_STEPS: SetupStep[] = [
   },
   {
     title: 'Preparar facturacion',
-    description: 'Carga resolucion, prefijo y proveedor fiscal.',
+    description: 'GastroAI valida la habilitacion fiscal con soporte de plataforma.',
     status: 'pending',
   },
 ];

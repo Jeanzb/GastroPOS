@@ -98,7 +98,7 @@ function ZoneTabs({
       {pill.ready ? (
         <span
           aria-hidden
-          className="absolute top-1 bottom-1 left-0 rounded-lg bg-carbon shadow-sm ease-[var(--motion-pop)] [transition:transform_360ms,width_360ms] motion-reduce:transition-none"
+          className="absolute top-1 bottom-1 left-0 rounded-lg bg-carbon shadow-sm ease-[var(--motion-pop)] [transition:transform_var(--motion-duration-pop),width_var(--motion-duration-pop)] motion-reduce:transition-none"
           style={{ width: pill.width, transform: `translateX(${pill.left}px)` }}
         />
       ) : null}

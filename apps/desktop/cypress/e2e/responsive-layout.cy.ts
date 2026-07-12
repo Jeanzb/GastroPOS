@@ -23,6 +23,7 @@ const RESTAURANT_SCREENS = [
   { path: '/pos', title: 'POS' },
   { path: '/inventory', title: 'Inventario' },
   { path: '/purchases', title: 'Compras' },
+  { path: '/fiscal', title: 'Facturacion DIAN' },
 ] as const;
 
 function assertOperationalNavigation(viewport: ResponsiveViewport): void {
